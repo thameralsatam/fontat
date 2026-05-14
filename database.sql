@@ -259,3 +259,100 @@ begin
   return jsonb_build_object('success', false, 'message', 'unknown_action');
 end;
 $$;
+
+-- =========================================================
+-- 7. نظام الإشعارات (Notifications)
+-- =========================================================
+CREATE TABLE public.notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE, -- null means global notification
+  type text NOT NULL CHECK (type IN ('update', 'alert', 'info', 'promotion')),
+  slides jsonb NOT NULL DEFAULT '[]'::jsonb, -- Array of { id, title, description, image_url }
+  created_at timestamptz DEFAULT now()
+);
+
+-- سياسات RLS للإشعارات
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.get_my_notifications()
+RETURNS SETOF public.notifications
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT * FROM public.notifications 
+  WHERE user_id IS NULL OR user_id = auth.uid()
+  ORDER BY created_at DESC;
+$$;
+
+CREATE OR REPLACE FUNCTION public.send_notification(
+  p_user_id uuid,
+  p_type text,
+  p_slides jsonb
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_is_admin boolean;
+BEGIN
+  -- التحقق من الإيميل المباشر كأدمن
+  IF auth.jwt() ->> 'email' = 'thameralsatam@gmail.com' THEN
+    v_is_admin := true;
+  ELSE
+    -- التحقق من التوكين
+    IF auth.jwt() -> 'app_metadata' ->> 'role' = 'admin' OR auth.jwt() -> 'user_metadata' ->> 'role' = 'admin' THEN
+      v_is_admin := true;
+    ELSE
+      -- التحقق من جدول الملف الشخصي إذا لم يكن في التوكين
+      SELECT EXISTS(SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') INTO v_is_admin;
+    END IF;
+  END IF;
+
+  IF NOT v_is_admin THEN
+    RAISE EXCEPTION 'permission denied';
+  END IF;
+
+  INSERT INTO public.notifications (user_id, type, slides)
+  VALUES (p_user_id, p_type, p_slides);
+END;
+$$;
+
+DROP POLICY IF EXISTS "read_notifications" ON public.notifications;
+DROP POLICY IF EXISTS "manage_notifications" ON public.notifications;
+DROP POLICY IF EXISTS "admin_all_notifications" ON public.notifications;
+
+CREATE POLICY "read_notifications" ON public.notifications
+FOR SELECT USING (
+  user_id IS NULL OR user_id = auth.uid() OR public.is_admin()
+);
+
+CREATE POLICY "admin_insert_notifications" ON public.notifications
+FOR INSERT WITH CHECK (
+  public.is_admin()
+);
+
+CREATE POLICY "admin_manage_notifications" ON public.notifications
+FOR ALL USING (
+  public.is_admin()
+);
+
+GRANT ALL ON public.notifications TO authenticated;
+GRANT ALL ON public.notifications TO service_role;
+
+-- إضافة عمود التفضيلات لجدول المستخدمين (Profiles)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS notification_preferences jsonb DEFAULT '{"updates": true, "alerts": true, "info": true}'::jsonb;
+
+-- إعداد مساحة التخزين الخاصة بصور الإشعارات
+INSERT INTO storage.buckets (id, name, public) VALUES ('notifications', 'notifications', true) ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "تفعيل القراءة للجميع لصور الإشعارات" ON storage.objects
+  FOR SELECT USING (bucket_id = 'notifications');
+
+CREATE POLICY "تفعيل الإضافة للمشرفين لصور الإشعارات" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'notifications' AND public.is_admin());
+
+CREATE POLICY "تفعيل التعديل والإلغاء للمشرفين" ON storage.objects
+  FOR UPDATE USING (bucket_id = 'notifications' AND public.is_admin());
+
+CREATE POLICY "تفعيل الحذف للمشرفين" ON storage.objects
+  FOR DELETE USING (bucket_id = 'notifications' AND public.is_admin());

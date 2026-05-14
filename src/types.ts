@@ -53,4 +53,27 @@ export interface RPCFontResult {
   upload_required?: boolean;
 }
 
+export type NotificationType = 'update' | 'alert' | 'info' | 'promotion';
+
+export type NotificationSlide = {
+  id: string;
+  title: string;
+  description: string;
+  image_url?: string;
+};
+
+export type Notification = {
+  id: string;
+  user_id: string | null;
+  type: NotificationType;
+  slides: NotificationSlide[];
+  created_at: string;
+};
+
+export type NotificationPreferences = {
+  updates: boolean;
+  alerts: boolean;
+  info: boolean;
+};
+
 

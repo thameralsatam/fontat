@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LogOut, Settings, Globe, Loader2, Send, Instagram, Mail, Eye, EyeOff } from 'lucide-react';
+import { LogOut, Settings, Globe, Loader2, Send, Instagram, Mail, Eye, EyeOff, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { FadeSection } from '../components/FadeSection';
 import { truncateEmail } from '../utils/text';
+import { getUserNotificationPreferences, updateUserNotificationPreferences } from '../services/notificationService';
+
+const PREFS_KEY = 'fontat_notification_prefs';
 
 export const Account = () => {
   const { user } = useAuth();
@@ -22,6 +25,47 @@ export const Account = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Notification Preferences
+  const [prefs, setPrefs] = useState({ updates: true, alerts: true, info: true });
+  const [savingPrefs, setSavingPrefs] = useState(false);
+
+  useEffect(() => {
+    const fetchPrefs = async () => {
+       if (user) {
+          try {
+             const userPrefs = await getUserNotificationPreferences(user.id);
+             setPrefs(userPrefs);
+          } catch (e) {
+             console.error('Failed to load user preferences', e);
+          }
+       } else {
+          try {
+             const stored = localStorage.getItem(PREFS_KEY);
+             if (stored) setPrefs(JSON.parse(stored));
+          } catch (e) {}
+       }
+    };
+    fetchPrefs();
+  }, [user]);
+
+  const togglePref = async (key: keyof typeof prefs) => {
+    const newPrefs = { ...prefs, [key]: !prefs[key] };
+    setPrefs(newPrefs);
+    
+    if (user) {
+       setSavingPrefs(true);
+       try {
+          await updateUserNotificationPreferences(user.id, newPrefs);
+       } catch (e) {
+          console.error('Failed to save preferences', e);
+       } finally {
+          setSavingPrefs(false);
+       }
+    } else {
+       localStorage.setItem(PREFS_KEY, JSON.stringify(newPrefs));
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -217,6 +261,35 @@ export const Account = () => {
             >
               {language === 'ar' ? 'English' : 'العربية'}
             </button>
+          </div>
+
+          <div className="bg-white/5 rounded-2xl border border-white/5 overflow-hidden">
+             <div className="p-4 border-b border-white/5 flex items-center gap-3 bg-black/20">
+                <Bell className="w-5 h-5 text-white/60" />
+                <span className="text-white font-medium">إعدادات الإشعارات</span>
+             </div>
+             
+             <div className="p-2">
+                {[
+                  { key: 'updates', title: 'تحديثات المنصة (Updates)', desc: 'تغييرات وميزات جديدة في الموقع' },
+                  { key: 'alerts', title: 'تنبيهات هامة (Alerts)', desc: 'إشعارات هامة وتنبيهات أمنية' },
+                  { key: 'info', title: 'معلومات ونصائح (Info)', desc: 'أخبار وشروحات تهمك' }
+                ].map((item) => (
+                   <div key={item.key} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors">
+                      <div>
+                         <div className="text-white text-sm font-medium">{item.title}</div>
+                         <div className="text-white/40 text-xs mt-0.5">{item.desc}</div>
+                      </div>
+                      <button 
+                         onClick={() => togglePref(item.key as keyof typeof prefs)}
+                         disabled={savingPrefs}
+                         className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${prefs[item.key as keyof typeof prefs] ? 'bg-blue-500' : 'bg-white/20'} ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                         <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${prefs[item.key as keyof typeof prefs] ? (dir === 'rtl' ? '-translate-x-5' : 'translate-x-5') : 'translate-x-0'}`} />
+                      </button>
+                   </div>
+                ))}
+             </div>
           </div>
           
           <div className="text-center pt-4">

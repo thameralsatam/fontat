@@ -301,6 +301,10 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           if ((mode === 'public' && !data.is_public) || (mode === 'private' && data.is_public)) {
             setViewingGroupId(null);
           }
+          setIsModalOpen(false);
+          setGroupName('');
+          setGroupDesc('');
+          setSelectedGroup(null);
         }
       } catch (error: any) {
         console.error('Error updating group:', error);
@@ -322,12 +326,11 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
           addNotification('success', t('group.create_success'));
+          setIsModalOpen(false);
+          setGroupName('');
+          setGroupDesc('');
+          setSelectedGroup(null);
         }
-        
-        setIsModalOpen(false);
-        setGroupName('');
-        setGroupDesc('');
-        setSelectedGroup(null);
       } catch (error: any) {
         console.error('Error creating group:', error);
         addNotification('error', error.message || t('group.create_error'));

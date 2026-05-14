@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { GlobalProvider } from './contexts/GlobalContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { Layout } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Login } from './pages/Login';
@@ -94,12 +95,14 @@ function AppContent() {
 
   return (
     <LanguageProvider>
-      <GlobalProvider>
-        <BrowserRouter>
-          <AppRoutes />
-          {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-        </BrowserRouter>
-      </GlobalProvider>
+      <NotificationProvider>
+        <GlobalProvider>
+          <BrowserRouter>
+            <AppRoutes />
+            {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+          </BrowserRouter>
+        </GlobalProvider>
+      </NotificationProvider>
     </LanguageProvider>
   );
 }

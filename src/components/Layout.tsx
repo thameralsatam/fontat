@@ -5,8 +5,13 @@ import { Upload, AlertTriangle, Info, Check, X, LogIn, Beaker } from 'lucide-rea
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppNotifications } from '../contexts/NotificationContext';
 import { Logo } from './Logo';
 import { AccountLogo } from './AccountLogo';
+import { AdminNotificationModal } from './ui/AdminNotificationModal';
+import { AppNotificationModal } from './ui/AppNotificationModal';
+import { NotificationsDropdown } from './ui/NotificationsDropdown';
+import { Notification } from '../types';
 
 const NotificationItem = ({ notification, onToggle, onRemove }: { notification: any, onToggle: () => void, onRemove: () => void }) => {
   const isExpanded = notification.isExpanded;
@@ -92,7 +97,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const { notifications, toggleNotification, removeNotification } = useGlobal();
+  const { reloadNotifications } = useAppNotifications();
   const { user } = useAuth();
+  
+  // Notification Modals state
+  const [selectedAppNotification, setSelectedAppNotification] = useState<Notification | null>(null);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const isAdmin = user?.email === 'thameralsatam@gmail.com' || user?.app_metadata?.role === 'admin' || user?.user_metadata?.role === 'admin';
   
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -160,7 +171,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
 
           {/* Right Action Area */}
-          <div className="w-24 flex justify-end">
+          <div className="w-24 flex justify-end items-center gap-2 pointer-events-auto">
             {!user && !location.pathname.startsWith('/account') && (
               <Link 
                 to="/account" 
@@ -170,6 +181,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 <span>{dir === 'rtl' ? 'دخول' : 'Login'}</span>
               </Link>
             )}
+            <NotificationsDropdown 
+               isAdmin={isAdmin} 
+               onOpenNotification={(n) => setSelectedAppNotification(n)} 
+               onOpenAdminPanel={() => setIsAdminModalOpen(true)}
+            />
           </div>
         </header>
       
@@ -277,6 +293,21 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </Link>
 
       </nav>
+
+      {/* App Notification view modal */}
+      <AppNotificationModal 
+         isOpen={!!selectedAppNotification} 
+         onClose={() => setSelectedAppNotification(null)}
+         notification={selectedAppNotification}
+         dir={dir}
+      />
+
+      {/* Admin Create Notification modal */}
+      <AdminNotificationModal 
+         isOpen={isAdminModalOpen}
+         onClose={() => setIsAdminModalOpen(false)}
+         onSuccess={() => reloadNotifications()}
+      />
     </div>
   );
 };

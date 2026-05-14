@@ -170,6 +170,9 @@ const translations: Record<Language, Record<string, string>> = {
     'error.connection_restored_desc': 'You are back online.',
     'error.no_connection': 'No Internet Connection',
     'error.no_connection_desc': 'Please check your network settings.',
+    'notifications.title': 'Notifications',
+    'notifications.empty': 'No info to show',
+    'notifications.create': 'New',
   },
   ar: {
     'app.title': 'مدير الخطوط',
@@ -332,6 +335,9 @@ const translations: Record<Language, Record<string, string>> = {
     'error.connection_restored_desc': 'أنت متصل بالإنترنت الآن.',
     'error.no_connection': 'لا يوجد اتصال بالإنترنت',
     'error.no_connection_desc': 'يرجى التحقق من إعدادات الشبكة الخاصة بك.',
+    'notifications.title': 'الإشعارات',
+    'notifications.empty': 'لا توجد إشعارات حالياً',
+    'notifications.create': 'جديد',
   },
 };
 
