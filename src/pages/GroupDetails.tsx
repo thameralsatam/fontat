@@ -546,15 +546,15 @@ export const GroupDetails = ({
       )}
 
       {/* Header */}
-      <div className="pb-8 pt-0 px-0">
-        <div className="flex items-start justify-between gap-4 w-full xl:max-w-[1600px] mx-auto">
-          <div className="flex-1 min-w-0 space-y-1">
-            <h1 className="text-2xl font-light text-white tracking-tight leading-tight pt-[10px] pr-[10px] ml-[50px] -mt-[20px]">{group.name}</h1>
-            {group.description && <p className="text-xs text-white/50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">{group.description}</p>}
+      <div className="pb-8 pt-4 px-4 md:px-8 w-full xl:max-w-[1600px] mx-auto">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0 space-y-2">
+            <h1 className="text-2xl font-light text-white tracking-tight leading-tight">{group.name}</h1>
+            {group.description && <p className="text-sm text-white/50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">{group.description}</p>}
           </div>
           <div className="shrink-0 flex items-center">
             {isOwner && (
-              <div className="flex flex-col items-center gap-1.5 ml-[30px] mb-0 mr-0 -mt-[20px]">
+              <div className="flex flex-col items-center gap-1.5">
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".ttf,.otf,.woff,.woff2" multiple />
                 <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white hover:text-black hover:border-transparent transition-all duration-300 group focus:outline-none" title={t('font.upload')}>
                   <Upload className="w-4 h-4 stroke-[1.5] transition-transform duration-300 group-hover:-translate-y-0.5" />

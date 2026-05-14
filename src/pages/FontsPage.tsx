@@ -357,7 +357,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   return (
     <FadeSection className="pb-32 max-lg:landscape:pb-16 pt-0">
       {/* Search Bar */}
-      <div className="mb-6 w-full max-w-2xl lg:max-w-4xl mx-auto -mt-6 px-4">
+      <div className="mb-6 w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
         <SmartSearch 
           mode={mode} 
           onSelect={async (res) => {
@@ -394,9 +394,9 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       </div>
 
       {/* Slim Chips Bar */}
-      <div className="bg-[#080808] py-2 overflow-x-auto scrollbar-hide w-full touch-pan-x max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-8">
+      <div className="bg-[#080808] py-2 overflow-x-auto scrollbar-hide w-full touch-pan-x xl:max-w-[1600px] mx-auto px-4 md:px-8">
         {/* Dynamic Groups Chips */}
-        <div className="flex items-center gap-2 px-4 w-max">
+        <div className="flex items-center gap-2 w-max">
           <AnimatePresence mode='popLayout'>
             {displayedGroups.map(group => (
               <motion.div
