@@ -58,11 +58,11 @@ export const AppNotificationModal = ({
           
           <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
             <div className="flex items-center gap-2">
-               <Bell className="w-4 h-4 text-white/50" />
-               <span className="text-xs font-medium text-white/50 uppercase tracking-widest">{notification.type}</span>
+               <Bell className="w-4 h-4 text-white opacity-50" />
+               <span className="text-xs font-medium text-white opacity-50 uppercase tracking-widest">{notification.type}</span>
             </div>
             <button onClick={onClose} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
-              <X className="w-4 h-4 text-white/70" />
+              <X className="w-4 h-4 text-white opacity-70" />
             </button>
           </div>
 
@@ -84,7 +84,7 @@ export const AppNotificationModal = ({
                      
                      <div className="p-6 sm:p-8 flex-1 flex flex-col justify-center">
                         <h2 className="text-2xl font-bold text-white mb-4 leading-tight">{slide.title}</h2>
-                        <p className="text-white/60 leading-relaxed text-sm sm:text-base whitespace-pre-wrap">{slide.description}</p>
+                        <p className="text-white opacity-60 leading-relaxed text-sm sm:text-base whitespace-pre-wrap">{slide.description}</p>
                      </div>
                   </motion.div>
               </AnimatePresence>

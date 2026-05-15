@@ -415,7 +415,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
                   className={`h-[25px] px-3 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap flex items-center justify-center ${
                     viewingGroupId === group.id
                       ? 'bg-white/20 text-white border-white/20'
-                      : 'bg-transparent text-white/70 border-white/10 hover:text-white hover:border-white/30'
+                      : 'bg-transparent text-white opacity-70 border-white/10 hover:text-white hover:border-white/30'
                   }`}
                 >
                   {group.name}
@@ -467,7 +467,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
                     const group = groups.find(g => g.id === optionsOpenGroupId);
                     if (group) handleEditGroup(e, group);
                   }}
-                  className="flex items-center gap-3 px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors w-full text-left active:bg-white/20"
+                  className="flex items-center gap-3 px-3 py-2 text-sm text-white opacity-80 hover:text-white hover:bg-white/10 rounded-xl transition-colors w-full text-left active:bg-white/20"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
@@ -504,7 +504,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           />
         ) : (
           /* Default View (No group selected) */
-           <div className="text-center py-20 max-lg:landscape:py-8 text-white/20 w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
+           <div className="text-center py-20 max-lg:landscape:py-8 text-white opacity-20 w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
              <p>{t('groups.select_to_view')}</p>
            </div>
         )}
@@ -520,7 +520,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="block text-sm font-medium text-gray-300">{t('group.name_placeholder')}</label>
-              <span className={`text-xs ${groupName.length > 25 ? 'text-red-500' : 'text-white/30'}`}>
+              <span className={`text-xs ${groupName.length > 25 ? 'text-red-500' : 'text-white opacity-30'}`}>
                 {groupName.length}/25
               </span>
             </div>
@@ -538,7 +538,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="block text-sm font-medium text-gray-300">{t('group.desc_placeholder')}</label>
-              <span className={`text-xs ${groupDesc.length > 100 ? 'text-red-500' : 'text-white/30'}`}>
+              <span className={`text-xs ${groupDesc.length > 100 ? 'text-red-500' : 'text-white opacity-30'}`}>
                 {groupDesc.length}/100
               </span>
             </div>

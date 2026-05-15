@@ -19,7 +19,7 @@ export const AboutUs = () => {
         </div>
       </FadeSection>
 
-      <div className="space-y-8 text-white/80 leading-relaxed text-lg">
+      <div className="space-y-8 text-white opacity-80 leading-relaxed text-lg">
         <FadeSection delay={0.1}>
           <p>
             {isAr 

@@ -266,11 +266,11 @@ export const Lab = () => {
         infoDiv.className = 'w-full flex flex-col items-center text-center mt-2 overflow-hidden space-y-[2px]';
 
         const unicodeText = document.createElement('span');
-        unicodeText.className = 'text-[9px] text-white/60 font-mono leading-tight';
+        unicodeText.className = 'text-[9px] text-white opacity-60 font-mono leading-tight';
         unicodeText.textContent = glyph.unicode ? `U+${glyph.unicode.toString(16).toUpperCase().padStart(4, '0')}` : 'No Unicode';
 
         const indexText = document.createElement('span');
-        indexText.className = 'text-[9px] text-white/40 leading-tight';
+        indexText.className = 'text-[9px] text-white opacity-40 leading-tight';
         indexText.textContent = `Index: ${glyph.index}`;
 
         // Ensure name is a string, some fonts might return objects for bilingual glyph names (rare but possible)
@@ -284,7 +284,7 @@ export const Lab = () => {
         }
 
         const nameText = document.createElement('span');
-        nameText.className = 'text-[9px] text-white/80 truncate w-full px-1 leading-tight';
+        nameText.className = 'text-[9px] text-white opacity-80 truncate w-full px-1 leading-tight';
         nameText.textContent = glyphNameDisplay;
         nameText.title = glyphNameDisplay;
 
@@ -401,14 +401,14 @@ export const Lab = () => {
                 {t('lab.upload_font')}
                 <input type="file" onChange={handleFileUpload} accept=".ttf,.otf" className="hidden" />
               </label>
-              <p className="text-xs text-white/40 mt-4">{t('lab.upload_support')}</p>
+              <p className="text-xs text-white opacity-40 mt-4">{t('lab.upload_support')}</p>
             </div>
 
             {history.length > 0 && (
               <div className="bg-[#141414] rounded-3xl p-6 border border-white/10">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-white/60" />
+                    <Clock className="w-5 h-5 text-white opacity-60" />
                     {t('lab.history_title')}
                   </h2>
                   <button
@@ -427,7 +427,7 @@ export const Lab = () => {
                       dir="rtl"
                     >
                       <span className="font-bold text-sm md:text-base text-white text-right" dir="ltr">{formatFontName(item.name)}</span>
-                      <span className="text-xs text-white/40">
+                      <span className="text-xs text-white opacity-40">
                         {new Date(item.lastModified).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-GB')}
                       </span>
                     </button>
@@ -441,7 +441,7 @@ export const Lab = () => {
             <div className="grid grid-cols-12 gap-4">
               {/* Controls */}
               <div className="col-span-12 lg:col-span-3 space-y-3 bg-[#141414] p-3 rounded-2xl border border-white/5 text-xs">
-                <h2 className="text-[10px] font-bold text-white/60 uppercase tracking-wider flex items-center gap-2">
+                <h2 className="text-[10px] font-bold text-white opacity-60 uppercase tracking-wider flex items-center gap-2">
                   <Settings size={12} />
                   {t('lab.font_control')}
                 </h2>
@@ -450,7 +450,7 @@ export const Lab = () => {
                 {axes.map((axis: any) => (
                   <div key={axis.tag}>
                     <div className="flex justify-between text-[10px] mb-1">
-                      <span className="font-mono text-white/80">{axis.tag}</span>
+                      <span className="font-mono text-white opacity-80">{axis.tag}</span>
                       <span className="text-cyan-400">{axisValues[axis.tag]}</span>
                     </div>
                     <input
@@ -477,27 +477,27 @@ export const Lab = () => {
                 {/* Elegant Color Pickers */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <label className="text-[9px] text-white/40 uppercase">{t('lab.text_color')}</label>
+                    <label className="text-[9px] text-white opacity-40 uppercase">{t('lab.text_color')}</label>
                     <button
                       onClick={() => document.getElementById('textColorPicker')?.click()}
                       className="w-full h-8 rounded-full border border-white/10 flex items-center justify-between px-2 bg-white/5 hover:bg-white/10 transition-all"
                     >
                       <div className="flex items-center gap-1">
                         <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: textColor }} />
-                        <span className="text-[10px] text-white/60">{textColor.toUpperCase()}</span>
+                        <span className="text-[10px] text-white opacity-60">{textColor.toUpperCase()}</span>
                       </div>
                       <input id="textColorPicker" type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="hidden" />
                     </button>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] text-white/40 uppercase">{t('lab.bg_color')}</label>
+                    <label className="text-[9px] text-white opacity-40 uppercase">{t('lab.bg_color')}</label>
                     <button
                       onClick={() => document.getElementById('bgColorPicker')?.click()}
                       className="w-full h-8 rounded-full border border-white/10 flex items-center justify-between px-2 bg-white/5 hover:bg-white/10 transition-all"
                     >
                       <div className="flex items-center gap-1">
                         <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: bgColor }} />
-                        <span className="text-[10px] text-white/60">{bgColor.toUpperCase()}</span>
+                        <span className="text-[10px] text-white opacity-60">{bgColor.toUpperCase()}</span>
                       </div>
                       <input id="bgColorPicker" type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="hidden" />
                     </button>
@@ -506,13 +506,13 @@ export const Lab = () => {
 
                 {/* OpenType Features */}
                 <div className="space-y-1">
-                  <label className="text-[9px] text-white/40 uppercase">{t('lab.opentype_features')}</label>
+                  <label className="text-[9px] text-white opacity-40 uppercase">{t('lab.opentype_features')}</label>
                   <div className="flex flex-wrap gap-1">
                     {Object.entries(openTypeFeatures).map(([feature, enabled]) => (
                       <button
                         key={feature}
                         onClick={() => handleFeatureToggle(feature)}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${enabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-white/40'}`}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${enabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-white opacity-40'}`}
                       >
                         {feature}
                       </button>
@@ -557,7 +557,7 @@ export const Lab = () => {
 
               {/* Preview */}
               <div className="col-span-12 lg:col-span-9 space-y-3">
-                <div className="flex items-center gap-2 text-[10px] text-white/60 mb-1">
+                <div className="flex items-center gap-2 text-[10px] text-white opacity-60 mb-1">
                   <Type size={12} />
                   <span>{t('lab.font_preview')}: {font.names.fullName.en}</span>
                 </div>
@@ -592,7 +592,7 @@ export const Lab = () => {
             {/* Font Info & Glyphs */}
             <div className="bg-[#141414] p-6 rounded-3xl border border-white/5">
               <h2 className="text-lg font-bold mb-4">{t('lab.full_info')}</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-white/60 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-white opacity-60 mb-6">
                 {Object.entries(font.names).map(([key, value]: any) => {
                   let displayValue = '';
                   if (typeof value === 'object' && value !== null) {
@@ -603,13 +603,13 @@ export const Lab = () => {
                   
                   return (
                     <div key={key} className="break-words">
-                      <span className="block text-white/40 text-xs uppercase">{key}</span>
+                      <span className="block text-white opacity-40 text-xs uppercase">{key}</span>
                       <span className="block w-full overflow-hidden text-ellipsis">{displayValue}</span>
                     </div>
                   );
                 })}
                 <div className="break-words">
-                  <span className="block text-white/40 text-xs uppercase">{t('lab.glyph_count')}</span>
+                  <span className="block text-white opacity-40 text-xs uppercase">{t('lab.glyph_count')}</span>
                   <span className="block w-full overflow-hidden text-ellipsis">{font.numGlyphs}</span>
                 </div>
               </div>
@@ -618,7 +618,7 @@ export const Lab = () => {
                 <h3 className="text-sm font-bold">{t('lab.glyphs')}</h3>
                 <div className="relative w-full md:w-64">
                   <div className={`absolute inset-y-0 ${t('dir') === 'rtl' ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
-                    <Search size={14} className="text-white/40" />
+                    <Search size={14} className="text-white opacity-40" />
                   </div>
                   <input
                     type="text"

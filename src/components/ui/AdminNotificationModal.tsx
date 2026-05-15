@@ -79,14 +79,14 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-white">إشعار جديد</h2>
             <button onClick={onClose} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
-              <X className="w-5 h-5 text-white/70" />
+              <X className="w-5 h-5 text-white opacity-70" />
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-6 space-y-6">
             {/* Notification Type */}
             <div>
-              <label className="block text-sm text-white/50 mb-2">نوع الإشعار</label>
+              <label className="block text-sm text-white opacity-50 mb-2">نوع الإشعار</label>
               <select 
                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30"
                  value={type}
@@ -112,11 +112,11 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
                             <Trash2 className="w-4 h-4" />
                          </button>
                      )}
-                     <h3 className="font-bold text-white/80 mb-4">الشريحة {index + 1}</h3>
+                     <h3 className="font-bold text-white opacity-80 mb-4">الشريحة {index + 1}</h3>
                      
                      <div className="space-y-4">
                         <div>
-                           <label className="block text-xs text-white/50 mb-1">العنوان</label>
+                           <label className="block text-xs text-white opacity-50 mb-1">العنوان</label>
                            <input 
                               type="text" 
                               value={slide.title || ''} 
@@ -125,7 +125,7 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
                            />
                         </div>
                         <div>
-                           <label className="block text-xs text-white/50 mb-1">الوصف</label>
+                           <label className="block text-xs text-white opacity-50 mb-1">الوصف</label>
                            <textarea 
                               value={slide.description || ''} 
                               onChange={(e) => handleChange(slide.id!, 'description', e.target.value)}
@@ -134,7 +134,7 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
                            />
                         </div>
                         <div>
-                           <label className="block text-xs text-white/50 mb-1">صورة الشريحة (اختياري)</label>
+                           <label className="block text-xs text-white opacity-50 mb-1">صورة الشريحة (اختياري)</label>
                            {slide.image_url ? (
                               <div className="relative w-full h-32 rounded-lg overflow-hidden group/img">
                                  <img src={slide.image_url} className="w-full h-full object-cover" />
@@ -145,11 +145,11 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
                            ) : (
                                <div onClick={() => fileInputRefs.current[slide.id!]?.click()} className="w-full h-24 border-2 border-dashed border-white/20 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-white/40 hover:bg-white/5 transition-all">
                                   {uploadingImageId === slide.id ? (
-                                      <Loader2 className="w-6 h-6 text-white/50 animate-spin" />
+                                      <Loader2 className="w-6 h-6 text-white opacity-50 animate-spin" />
                                   ) : (
                                       <>
-                                        <ImageIcon className="w-6 h-6 text-white/40 mb-2" />
-                                        <span className="text-xs text-white/50">اضغط لرفع صورة</span>
+                                        <ImageIcon className="w-6 h-6 text-white opacity-40 mb-2" />
+                                        <span className="text-xs text-white opacity-50">اضغط لرفع صورة</span>
                                       </>
                                   )}
                                   <input 
@@ -171,7 +171,7 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
                ))}
             </div>
 
-            <button onClick={handleAddSlide} className="w-full py-3 border border-dashed border-white/20 rounded-xl text-white/60 hover:text-white hover:border-white/50 hover:bg-white/5 flex items-center justify-center gap-2 transition-all">
+            <button onClick={handleAddSlide} className="w-full py-3 border border-dashed border-white/20 rounded-xl text-white opacity-60 hover:text-white hover:border-white/50 hover:bg-white/5 flex items-center justify-center gap-2 transition-all">
                <Plus className="w-4 h-4" />
                إضافة شريحة جديدة
             </button>

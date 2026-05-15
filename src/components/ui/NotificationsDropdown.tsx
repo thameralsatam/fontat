@@ -26,21 +26,20 @@ const formatTimeAgo = (dateStr: string, t: any) => {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   
-  if (diffInSeconds < 60) return `${diffInSeconds} ${t('time.seconds', 'ثانية')}`;
+  if (diffInSeconds < 60) return `${diffInSeconds} ${t('time.seconds')}`;
   
   const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes} ${t('time.minutes', 'دقيقة')}`;
+  if (diffInMinutes < 60) return `${diffInMinutes} ${t('time.minutes')}`;
   
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours} ${t('time.hours', 'ساعة')}`;
+  if (diffInHours < 24) return `${diffInHours} ${t('time.hours')}`;
   
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 7) {
-      const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-      return days[date.getDay()];
+      return date.toLocaleDateString(document.documentElement.lang, { weekday: 'long' });
   }
   
-  return date.toLocaleDateString();
+  return date.toLocaleDateString(document.documentElement.lang);
 };
 
 export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotification, isAdmin, onOpenAdminPanel }) => {
@@ -104,7 +103,7 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
 
             <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
               {notifications.length === 0 ? (
-                <div className="p-8 text-center text-white/40 text-sm">
+                <div className="p-8 text-center text-white opacity-40 text-sm">
                   {t('notifications.empty', 'لا توجد إشعارات حالياً')}
                 </div>
               ) : (
@@ -120,10 +119,10 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-sm text-white truncate w-full">{n.slides[0]?.title || '...'}</h4>
-                        <p className="text-xs text-white/50 mt-1 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-white opacity-50 mt-1 line-clamp-2 leading-relaxed">
                           {n.slides[0]?.description || ''}
                         </p>
-                        <p className="text-[10px] text-white/30 mt-2">
+                        <p className="text-[10px] text-white opacity-30 mt-2">
                           {formatTimeAgo(n.created_at, t)}
                         </p>
                       </div>

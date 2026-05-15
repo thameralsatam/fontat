@@ -7,7 +7,6 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppNotifications } from '../contexts/NotificationContext';
 import { Logo } from './Logo';
-import { AccountLogo } from './AccountLogo';
 import { AdminNotificationModal } from './ui/AdminNotificationModal';
 import { AppNotificationModal } from './ui/AppNotificationModal';
 import { NotificationsDropdown } from './ui/NotificationsDropdown';
@@ -93,7 +92,7 @@ const NotificationItem = ({ notification, onToggle, onRemove }: { notification: 
 };
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { dir, t } = useLanguage();
+  const { dir, t, language, setLanguage } = useLanguage();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const { notifications, toggleNotification, removeNotification } = useGlobal();
@@ -139,48 +138,66 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </div>
 
       {/* Header - Minimal & Centered */}
+      {!location.pathname.startsWith('/account') && (
         <header 
           className={`fixed top-0 left-0 right-0 z-[100] h-24 px-6 flex items-center justify-between transition-colors duration-300 bg-[#080808] border-b ${
             isScrolled ? 'border-white/20' : 'border-transparent'
           }`}
         >
-          {/* Left Spacer (only for mobile) */}
-          <div className="w-24 lg:hidden"></div>
-
-          <div className="flex-1 lg:flex-none flex justify-center lg:justify-start pointer-events-none">
-            {location.pathname.startsWith('/account') ? (
-              <Link to="/" className="inline-block relative z-10 mt-2 pointer-events-auto">
-                <AccountLogo className="w-[130px] h-auto text-white transition-colors" />
-              </Link>
-            ) : (
+          {/* Left Container (Logo + Login) */}
+          <div className="flex-1 flex items-center justify-start gap-4 lg:gap-6 pointer-events-none">
+            {/* Desktop Logo */}
+            <div className="hidden lg:block">
               <Link to="/" className="inline-block relative z-[10] pointer-events-auto mt-2">
                 <div className="w-[130px] h-fit flex items-center justify-center">
                   <Logo className="w-full h-auto text-white" />
                 </div>
               </Link>
+            </div>
+
+            {/* Login Button */}
+            {!user && (
+              <div className="pointer-events-auto">
+                <Link 
+                  to="/account" 
+                  className="flex items-center justify-center sm:px-4 sm:py-2 gap-2 text-xs font-medium text-white hover:bg-white hover:text-black transition-all w-9 h-9 sm:w-auto sm:h-auto rounded-full bg-black/50 sm:bg-black border border-white/10 sm:border-white/20 hover:border-white"
+                >
+                  <LogIn className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden sm:block">{dir === 'rtl' ? 'دخول' : 'Login'}</span>
+                </Link>
+              </div>
             )}
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex flex-1 justify-center pointer-events-auto items-center gap-8">
-            <Link to="/" className={`text-sm font-medium transition-colors ${location.pathname === '/' ? 'text-white' : 'text-white/50 hover:text-white'}`}>{t('nav.home')}</Link>
-            <Link to="/fonts" className={`text-sm font-medium transition-colors ${location.pathname === '/fonts' ? 'text-white' : 'text-white/50 hover:text-white'}`}>{t('nav.public_fonts')}</Link>
-            <Link to="/lab" className={`text-sm font-medium transition-colors ${location.pathname === '/lab' ? 'text-white' : 'text-white/50 hover:text-white'}`}>{t('nav.lab')}</Link>
-            <Link to="/my-fonts" className={`text-sm font-medium transition-colors ${location.pathname === '/my-fonts' ? 'text-white' : 'text-white/50 hover:text-white'}`}>{t('nav.my_fonts')}</Link>
-            <Link to="/account" className={`text-sm font-medium transition-colors ${location.pathname === '/account' ? 'text-white' : 'text-white/50 hover:text-white'}`}>{t('nav.account')}</Link>
-          </div>
-
-          {/* Right Action Area */}
-          <div className="w-24 flex justify-end items-center gap-2 pointer-events-auto">
-            {!user && !location.pathname.startsWith('/account') && (
-              <Link 
-                to="/account" 
-                className="flex items-center gap-2 text-xs font-medium text-white hover:bg-white hover:text-black transition-all px-4 py-2 rounded-full border border-white/20 hover:border-white bg-black"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>{dir === 'rtl' ? 'دخول' : 'Login'}</span>
+          {/* Center Container (Mobile Logo / Desktop Nav) */}
+          <div className="flex items-center justify-center pointer-events-none lg:pointer-events-auto shrink-0 px-4">
+            {/* Mobile Logo */}
+            <div className="lg:hidden">
+              <Link to="/" className="inline-block relative z-[10] pointer-events-auto mt-2">
+                <div className="w-[130px] h-fit flex items-center justify-center">
+                  <Logo className="w-full h-auto text-white" />
+                </div>
               </Link>
-            )}
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center gap-8">
+              <Link to="/" className={`text-sm font-medium transition-colors ${location.pathname === '/' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.home')}</Link>
+              <Link to="/fonts" className={`text-sm font-medium transition-colors ${location.pathname === '/fonts' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.public_fonts')}</Link>
+              <Link to="/lab" className={`text-sm font-medium transition-colors ${location.pathname === '/lab' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.lab')}</Link>
+              <Link to="/my-fonts" className={`text-sm font-medium transition-colors ${location.pathname === '/my-fonts' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.my_fonts')}</Link>
+              <Link to="/account" className={`text-sm font-medium transition-colors ${location.pathname === '/account' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.account')}</Link>
+            </div>
+          </div>
+
+          {/* Right Container (Language + Notifications) */}
+          <div className="flex-1 flex justify-end items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-black/50 sm:bg-black border border-white/10 sm:border-white/20 hover:border-white hover:bg-white hover:text-black transition-all"
+            >
+              <span className="text-sm font-medium leading-none">{language === 'ar' ? 'EN' : 'عربي'}</span>
+            </button>
             <NotificationsDropdown 
                isAdmin={isAdmin} 
                onOpenNotification={(n) => setSelectedAppNotification(n)} 
@@ -188,10 +205,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             />
           </div>
         </header>
+      )}
       
       {/* Main Content */}
       <main 
-        className={`flex-1 pt-32 pb-12 w-full ${dir === 'rtl' ? 'max-lg:landscape:pr-[56px]' : 'max-lg:landscape:pl-[56px]'}`}
+        className={`flex-1 ${location.pathname.startsWith('/account') ? 'pt-8' : 'pt-32'} pb-12 w-full ${dir === 'rtl' ? 'max-lg:landscape:pr-[56px]' : 'max-lg:landscape:pl-[56px]'}`}
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -207,15 +225,54 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-8 pb-32 mt-auto">
-        <div className="mx-auto px-4 w-full xl:max-w-[1600px] flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-white/50">
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            <Link to="/about" className={`transition-colors ${location.pathname === '/about' ? 'text-white font-bold' : 'hover:text-white'}`}>{dir === 'rtl' ? 'من نحن؟' : 'About Us'}</Link>
-            <Link to="/privacy" className={`transition-colors ${location.pathname === '/privacy' ? 'text-white font-bold' : 'hover:text-white'}`}>{dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy Policy'}</Link>
-            <Link to="/terms" className={`transition-colors ${location.pathname === '/terms' ? 'text-white font-bold' : 'hover:text-white'}`}>{dir === 'rtl' ? 'شروط الاستخدام' : 'Terms of Service'}</Link>
+      <footer className="pt-16 pb-32 mt-auto relative overflow-hidden bg-black/40 border-t border-white/5">
+        <div className="mx-auto px-6 w-full max-w-4xl flex flex-col items-center text-center">
+          
+          <p className="text-white opacity-40 text-sm font-light leading-relaxed max-w-2xl mb-6">
+            {dir === 'rtl' ? 'مبادرة رقمية تهدف لتوفير أدوات وخطوط عربية أصيلة لتعزيز المحتوى العربي باحترافية وسهولة.' : 'A digital initiative aiming to provide authentic Arabic tools and fonts to enhance Arabic content professionally and easily.'}
+          </p>
+
+          <p className="text-white opacity-40 text-sm font-light mb-10">
+            <span dir="ltr">© {new Date().getFullYear()} FONTAT.</span> {dir === 'rtl' ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
+          </p>
+
+          {/* Social Icons - Free floating pill design */}
+          <div className="inline-flex items-center p-1.5 rounded-full bg-[#080808] border border-white/5 shadow-2xl relative mb-12">
+            <a href="#" className="flex items-center justify-center w-10 h-10 rounded-full text-white opacity-40 hover:opacity-100 hover:bg-white/5 transition-all duration-300" aria-label="X (Twitter)">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+            </a>
+            
+            <div className="w-[1px] h-4 bg-white/10 mx-1" />
+            
+            <a href="#" className="flex items-center justify-center w-10 h-10 rounded-full text-white opacity-40 hover:opacity-100 hover:bg-white/5 transition-all duration-300" aria-label="Instagram">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </a>
+            
+            <div className="w-[1px] h-4 bg-white/10 mx-1" />
+            
+            <a href="mailto:your@email.com" className="flex items-center justify-center w-10 h-10 rounded-full text-white opacity-40 hover:opacity-100 hover:bg-white/5 transition-all duration-300" aria-label="Support Email">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            </a>
           </div>
-          <div className="flex items-center gap-2">
-            <span dir="ltr">© {new Date().getFullYear()} FONTAT. All rights reserved.</span>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 text-sm text-white opacity-40 group-hover:opacity-100 transition-opacity">
+            <Link to="/about" className="hover:text-white transition-colors">{dir === 'rtl' ? 'عن مبادرة فونتات' : 'About Fontat'}</Link>
+            
+            <div className="hidden sm:block w-1.5 h-1.5 bg-white/20 transform rotate-45"></div>
+
+            <Link to="/privacy" className="hover:text-white transition-colors">{dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy Policy'}</Link>
+            
+            <div className="hidden sm:block w-1.5 h-1.5 bg-white/20 transform rotate-45"></div>
+
+            <Link to="/terms" className="hover:text-white transition-colors">{dir === 'rtl' ? 'شروط الاستخدام' : 'Terms of Service'}</Link>
+          </div>
+          
+          <div className="flex items-center justify-center w-full max-w-[200px] mt-10 opacity-20">
+            <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent to-white/50"></div>
+            <div className="mx-3 transform rotate-45 w-1 h-1 bg-white/50"></div>
+            <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent to-white/50"></div>
           </div>
         </div>
       </footer>

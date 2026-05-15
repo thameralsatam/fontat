@@ -143,9 +143,9 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
         />
         <div className={`absolute pointer-events-none ${dir === 'rtl' ? 'right-4' : 'left-4'}`}>
           {loading ? (
-            <Loader2 className="w-5 h-5 text-white/40 animate-spin" />
+            <Loader2 className="w-5 h-5 text-white opacity-40 animate-spin" />
           ) : (
-            <Search className="w-5 h-5 text-white/40" />
+            <Search className="w-5 h-5 text-white opacity-40" />
           )}
         </div>
         
@@ -157,7 +157,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
               setIsOpen(false);
               setResults([]);
             }}
-            className={`absolute inset-y-0 flex items-center text-white/40 hover:text-white transition-colors ${dir === 'rtl' ? 'left-4' : 'right-4'}`}
+            className={`absolute inset-y-0 flex items-center text-white opacity-40 hover:text-white transition-colors ${dir === 'rtl' ? 'left-4' : 'right-4'}`}
             title={t('common.clear') || 'Clear'}
           >
             <X className="w-4 h-4" />
@@ -177,8 +177,8 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                     className="flex flex-col items-start w-full px-5 py-2.5 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 text-right group"
                   >
                     <div className="flex items-center justify-between w-full mb-1">
-                      <div className="flex flex-wrap items-center text-white/40 text-[11px] font-light gap-x-1.5">
-                        <span className="text-white/80">{result.group_name}</span>
+                      <div className="flex flex-wrap items-center text-white opacity-40 text-[11px] font-light gap-x-1.5">
+                        <span className="text-white opacity-80">{result.group_name}</span>
                         {result.name && (
                           <>
                             <span className="text-[10px] opacity-60">/</span>
@@ -187,7 +187,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                         )}
                       </div>
                       {result.metadata?.weight && (
-                        <span className="text-[9px] bg-white/10 px-2 py-0.5 rounded text-white/50 tracking-widest uppercase ml-2 shrink-0">
+                        <span className="text-[9px] bg-white/10 px-2 py-0.5 rounded text-white opacity-50 tracking-widest uppercase ml-2 shrink-0">
                           {result.metadata.weight}
                         </span>
                       )}
@@ -206,13 +206,13 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                 ))}
               </div>
               {additionalCount > 0 && (
-                <div className="px-5 py-2.5 text-center bg-[#1c1c1c] text-white/50 text-[11px] font-light border-t border-white/10 shrink-0">
+                <div className="px-5 py-2.5 text-center bg-[#1c1c1c] text-white opacity-50 text-[11px] font-light border-t border-white/10 shrink-0">
                    + {additionalCount} نتائج إضافية
                 </div>
               )}
             </>
           ) : (
-            <div className="px-5 py-6 text-center text-white/40 font-light text-sm">
+            <div className="px-5 py-6 text-center text-white opacity-40 font-light text-sm">
               لم نعثر على نتيجة تطابق بحثك :(
             </div>
           )}

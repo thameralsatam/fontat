@@ -19,7 +19,7 @@ export const PrivacyPolicy = () => {
         </div>
       </FadeSection>
 
-      <div className="space-y-8 text-white/80 leading-relaxed">
+      <div className="space-y-8 text-white opacity-80 leading-relaxed">
         <FadeSection delay={0.1}>
           <p className="text-lg text-white">
             {isAr 

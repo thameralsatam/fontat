@@ -173,6 +173,9 @@ const translations: Record<Language, Record<string, string>> = {
     'notifications.title': 'Notifications',
     'notifications.empty': 'No info to show',
     'notifications.create': 'New',
+    'time.seconds': 'seconds ago',
+    'time.minutes': 'minutes ago',
+    'time.hours': 'hours ago',
   },
   ar: {
     'app.title': 'مدير الخطوط',
@@ -338,6 +341,9 @@ const translations: Record<Language, Record<string, string>> = {
     'notifications.title': 'الإشعارات',
     'notifications.empty': 'لا توجد إشعارات حالياً',
     'notifications.create': 'جديد',
+    'time.seconds': 'ثانية',
+    'time.minutes': 'دقيقة',
+    'time.hours': 'ساعة',
   },
 };
 

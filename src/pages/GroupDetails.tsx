@@ -462,8 +462,8 @@ export const GroupDetails = ({
     }
   };
 
-  if (loading) return <div className="text-center py-20 text-white/40 animate-pulse">{t('common.loading')}</div>;
-  if (!group) return <div className="text-center py-20 text-white/40">Group not found</div>;
+  if (loading) return <div className="text-center py-20 text-white opacity-40 animate-pulse">{t('common.loading')}</div>;
+  if (!group) return <div className="text-center py-20 text-white opacity-40">Group not found</div>;
 
   return (
     <FadeSection className="relative pb-32 max-lg:landscape:pb-16 pt-0">
@@ -478,7 +478,7 @@ export const GroupDetails = ({
                 onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                 className="absolute -left-6 w-6 h-12 bg-[#141414] border border-r-0 border-white/20 rounded-l-full flex items-center justify-center shadow-[-5px_0_15px_rgba(0,0,0,0.3)] hover:bg-white/5 transition-colors group z-20"
               >
-                {isToolbarOpen ? <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white" /> : <ChevronLeft className="w-4 h-4 text-white/50 group-hover:text-white" />}
+                {isToolbarOpen ? <ChevronRight className="w-4 h-4 text-white opacity-50 group-hover:text-white" /> : <ChevronLeft className="w-4 h-4 text-white opacity-50 group-hover:text-white" />}
               </button>
             )}
 
@@ -491,21 +491,21 @@ export const GroupDetails = ({
                   <Settings2 className="w-5 h-5" />
                   <span className="font-bold text-base uppercase tracking-wider">{t('toolbar.customize')}</span>
                 </div>
-                <button onClick={() => setIsToolbarOpen(false)} className="p-1 hover:bg-white/10 rounded-full text-white/50 hover:text-white">
+                <button onClick={() => setIsToolbarOpen(false)} className="p-1 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-white/80 mb-2 uppercase tracking-wider flex justify-between items-center">
+                  <label className="block text-sm font-bold text-white opacity-80 mb-2 uppercase tracking-wider flex justify-between items-center">
                     <span>{t('toolbar.font_size')}</span>
-                    <span className="text-xs font-mono text-white/50 bg-white/5 px-2 py-0.5 rounded">{fontSize}px</span>
+                    <span className="text-xs font-mono text-white opacity-50 bg-white/5 px-2 py-0.5 rounded">{fontSize}px</span>
                   </label>
                   <input type="range" min="10" max="50" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white" />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-white/80 mb-2 uppercase tracking-wider">{t('toolbar.preview_text')}</label>
+                  <label className="block text-sm font-bold text-white opacity-80 mb-2 uppercase tracking-wider">{t('toolbar.preview_text')}</label>
                   <div className="relative">
                     <textarea
                       ref={toolbarTextareaRef}
@@ -514,14 +514,14 @@ export const GroupDetails = ({
                         setGlobalPreviewText(e.target.value);
                         setFontPreviews({});
                       }}
-                      className={`w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white text-sm focus:ring-1 focus:ring-white/20 outline-none resize-none overflow-hidden placeholder:text-white/20 min-h-[3.5rem] ${dir === 'rtl' ? 'pl-9' : 'pr-9'}`}
+                      className={`w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white text-sm focus:ring-1 focus:ring-white/20 outline-none resize-none overflow-hidden placeholder:text-white opacity-20 min-h-[3.5rem] ${dir === 'rtl' ? 'pl-9' : 'pr-9'}`}
                       placeholder={t('toolbar.placeholder')}
                       rows={2}
                     />
                     {globalPreviewText && (
                       <button 
                         onClick={() => { setGlobalPreviewText(''); setFontPreviews({}); }} 
-                        className={`absolute top-3 ${dir === 'rtl' ? 'left-2' : 'right-2'} p-1 bg-[#202020] hover:bg-[#303030] rounded-full text-white/50 hover:text-white transition-colors z-10 flex items-center justify-center`}
+                        className={`absolute top-3 ${dir === 'rtl' ? 'left-2' : 'right-2'} p-1 bg-[#202020] hover:bg-[#303030] rounded-full text-white opacity-50 hover:text-white transition-colors z-10 flex items-center justify-center`}
                         title={t('common.clear') || 'Clear'}
                       >
                          <X className="w-3.5 h-3.5" />
@@ -537,7 +537,7 @@ export const GroupDetails = ({
                 onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                 className="absolute -right-6 w-6 h-12 bg-[#141414] border border-l-0 border-white/20 rounded-r-full flex items-center justify-center shadow-[5px_0_15px_rgba(0,0,0,0.3)] hover:bg-white/5 transition-colors group z-20"
               >
-                {isToolbarOpen ? <ChevronLeft className="w-4 h-4 text-white/50 group-hover:text-white" /> : <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white" />}
+                {isToolbarOpen ? <ChevronLeft className="w-4 h-4 text-white opacity-50 group-hover:text-white" /> : <ChevronRight className="w-4 h-4 text-white opacity-50 group-hover:text-white" />}
               </button>
             )}
           </div>
@@ -550,7 +550,7 @@ export const GroupDetails = ({
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0 space-y-2">
             <h1 className="text-2xl font-light text-white tracking-tight leading-tight">{group.name}</h1>
-            {group.description && <p className="text-sm text-white/50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">{group.description}</p>}
+            {group.description && <p className="text-sm text-white opacity-50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">{group.description}</p>}
           </div>
           <div className="shrink-0 flex items-center">
             {isOwner && (
@@ -559,7 +559,7 @@ export const GroupDetails = ({
                 <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white hover:text-black hover:border-transparent transition-all duration-300 group focus:outline-none" title={t('font.upload')}>
                   <Upload className="w-4 h-4 stroke-[1.5] transition-transform duration-300 group-hover:-translate-y-0.5" />
                 </button>
-                <span className="text-[9px] text-white/30 font-sans tracking-widest uppercase">{t('font.max_limit') || 'Max 10'}</span>
+                <span className="text-[9px] text-white opacity-30 font-sans tracking-widest uppercase">{t('font.max_limit') || 'Max 10'}</span>
               </div>
             )}
           </div>
@@ -590,14 +590,14 @@ export const GroupDetails = ({
               {(parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading && (
                 <div className={`absolute bottom-0 ${dir === 'rtl' ? 'left-0 rounded-tr-2xl' : 'right-0 rounded-tl-2xl'} p-2 z-20 transition-all duration-300 bg-[#141414] ${expandedFontId === item.id || focusedFontId === item.id ? 'opacity-100 pointer-events-auto'  : 'opacity-0 pointer-events-none'}`}>
                   <button onClick={(e) => { e.stopPropagation(); openWeightsModal(item); }} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all active:scale-90 group/weight" title="Weights">
-                     <Layers className={`w-3.5 h-3.5 transition-colors ${parentFontIds.has(item.id) ? 'text-white/60 group-hover/weight:text-white' : 'text-white/20 group-hover/weight:text-white/40'}`} />
+                     <Layers className={`w-3.5 h-3.5 transition-colors ${parentFontIds.has(item.id) ? 'text-white opacity-60 group-hover/weight:text-white' : 'text-white opacity-20 group-hover/weight:text-white opacity-40'}`} />
                   </button>
                 </div>
               )}
 
               <div className="flex items-center justify-between w-full gap-4">
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="bg-white/5 w-10 h-10 rounded-xl text-white/60 group-hover:text-white group-hover:bg-white/10 transition-all shrink-0 flex items-center justify-center overflow-hidden">
+                  <div className="bg-white/5 w-10 h-10 rounded-xl text-white opacity-60 group-hover:text-white group-hover:bg-white/10 transition-all shrink-0 flex items-center justify-center overflow-hidden">
                     {(!item.metadata?.isUploading || item.download_url) && (
                       <span style={{ fontFamily: `"${item.name}", sans-serif`, fontSize: '22px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {dir === 'rtl' ? 'ع' : 'a'}
@@ -637,7 +637,7 @@ export const GroupDetails = ({
           </AnimatePresence>
         
           {displayFonts.length === 0 && (
-            <div className="col-span-full text-center py-20 text-white/30 bg-[#141414] rounded-[2rem] border border-white/5 border-dashed">
+            <div className="col-span-full text-center py-20 text-white opacity-30 bg-[#141414] rounded-[2rem] border border-white/5 border-dashed">
               No fonts yet. {isOwner && 'Upload one to get started.'}
             </div>
           )}
@@ -656,10 +656,10 @@ export const GroupDetails = ({
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex flex-col">
                     <h3 className="text-lg font-bold text-white leading-tight">{formatFontName(weightsModal.parentFont?.name || '')}</h3>
-                    <span className="text-xs text-white/40">{t('font.weights')}</span>
+                    <span className="text-xs text-white opacity-40">{t('font.weights')}</span>
                   </div>
                   <button onClick={() => setWeightsModal(prev => ({ ...prev, isOpen: false }))} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
-                    <X className="w-5 h-5 text-white/70" />
+                    <X className="w-5 h-5 text-white opacity-70" />
                   </button>
                 </div>
 
@@ -675,7 +675,7 @@ export const GroupDetails = ({
                           <p className="text-white font-bold text-xs truncate max-w-[150px]">{formatFontName(weightsModal.parentFont?.name || '')}</p>
                         </div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); handleDownload(weightsModal.parentFont?.download_url!, weightsModal.parentFont?.name!); }} className="p-1.5 hover:bg-white/10 rounded-full text-white/50 hover:text-white transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); handleDownload(weightsModal.parentFont?.download_url!, weightsModal.parentFont?.name!); }} className="p-1.5 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white transition-colors">
                         <Download className="w-3.5 h-3.5" />
                       </button>
                    </div>
@@ -730,7 +730,7 @@ export const GroupDetails = ({
                      return dateA.getTime() - dateB.getTime();
                   });
 
-                  if (allWeights.length === 0) return <p className="text-center text-white/30 py-8 text-sm">{t('font.no_weights')}</p>;
+                  if (allWeights.length === 0) return <p className="text-center text-white opacity-30 py-8 text-sm">{t('font.no_weights')}</p>;
 
                   return allWeights.map((w) => (
                     <div key={w.font?.metadata?.taskId || w.id} className={`bg-white/5 p-2 rounded-xl border flex flex-col gap-1 group/item transition-all duration-700 ${modalPulseFontId === w.font?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
@@ -747,11 +747,11 @@ export const GroupDetails = ({
                           <div className="flex items-center">
                             {!w.font?.metadata?.isUploading && (
                               <>
-                                <button onClick={(e) => { e.stopPropagation(); handleDownload(w.font?.download_url!, w.font?.name!); }} className="p-2 -mr-1 hover:bg-white/10 rounded-full text-white/50 hover:text-white transition-colors">
+                                <button onClick={(e) => { e.stopPropagation(); handleDownload(w.font?.download_url!, w.font?.name!); }} className="p-2 -mr-1 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white transition-colors">
                                   <Download className="w-3.5 h-3.5" />
                                 </button>
                                 {isOwner && !w.isOptimistic && (
-                                  <button onClick={(e) => { e.stopPropagation(); setDeleteWeightModal({ isOpen: true, childFontId: w.childFontId }); }} className="p-2 -mr-1 hover:bg-red-500/10 rounded-full text-white/30 hover:text-red-400 transition-colors" title="Delete Weight">
+                                  <button onClick={(e) => { e.stopPropagation(); setDeleteWeightModal({ isOpen: true, childFontId: w.childFontId }); }} className="p-2 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-30 hover:text-red-400 transition-colors" title="Delete Weight">
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 )}

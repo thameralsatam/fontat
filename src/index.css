@@ -70,7 +70,8 @@ body {
   font-variant-ligatures: common-ligatures discretionary-ligatures historical-ligatures;
   text-rendering: optimizeLegibility;
   font-feature-settings: "swsh" 1, "cswh" 1, "salt" 1, "ss01" 1, "ss02" 1, "ss03" 1, "ss04" 1, "ss05" 1, "ss06" 1;
-  background-color: var(--bg-color);
+  background: radial-gradient(circle at top center, rgba(0, 180, 180, 0.18) 0%, rgba(0, 0, 0, 0) 35%), #050505;
+  min-height: 100vh;
   color: var(--text-color);
   margin: 0;
   -webkit-font-smoothing: antialiased;
@@ -89,6 +90,25 @@ body {
 }
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.card-glass {
+    position: relative;
+    background: linear-gradient(135deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 28px;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
+    overflow: hidden;
+}
+
+.card-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
+    pointer-events: none;
 }
 
 .theme-text { color: var(--text-color); }
