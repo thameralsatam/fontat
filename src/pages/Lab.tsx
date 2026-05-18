@@ -373,7 +373,7 @@ export const Lab = () => {
   }
 
   return (
-    <FadeSection className="min-h-screen bg-[#080808] text-white p-4 pt-20 max-lg:landscape:pt-8 pb-32 max-lg:landscape:pb-16 mt-[-10px]">
+    <div className="min-h-screen bg-[#080808] text-white p-4 pt-20 max-lg:landscape:pt-8 pb-32 max-lg:landscape:pb-16 mt-[-10px]">
       <div className="w-full xl:max-w-[1600px] mx-auto">
         <h1 className="text-2xl font-bold mb-6 flex items-center gap-3">
           <Beaker className="w-7 h-7 text-white opacity-70" />
@@ -650,6 +650,6 @@ export const Lab = () => {
         confirmText={t('common.delete')}
         variant="danger"
       />
-    </FadeSection>
+    </div>
   );
 };

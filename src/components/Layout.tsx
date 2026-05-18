@@ -105,7 +105,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const isAdmin = user?.email === 'thameralsatam@gmail.com' || user?.app_metadata?.role === 'admin' || user?.user_metadata?.role === 'admin';
   
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -190,14 +190,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
           </div>
 
-          {/* Right Container (Language + Notifications) */}
+          {/* Right Container (Notifications) */}
           <div className="flex-1 flex justify-end items-center gap-2 pointer-events-auto">
-            <button
-              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-black/50 sm:bg-black border border-white/10 sm:border-white/20 hover:border-white hover:bg-white hover:text-black transition-all"
-            >
-              <span className="text-sm font-medium leading-none">{language === 'ar' ? 'EN' : 'عربي'}</span>
-            </button>
             <NotificationsDropdown 
                isAdmin={isAdmin} 
                onOpenNotification={(n) => setSelectedAppNotification(n)} 
@@ -211,69 +205,34 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <main 
         className={`flex-1 ${location.pathname.startsWith('/account') ? 'pt-8' : 'pt-32'} pb-12 w-full ${dir === 'rtl' ? 'max-lg:landscape:pr-[56px]' : 'max-lg:landscape:pl-[56px]'}`}
       >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
+        {children}
       </main>
 
       {/* Footer */}
-      <footer className="pt-16 pb-32 mt-auto relative overflow-hidden bg-black/40 border-t border-white/5">
+      <footer className="pt-8 pb-32 mt-auto relative overflow-hidden bg-black/40 border-t border-white/5">
         <div className="mx-auto px-6 w-full max-w-4xl flex flex-col items-center text-center">
-          
-          <p className="text-white opacity-40 text-sm font-light leading-relaxed max-w-2xl mb-6">
+
+          <p className="text-white opacity-40 text-sm font-light leading-relaxed max-w-xl mb-8 mt-2">
             {dir === 'rtl' ? 'مبادرة رقمية تهدف لتوفير أدوات وخطوط عربية أصيلة لتعزيز المحتوى العربي باحترافية وسهولة.' : 'A digital initiative aiming to provide authentic Arabic tools and fonts to enhance Arabic content professionally and easily.'}
           </p>
 
-          <p className="text-white opacity-40 text-sm font-light mb-10">
-            <span dir="ltr">© {new Date().getFullYear()} FONTAT.</span> {dir === 'rtl' ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
-          </p>
-
-          {/* Social Icons - Free floating pill design */}
-          <div className="inline-flex items-center p-1.5 rounded-full bg-[#080808] border border-white/5 shadow-2xl relative mb-12">
-            <a href="#" className="flex items-center justify-center w-10 h-10 rounded-full text-white opacity-40 hover:opacity-100 hover:bg-white/5 transition-all duration-300" aria-label="X (Twitter)">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-            </a>
-            
-            <div className="w-[1px] h-4 bg-white/10 mx-1" />
-            
-            <a href="#" className="flex items-center justify-center w-10 h-10 rounded-full text-white opacity-40 hover:opacity-100 hover:bg-white/5 transition-all duration-300" aria-label="Instagram">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-            </a>
-            
-            <div className="w-[1px] h-4 bg-white/10 mx-1" />
-            
-            <a href="mailto:your@email.com" className="flex items-center justify-center w-10 h-10 rounded-full text-white opacity-40 hover:opacity-100 hover:bg-white/5 transition-all duration-300" aria-label="Support Email">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-            </a>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 text-sm text-white opacity-40 group-hover:opacity-100 transition-opacity">
-            <Link to="/about" className="hover:text-white transition-colors">{dir === 'rtl' ? 'عن مبادرة فونتات' : 'About Fontat'}</Link>
-            
-            <div className="hidden sm:block w-1.5 h-1.5 bg-white/20 transform rotate-45"></div>
-
-            <Link to="/privacy" className="hover:text-white transition-colors">{dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy Policy'}</Link>
-            
-            <div className="hidden sm:block w-1.5 h-1.5 bg-white/20 transform rotate-45"></div>
-
-            <Link to="/terms" className="hover:text-white transition-colors">{dir === 'rtl' ? 'شروط الاستخدام' : 'Terms of Service'}</Link>
-          </div>
-          
-          <div className="flex items-center justify-center w-full max-w-[200px] mt-10 opacity-20">
+          <div className="flex items-center justify-center w-full max-w-[240px] mb-8 opacity-20">
             <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent to-white/50"></div>
-            <div className="mx-3 transform rotate-45 w-1 h-1 bg-white/50"></div>
+            <div className="mx-4 transform rotate-45 w-1.5 h-1.5 bg-white/50"></div>
             <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent to-white/50"></div>
           </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 text-sm text-white opacity-50 mb-10">
+            <Link to="/about" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'عن مبادرة فونتات' : 'About Fontat'}</Link>
+            <div className="hidden sm:block w-1 h-1 rounded-full bg-white/20"></div>
+            <Link to="/terms" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'شروط الاستخدام' : 'Terms of Service'}</Link>
+            <div className="hidden sm:block w-1 h-1 rounded-full bg-white/20"></div>
+            <Link to="/privacy" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy Policy'}</Link>
+          </div>
+
+          <p className="text-white opacity-30 text-xs font-light">
+            <span dir="ltr">© {new Date().getFullYear()} FONTAT.</span> {dir === 'rtl' ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
+          </p>
         </div>
       </footer>
 

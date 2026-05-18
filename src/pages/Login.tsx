@@ -44,7 +44,7 @@ export const Login = () => {
   };
 
   return (
-    <FadeSection className="flex flex-col items-center justify-center min-h-[70vh]">
+    <div className="flex flex-col items-center justify-center min-h-[70vh]">
       <div 
         className="w-full max-w-md lg:max-w-lg bg-[#141414] p-10 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden"
       >
@@ -128,6 +128,6 @@ export const Login = () => {
           </button>
         </div>
       </div>
-    </FadeSection>
+    </div>
   );
 };

@@ -5,7 +5,7 @@ import { Group, Font } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import { Folder, Plus, Search, X, Download } from 'lucide-react';
+import { Folder, Plus, Search, X, Download, MoreVertical, ChevronDown, Grid, Settings2 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Modal } from '../components/ui/Modal';
@@ -23,6 +23,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   const [fontResults, setFontResults] = useState<Font[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAllGroupsOpen, setIsAllGroupsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
@@ -222,37 +223,39 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   const handleGroupClick = (e: React.MouseEvent<HTMLElement>, groupId: string) => {
     e.stopPropagation(); // Prevent bubbling
     
-    if (viewingGroupId === groupId) {
-      // Toggle options if already viewing
-      if (mode === 'private' || isAdmin) {
-        if (optionsOpenGroupId === groupId) {
-          setOptionsOpenGroupId(null);
-          setMenuPosition(null);
-        } else {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const menuWidth = Math.max(160, rect.width);
-          const screenWidth = window.innerWidth;
-          
-          let left = rect.left;
-          
-          // Ensure menu stays within screen bounds with some padding
-          if (left + menuWidth > screenWidth - 16) {
-            left = screenWidth - menuWidth - 16;
-          }
-          
-          if (left < 16) {
-            left = 16;
-          }
-
-          setMenuPosition({ top: rect.bottom + 6, left, width: rect.width });
-          setOptionsOpenGroupId(groupId);
-        }
-      }
-    } else {
+    if (viewingGroupId !== groupId) {
       // Switch group and close options
       setViewingGroupId(groupId);
       setOptionsOpenGroupId(null);
       setMenuPosition(null);
+    }
+  };
+
+  const handleOptionsClick = (e: React.MouseEvent<HTMLElement>, groupId: string) => {
+    e.stopPropagation();
+    if (mode === 'private' || isAdmin) {
+      if (optionsOpenGroupId === groupId) {
+        setOptionsOpenGroupId(null);
+        setMenuPosition(null);
+      } else {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const menuWidth = Math.max(160, rect.width);
+        const screenWidth = window.innerWidth;
+        
+        let left = rect.left;
+        
+        // Ensure menu stays within screen bounds with some padding
+        if (left + menuWidth > screenWidth - 16) {
+          left = screenWidth - menuWidth - 16;
+        }
+        
+        if (left < 16) {
+          left = 16;
+        }
+
+        setMenuPosition({ top: rect.bottom + 6, left, width: rect.width });
+        setOptionsOpenGroupId(groupId);
+      }
     }
   };
 
@@ -295,17 +298,17 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           is_public: isPublic
         });
 
+        fetchGroups(true);
         if (data) {
-          fetchGroups(true);
           setGroups(prev => prev.map(g => g.id === data.id ? data : g));
           if ((mode === 'public' && !data.is_public) || (mode === 'private' && data.is_public)) {
             setViewingGroupId(null);
           }
-          setIsModalOpen(false);
-          setGroupName('');
-          setGroupDesc('');
-          setSelectedGroup(null);
         }
+        setIsModalOpen(false);
+        setGroupName('');
+        setGroupDesc('');
+        setSelectedGroup(null);
       } catch (error: any) {
         console.error('Error updating group:', error);
         addNotification('error', error.message || t('group.update_error'));
@@ -315,8 +318,8 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       try {
         const data = await createGroupSmart(groupName, groupDesc, isPublic);
 
+        fetchGroups(true);
         if (data) {
-          fetchGroups(true);
           if ((mode === 'public' && data.is_public) || (mode === 'private' && !data.is_public)) {
             setGroups(prev => {
               const cleaned = prev.filter(g => g.id !== data.id);
@@ -325,12 +328,12 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             setViewingGroupId(data.id);
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
-          addNotification('success', t('group.create_success'));
-          setIsModalOpen(false);
-          setGroupName('');
-          setGroupDesc('');
-          setSelectedGroup(null);
         }
+        addNotification('success', t('group.create_success'));
+        setIsModalOpen(false);
+        setGroupName('');
+        setGroupDesc('');
+        setSelectedGroup(null);
       } catch (error: any) {
         console.error('Error creating group:', error);
         addNotification('error', error.message || t('group.create_error'));
@@ -358,7 +361,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   });
 
   return (
-    <FadeSection className="pb-32 max-lg:landscape:pb-16 pt-0">
+    <div className="pb-32 max-lg:landscape:pb-16 pt-0">
       {/* Search Bar */}
       <div className="mb-6 w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
         <SmartSearch 
@@ -396,46 +399,79 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
         />
       </div>
 
-      {/* Slim Chips Bar */}
-      <div className="bg-[#080808] py-2 overflow-x-auto scrollbar-hide w-full touch-pan-x xl:max-w-[1600px] mx-auto px-4 md:px-8">
-        {/* Dynamic Groups Chips */}
-        <div className="flex items-center gap-2 w-max">
-          <AnimatePresence mode='popLayout'>
-            {displayedGroups.map(group => (
-              <motion.div
-                key={group.id}
-                layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.2 }}
-              >
-                <button
-                  onClick={(e) => handleGroupClick(e, group.id)}
-                  className={`h-[25px] px-3 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap flex items-center justify-center ${
-                    viewingGroupId === group.id
-                      ? 'bg-white/20 text-white border-white/20'
-                      : 'bg-transparent text-white opacity-70 border-white/10 hover:text-white hover:border-white/30'
-                  }`}
-                >
-                  {group.name}
-                </button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+      {/* Modern Group Tabs Bar */}
+      <div className="w-full bg-[#080808]/90 backdrop-blur-xl sticky top-0 z-30 pt-4 pb-0">
+        <div className="flex items-center gap-2 xl:max-w-[1600px] mx-auto px-4 md:px-8 pb-3">
           
-          {/* Create Button (at the end) - Only for Private or Admin */}
-          {(mode === 'private' || isAdmin) && user && (
-            <motion.div layout transition={{ duration: 0.2 }}>
-              <button
-                onClick={handleOpenCreate}
-                className="h-[25px] w-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors shrink-0"
-                title={t('groups.create')}
-              >
-                <Plus className="w-3 h-3" />
-              </button>
-            </motion.div>
-          )}
+          {/* Scrollable Groups */}
+          <div className="overflow-x-auto scrollbar-hide flex-1 touch-pan-x relative mask-fade-edges">
+            <div className="flex items-center gap-1.5 w-max px-1">
+              <AnimatePresence mode='popLayout'>
+                {displayedGroups.map(group => (
+                  <motion.div
+                    key={group.id}
+                    layout
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="relative flex items-center"
+                  >
+                    <button
+                      onClick={(e) => handleGroupClick(e, group.id)}
+                      className={`relative py-2 text-[13px] font-medium transition-all whitespace-nowrap flex items-center justify-center rounded-xl group/tab ${
+                        viewingGroupId === group.id
+                          ? 'text-white ' + ((mode === 'private' || isAdmin) ? 'ps-4 pe-8' : 'px-4')
+                          : 'px-4 text-white/40 hover:text-white/90 hover:bg-white/[0.04]'
+                      }`}
+                    >
+                      {viewingGroupId === group.id && (
+                        <motion.div
+                          layoutId="activeTabPill"
+                          className="absolute inset-0 bg-white/10 rounded-xl"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <span className="relative z-10 block transition-all">{group.name}</span>
+                      
+                      {viewingGroupId === group.id && (mode === 'private' || isAdmin) && (
+                        <div 
+                          onClick={(e) => handleOptionsClick(e, group.id)}
+                          className="absolute end-1 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-lg hover:bg-white/20 transition-colors cursor-pointer flex items-center justify-center text-white/70 hover:text-white"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </div>
+                      )}
+                    </button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              
+              {/* Create Button */}
+              {(mode === 'private' || isAdmin) && user && (
+                <motion.div layout className="pl-1 flex items-center" transition={{ duration: 0.2 }}>
+                  <button
+                    onClick={handleOpenCreate}
+                    className="h-[34px] w-[34px] rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/10 hover:border-white/10 text-white/50 hover:text-white flex items-center justify-center transition-all shrink-0"
+                    title={t('groups.create')}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </motion.div>
+              )}
+            </div>
+          </div>
+
+          <div className="w-px h-6 bg-white/10 shrink-0 mx-1 hidden sm:block" />
+
+          {/* All Groups Modal Toggle */}
+          <button 
+            onClick={() => setIsAllGroupsOpen(true)}
+            className="h-[34px] w-[34px] sm:w-auto sm:px-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/10 hover:border-white/10 text-white/50 hover:text-white flex items-center justify-center transition-all shrink-0 gap-2 focus:ring-2 focus:ring-white/20 outline-none"
+          >
+            <Grid className="w-4 h-4" />
+            <span className="text-[12px] hidden sm:block">{t('groups.title')}</span>
+          </button>
         </div>
       </div>
 
@@ -599,6 +635,54 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
         confirmText={t('common.delete')}
         variant="danger"
       />
-    </FadeSection>
+
+      {/* All Groups Modal */}
+      <Modal
+        isOpen={isAllGroupsOpen}
+        onClose={() => setIsAllGroupsOpen(false)}
+        title={t('groups.title') || 'All Groups'}
+        width="max-w-4xl"
+      >
+        <div className="pt-2 pb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {displayedGroups.map((group) => (
+              <div 
+                key={group.id}
+                onClick={(e) => {
+                  handleGroupClick(e as any, group.id);
+                  setIsAllGroupsOpen(false);
+                }}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center gap-3 group/allcard ${
+                  viewingGroupId === group.id 
+                    ? 'bg-white/10 border-white/20' 
+                    : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
+                }`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-white/[0.05] flex shrink-0 items-center justify-center text-white/50 group-hover/allcard:text-white transition-colors">
+                  <Folder className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-white font-medium text-sm leading-tight truncate group-hover/allcard:text-white transition-colors">{group.name}</h3>
+                    {viewingGroupId === group.id && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                    )}
+                  </div>
+                  {group.description && (
+                    <p className="text-white/40 text-xs truncate mt-0.5">{group.description}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {displayedGroups.length === 0 && (
+            <div className="py-20 text-center text-white/30 flex flex-col items-center justify-center">
+              <Folder className="w-12 h-12 mb-4 opacity-20" />
+              <p>No groups available</p>
+            </div>
+          )}
+        </div>
+      </Modal>
+    </div>
   );
 };

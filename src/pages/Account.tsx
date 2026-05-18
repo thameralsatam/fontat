@@ -12,7 +12,7 @@ const PREFS_KEY = 'fontat_notification_prefs';
 
 export const Account = () => {
   const { user } = useAuth();
-  const { language, t, dir } = useLanguage();
+  const { language, t, dir, setLanguage } = useLanguage();
   
   // Settings State
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
@@ -116,7 +116,7 @@ export const Account = () => {
   };
 
   return (
-    <FadeSection className="pt-4 pb-20 relative overflow-hidden">
+    <div className="pt-4 pb-20 relative overflow-hidden">
       <div className="w-full max-w-xl mx-auto mt-10 px-4 relative z-10">
         {user ? (
           <>
@@ -170,7 +170,7 @@ export const Account = () => {
                   </div>
                 </button>
 
-                {/* Settings Content */}
+            {/* Settings Content */}
                 <div className={`transition-all duration-300 ease-in-out ${isSettingsExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
                   <div className="p-3 pt-0 space-y-1 border-t border-white/5">
                     
@@ -278,16 +278,19 @@ export const Account = () => {
           </>
         ) : (
           <>
-            <div className="card-glass p-8 mb-8">
-              <div className="mb-8 text-center">
-                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
-                  <UserCircle2 className="w-8 h-8 text-white opacity-60" />
+            <div className="relative overflow-hidden rounded-[2.5rem] bg-[#0d0d0d] border border-white/5 p-8 sm:p-12 mb-8 shadow-2xl">
+              <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
+              
+              <div className="relative z-10 mb-10 text-center">
+                <div className="w-20 h-20 bg-[#121212] rounded-full flex items-center justify-center mx-auto mb-6 border border-white/5 shadow-xl relative">
+                  <div className="absolute inset-0 rounded-full border border-white/5 animate-[spin_4s_linear_infinite]" style={{ borderTopColor: 'transparent', borderLeftColor: 'transparent' }}></div>
+                  <UserCircle2 className="w-10 h-10 text-white opacity-60" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">
+                <h3 className="text-2xl font-bold text-white mb-3">
                   {t('login.submit')}
                 </h3>
-                <p className="text-white opacity-40 text-sm">
-                  {language === 'ar' ? 'سجل دخولك للوصول إلى خطوطك وإعداداتك' : 'Sign in to access your fonts and settings'}
+                <p className="text-white opacity-40 text-sm max-w-[260px] mx-auto">
+                  {language === 'ar' ? 'سجل دخولك للوصول إلى خطوطك المفضلة وإعداداتك الخاصة.' : 'Sign in to access your favorite fonts and custom settings.'}
                 </p>
               </div>
               
@@ -331,7 +334,7 @@ export const Account = () => {
                 </div>
 
                 {/* Email Login Expandable */}
-                <div className="card-glass transition-all duration-300">
+                <div className="bg-[#080808]/50 border border-white/5 rounded-3xl transition-all duration-300">
                   <button 
                     onClick={() => setShowEmailLogin(!showEmailLogin)}
                     className="w-full py-4 text-white opacity-80 hover:text-white hover:bg-white/5 font-medium flex items-center justify-center gap-2 transition-colors"
@@ -399,6 +402,31 @@ export const Account = () => {
 
               </div>
             </div>
+
+            {/* Language Switcher for Guest */}
+            <div className="flex justify-center mt-6">
+              <div className="relative flex bg-[#080808] border border-white/5 p-1 rounded-2xl shadow-xl w-[180px]" dir="ltr">
+                <div 
+                  className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] shadow-md"
+                  style={{
+                    transform: language === 'en' ? 'translateX(0)' : 'translateX(calc(100% + 4px))',
+                    left: '2px'
+                  }}
+                />
+                <button 
+                  onClick={() => setLanguage('en')}
+                  className={`relative z-10 flex-1 py-2 text-sm font-medium transition-colors duration-300 ${language === 'en' ? 'text-black leading-none' : 'text-white opacity-50 hover:opacity-100 leading-none'}`}
+                >
+                  EN
+                </button>
+                <button 
+                  onClick={() => setLanguage('ar')}
+                  className={`relative z-10 flex-1 py-2 text-sm font-medium transition-colors duration-300 ${language === 'ar' ? 'text-black' : 'text-white opacity-50 hover:opacity-100'}`}
+                >
+                  عربي
+                </button>
+              </div>
+            </div>
           </>
         )}
       </div>
@@ -412,6 +440,6 @@ export const Account = () => {
         confirmText={t('auth.logout') || 'Sign Out'}
         variant="danger"
       />
-    </FadeSection>
+    </div>
   );
 };
