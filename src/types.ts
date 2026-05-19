@@ -28,6 +28,9 @@ export type Font = {
   created_at: string;
   updated_at: string;
   metadata?: Record<string, any>;
+  tags?: string[];
+  weights?: any[]; // Keep flexible if needed, or specific type if known
+
   
   // Joined asset fields (from RPC)
   hash?: string;
@@ -68,6 +71,7 @@ export type Notification = {
   type: NotificationType;
   slides: NotificationSlide[];
   created_at: string;
+  is_read?: boolean;
 };
 
 export type NotificationPreferences = {

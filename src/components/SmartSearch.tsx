@@ -12,11 +12,12 @@ export interface SearchResult {
   download_url?: string;
   total_count: number;
   group_id?: string; // fallback if available
+  tags?: string[];
 }
 
 interface SmartSearchProps {
   mode: 'public' | 'private';
-  onSelect: (result: SearchResult) => void;
+  onSelect: (result: SearchResult | { type: 'tag', tag: string }) => void;
 }
 
 export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
@@ -121,14 +122,28 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
     };
   }, [results]);
 
-  const handleSelect = (result: SearchResult) => {
+  const handleSelect = (result: SearchResult | { type: 'tag', tag: string }) => {
     setIsOpen(false);
     setQuery('');
     onSelect(result);
   };
 
   const totalCount = results.length > 0 ? Number(results[0].total_count) : 0;
-  const additionalCount = totalCount > 5 ? totalCount - results.length : 0;
+  const additionalCount = Array.isArray(results) ? (totalCount > 5 ? totalCount - results.length : 0) : 0;
+
+  // Extract unique tags from results using simple loops
+  const uniqueTags = new Set<string>();
+  if (mode === 'public') {
+    results.forEach(result => {
+      if (Array.isArray(result.tags)) {
+        result.tags.forEach(tag => {
+          if (tag && typeof tag === 'string') uniqueTags.add(tag);
+        });
+      }
+    });
+  }
+  const tagsList = Array.from(uniqueTags).slice(0, 10); // Limit to top 10 tags
+
 
   return (
     <div ref={wrapperRef} className="relative w-full mx-auto z-50" dir={dir}>
@@ -166,24 +181,30 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
       </div>
 
       {isOpen && query.trim() && (
-        <div className="absolute top-14 left-0 right-0 bg-[#0d0d0d] border border-white/10 rounded-3xl overflow-hidden shadow-2xl max-h-[80vh] flex flex-col">
+        <div className="absolute top-14 left-0 right-0 bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl max-h-[80vh] flex flex-col z-50 ring-1 ring-white/5">
           {results.length > 0 ? (
             <>
-              <div className="flex flex-col overflow-y-auto">
+              <div className="flex flex-col overflow-y-auto w-full">
                 {results.map((result, idx) => (
                   <button
                     key={result.id || idx}
                     onClick={() => handleSelect(result)}
-                    className="flex flex-col items-start w-full px-5 py-2.5 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 text-right group"
+                    className="flex flex-col items-start w-full px-5 py-3 hover:bg-white/[0.04] transition-colors border-b border-white/[0.03] last:border-0 text-right group"
                   >
                     <div className="flex items-center justify-between w-full mb-1">
                       <div className="flex flex-wrap items-center text-white opacity-40 text-[11px] font-light gap-x-1.5">
-                        <span className="text-white opacity-80">{result.group_name}</span>
-                        {result.name && (
+                        {mode === 'private' ? (
                           <>
-                            <span className="text-[10px] opacity-60">/</span>
-                            <span>{formatFontName(result.name)}</span>
+                            <span className="text-white opacity-80">{result.group_name}</span>
+                            {result.name && (
+                              <>
+                                <span className="text-[10px] opacity-60">/</span>
+                                <span>{formatFontName(result.name)}</span>
+                              </>
+                            )}
                           </>
+                        ) : (
+                          <span className="text-white opacity-80">{formatFontName(result.name)}</span>
                         )}
                       </div>
                       {result.metadata?.weight && (
@@ -206,13 +227,29 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                 ))}
               </div>
               {additionalCount > 0 && (
-                <div className="px-5 py-2.5 text-center bg-[#1c1c1c] text-white opacity-50 text-[11px] font-light border-t border-white/10 shrink-0">
+                <div className="px-5 py-2.5 text-center text-white/40 text-[11px] font-light border-y border-white/[0.03] shrink-0 bg-white/[0.01]">
                    + {additionalCount} نتائج إضافية
+                </div>
+              )}
+              {tagsList.length > 0 && (
+                <div className="p-4 bg-[#050505]/50 shrink-0">
+                  <div className="flex flex-wrap gap-2">
+                    {tagsList.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => handleSelect({ type: 'tag', tag })}
+                        className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/10 border border-white/5 hover:border-white/20 rounded-lg text-xs text-white/70 hover:text-white transition-all backdrop-blur flex items-center gap-1.5"
+                      >
+                        <span className="opacity-50">#</span>
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </>
           ) : (
-            <div className="px-5 py-6 text-center text-white opacity-40 font-light text-sm">
+            <div className="px-5 py-6 text-center text-white opacity-40 font-light text-sm bg-transparent">
               لم نعثر على نتيجة تطابق بحثك :(
             </div>
           )}

@@ -91,11 +91,11 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
             className={`absolute top-full mt-2 w-80 bg-[#111111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden ${dir === 'rtl' ? 'left-0' : 'right-0'}`}
           >
             <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <h3 className="font-medium text-white">{t('notifications.title', 'الإشعارات')}</h3>
+              <h3 className="font-medium text-white">{t('notifications.title') || 'الإشعارات'}</h3>
               <div className="flex gap-2">
                   {isAdmin && (
                     <button onClick={() => { setIsOpen(false); onOpenAdminPanel?.(); }} className="text-xs px-2 py-1 bg-white/10 rounded hover:bg-white/20 transition-colors">
-                      {t('notifications.create', 'جديد')}
+                      {t('notifications.create') || 'جديد'}
                     </button>
                   )}
               </div>
@@ -104,7 +104,7 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
             <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
               {notifications.length === 0 ? (
                 <div className="p-8 text-center text-white opacity-40 text-sm">
-                  {t('notifications.empty', 'لا توجد إشعارات حالياً')}
+                  {t('notifications.empty') || 'لا توجد إشعارات حالياً'}
                 </div>
               ) : (
                 <div className="flex flex-col">

@@ -10,10 +10,10 @@ import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Modal } from '../components/ui/Modal';
 import { GroupDetails } from './GroupDetails';
-import { SmartSearch } from '../components/SmartSearch';
+import { SmartSearch, SearchResult } from '../components/SmartSearch';
 
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
-import { updateGroup, deleteGroupSmart, createGroupSmart, getGroups, getPublicGroups } from '../services/groupService';
+import { updateGroup, deleteGroupSmart, createGroupSmart, getGroups } from '../services/groupService';
 import { getGroupFonts, getPublicFonts } from '../services/fontService';
 import { FadeSection } from '../components/FadeSection';
 
@@ -27,6 +27,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
+  const [publicTagFilter, setPublicTagFilter] = useState<string | null>(null);
   const [highlightedFont, setHighlightedFont] = useState<{id: string, ts: number} | undefined>();
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
@@ -78,6 +79,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   // Clear viewing group when mode changes
   useEffect(() => {
     setViewingGroupId(null);
+    setPublicTagFilter(null);
   }, [mode]);
 
   useEffect(() => {
@@ -190,9 +192,15 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   // Search implementation removed because we now use the SmartSearch component directly.
   
   const fetchGroups = async (hideLoader = false) => {
+    if (mode === 'public') {
+      setGroups([]);
+      if (!hideLoader) setLoading(false);
+      return;
+    }
+    
     if (!hideLoader) setLoading(true);
     try {
-      const data = mode === 'public' ? await getPublicGroups() : await getGroups();
+      const data = await getGroups();
       setGroups(data);
     } catch (error) {
       console.error('Error fetching groups:', error);
@@ -366,7 +374,16 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       <div className="mb-6 w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
         <SmartSearch 
           mode={mode} 
-          onSelect={async (res) => {
+          onSelect={async (rawRes) => {
+            if ('type' in rawRes && rawRes.type === 'tag') {
+              // User selected a tag
+              setViewingGroupId(null);
+              setPublicTagFilter(rawRes.tag);
+              return;
+            }
+
+            // Normal font result
+            const res = rawRes as SearchResult;
             let meta = res.metadata;
             if (typeof meta === 'string') {
               try { meta = JSON.parse(meta); } catch(e) {}
@@ -379,32 +396,32 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             }
 
             // Fallback: finding group by group_name
-            if (!groupId && res.group_name) {
+            if (!groupId && res.group_name && mode === 'private') {
                const allMyGroups = await getGroups();
                let found = allMyGroups.find(g => g.name === res.group_name);
-               if (!found) {
-                  const allPublic = await getPublicGroups();
-                  found = allPublic.find(g => g.name === res.group_name);
-               }
                if (found) groupId = found.id;
             }
             
-            if (groupId) {
-              setViewingGroupId(groupId);
-              setHighlightedFont({ id: res.id, ts: Date.now() });
+            if (mode === 'public') {
+               setViewingGroupId(null);
+               setHighlightedFont({ id: res.id, ts: Date.now() });
+            } else if (groupId) {
+               setViewingGroupId(groupId);
+               setHighlightedFont({ id: res.id, ts: Date.now() });
             } else {
-              addNotification('error', `عذراً، لم نتمكن من الوصول للمجموعة الخاصة بهذا الخط. قد يكون السبب تحديث قاعدة البيانات الأخير حيث كانت الدالة smart_search تعيد سابقاً group_id ضمن النتائج، لكنها الآن لا تعيده ولم نتمكن من استخراجه من id الخط أو اسمه. يرجى إضافة group_id لمخرجات دالة smart_search أو السماح للقراءة من جدول الخطوط.`);
+               addNotification('error', `عذراً، لم نتمكن من الوصول للمجموعة الخاصة بهذا الخط.`);
             }
           }} 
         />
       </div>
 
-      {/* Modern Group Tabs Bar */}
-      <div className="w-full bg-[#080808]/90 backdrop-blur-xl sticky top-0 z-30 pt-4 pb-0">
-        <div className="flex items-center gap-2 xl:max-w-[1600px] mx-auto px-4 md:px-8 pb-3">
-          
-          {/* Scrollable Groups */}
-          <div className="overflow-x-auto scrollbar-hide flex-1 touch-pan-x relative mask-fade-edges">
+      {/* Modern Group Tabs Bar - Only visible in private mode */}
+      {mode === 'private' && (
+        <div className="w-full bg-[#080808]/90 backdrop-blur-xl sticky top-0 z-30 pt-4 pb-0">
+          <div className="flex items-center gap-2 xl:max-w-[1600px] mx-auto px-4 md:px-8 pb-3">
+            
+            {/* Scrollable Groups */}
+            <div className="overflow-x-auto scrollbar-hide flex-1 touch-pan-x relative mask-fade-edges">
             <div className="flex items-center gap-1.5 w-max px-1">
               <AnimatePresence mode='popLayout'>
                 {displayedGroups.map(group => (
@@ -474,6 +491,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           </button>
         </div>
       </div>
+      )}
 
       {/* Context Menu Overlay */}
       {createPortal(
@@ -532,7 +550,15 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       {/* Main Content Area */}
       <div className="space-y-8 mt-4 w-full">
         {/* Group Fonts View */}
-        {viewingGroupId ? (
+        {mode === 'public' ? (
+          <GroupDetails 
+            isPublicAllFonts={true}
+            publicTagFilter={publicTagFilter}
+            onClearTagFilter={() => setPublicTagFilter(null)}
+            onTagClick={tag => setPublicTagFilter(tag)}
+            highlightedFont={highlightedFont}
+          />
+        ) : viewingGroupId ? (
           <GroupDetails 
             groupId={viewingGroupId}
             groupData={groups.find(g => g.id === viewingGroupId)}
@@ -641,7 +667,6 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
         isOpen={isAllGroupsOpen}
         onClose={() => setIsAllGroupsOpen(false)}
         title={t('groups.title') || 'All Groups'}
-        width="max-w-4xl"
       >
         <div className="pt-2 pb-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

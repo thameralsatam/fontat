@@ -116,16 +116,71 @@ LANGUAGE sql STABLE SECURITY DEFINER AS $$
   ORDER BY f.created_at ASC;
 $$;
 
--- [تم التعديل] إضافة الميتادات لدالة الخطوط العامة
+-- [تم التعديل] إضافة الميتادات ودعم الهاشتاغات لدالة الخطوط العامة
 CREATE OR REPLACE FUNCTION public.get_public_fonts()
-RETURNS TABLE (font_id uuid, font_name text, download_url text, size bigint, created_at timestamptz, group_id uuid, group_name text, metadata jsonb)
+RETURNS TABLE (font_id uuid, font_name text, download_url text, size bigint, created_at timestamptz, group_id uuid, group_name text, metadata jsonb, tags text[])
 LANGUAGE sql STABLE SECURITY DEFINER AS $$
-  SELECT f.id, f.name, a.download_url, a.size, f.created_at, g.id, g.name, f.metadata
+  SELECT f.id, f.name, a.download_url, a.size, f.created_at, g.id, g.name, f.metadata,
+         ARRAY(SELECT jsonb_array_elements_text(f.metadata->'tags')) as tags
   FROM public.fonts f 
   JOIN public.font_assets a ON a.id = f.asset_id
   JOIN public.groups g ON g.id = f.group_id 
   WHERE g.is_public = true 
   ORDER BY f.created_at DESC;
+$$;
+
+-- [تمت الإضافة] دالة البحث الذكي
+CREATE OR REPLACE FUNCTION public.smart_search(p_query text)
+RETURNS TABLE (
+  type text, 
+  id uuid, 
+  name text, 
+  metadata jsonb, 
+  created_at timestamptz, 
+  font_download_url text, 
+  group_id uuid, 
+  group_name text
+) LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  -- Search in Groups (Private/Public based on access)
+  SELECT 
+    'group' AS type,
+    g.id,
+    g.name,
+    NULL::jsonb AS metadata,
+    g.created_at,
+    NULL::text as font_download_url,
+    NULL::uuid as group_id,
+    NULL::text as group_name
+  FROM public.groups g
+  WHERE (g.name ILIKE '%' || p_query || '%' OR g.description ILIKE '%' || p_query || '%')
+    AND (g.is_public = true OR g.user_id = auth.uid() OR public.is_admin())
+  
+  UNION ALL
+  
+  -- Search in Fonts
+  SELECT 
+    'font' AS type,
+    f.id,
+    f.name,
+    f.metadata,
+    f.created_at,
+    a.download_url as font_download_url,
+    g.id as group_id,
+    g.name as group_name
+  FROM public.fonts f
+  JOIN public.font_assets a ON a.id = f.asset_id
+  JOIN public.groups g ON g.id = f.group_id
+  WHERE (f.name ILIKE '%' || p_query || '%' 
+         OR EXISTS (
+           SELECT 1 
+           FROM jsonb_array_elements_text(f.metadata->'tags') tag 
+           WHERE tag ILIKE '%' || p_query || '%'
+         )
+        )
+    AND (g.is_public = true OR f.user_id = auth.uid() OR public.is_admin())
+  
+  ORDER BY created_at DESC
+  LIMIT 20;
 $$;
 
 -- [تمت الإضافة] دالة جلب الأوزان لحل مشكلة (PGRST202)
@@ -228,7 +283,7 @@ begin
     delete from public.fonts where id = p_font_id;
     return jsonb_build_object('success', true, 'action', 'delete');
   elsif p_action = 'update' then
-    update public.fonts set name = coalesce(p_name, name), metadata = coalesce(p_metadata, metadata) where id = p_font_id;
+    update public.fonts set name = coalesce(p_name, name), metadata = case when p_metadata is null then metadata else coalesce(metadata, '{}'::jsonb) || p_metadata end where id = p_font_id;
     return jsonb_build_object('success', true, 'action', 'update');
   end if;
   return jsonb_build_object('success', false, 'message', 'unknown_action');

@@ -45,10 +45,6 @@ interface GlobalContextType {
   // New state for Layout/BottomNav integration
   activeGroup: Group | null;
   setActiveGroup: (group: Group | null) => void;
-  fontSize: number;
-  setFontSize: (size: number) => void;
-  previewText: string;
-  setPreviewText: (text: string) => void;
   onRenameGroup: (group: Group) => void;
   setOnRenameGroup: (fn: (group: Group) => void) => void;
   onDeleteGroup: (group: Group) => void;
@@ -65,8 +61,6 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   
   // New state
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
-  const [fontSize, setFontSize] = useState(24);
-  const [previewText, setPreviewText] = useState('اللهـم صـلِّ وسـلم عـلى نبينـا محـمد');
   const [onRenameGroup, setOnRenameGroup] = useState<(group: Group) => void>(() => () => {});
   const [onDeleteGroup, setOnDeleteGroup] = useState<(group: Group) => void>(() => () => {});
 
@@ -173,7 +167,7 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
           details = `• ${duplicateNames.slice(0, 5).map(name => name).join('\n')}\n...and ${duplicateNames.length - 5} more`;
         }
 
-        addNotification('error', t('common.error') || 'Error');
+        addNotification('error', title, details);
       }
 
       // 4. Add ONLY unique files to queue
@@ -262,9 +256,9 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
             ));
             
             if (error.message?.includes('already in the group')) {
-              addNotification('error', t('common.error') || 'Error');
+              addNotification('error', t('font.duplicate_title') || 'Duplicate font', error.message);
             } else {
-              addNotification('error', t('common.error') || 'Error');
+              addNotification('error', error.message || t('common.error') || 'Error');
             }
           }
         }
@@ -356,10 +350,6 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
       setActiveTab,
       activeGroup,
       setActiveGroup,
-      fontSize,
-      setFontSize,
-      previewText,
-      setPreviewText,
       onRenameGroup,
       setOnRenameGroup,
       onDeleteGroup,

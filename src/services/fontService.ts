@@ -131,6 +131,16 @@ export const updateFontName = async (fontId: string, newName: string) => {
   if (error) throw error;
 };
 
+export const updateFontTags = async (fontId: string, tags: string[]) => {
+  const { error } = await supabase.rpc('manage_font_smart', {
+    p_action: 'update',
+    p_font_id: fontId,
+    p_metadata: { tags }
+  });
+
+  if (error) throw error;
+};
+
 export const getGroupFonts = async (groupId: string): Promise<Font[]> => {
   // Use RPC to fetch fonts
   const { data, error } = await supabase.rpc('get_my_fonts', {
@@ -155,7 +165,7 @@ export const getGroupFonts = async (groupId: string): Promise<Font[]> => {
       hash: item.font_hash
     }));
 
-  return Array.from(new Map(mappedFonts.map((f: Font) => [f.id, f])).values());
+  return Array.from(new Map(mappedFonts.map((f: any) => [f.id, f])).values()) as Font[];
 };
 
 export const getPublicFonts = async (): Promise<Font[]> => {
@@ -174,10 +184,12 @@ export const getPublicFonts = async (): Promise<Font[]> => {
       created_at: item.created_at,
       group_id: item.group_id,
       group_name: item.group_name,
-      metadata: item.metadata
+      metadata: item.metadata,
+      tags: item.tags || [],
+      weights: item.weights || []
     }));
 
-  return Array.from(new Map(mappedFonts.map((f: Font) => [f.id, f])).values());
+  return Array.from(new Map(mappedFonts.map((f: any) => [f.id, f])).values()) as Font[];
 };
 
 export const uploadFontWeight = async (

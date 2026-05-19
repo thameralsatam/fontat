@@ -32,6 +32,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       className="fixed top-0 left-0 right-0 z-[9999] bg-[#080808] flex items-center justify-center pointer-events-none overflow-hidden"
       initial={{ height: "100vh" }}
       animate={isAnimatingOut ? { height: 96 } : { height: "100vh" }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 1.0, ease: [0.76, 0, 0.24, 1] }}
     >
       <motion.div 

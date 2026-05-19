@@ -5,6 +5,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { GlobalProvider } from './contexts/GlobalContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { Layout } from './components/Layout';
+import { AnimatePresence } from 'framer-motion';
 import { SplashScreen } from './components/SplashScreen';
 import { Login } from './pages/Login';
 import { FontsPage } from './pages/FontsPage';
@@ -99,7 +100,9 @@ function AppContent() {
         <GlobalProvider>
           <BrowserRouter>
             <AppRoutes />
-            {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+            <AnimatePresence>
+              {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+            </AnimatePresence>
           </BrowserRouter>
         </GlobalProvider>
       </NotificationProvider>

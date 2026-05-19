@@ -6,7 +6,7 @@ import { Group, FontWeight, Font } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import { deleteFontPermanently, getGroupFonts, getFontWeights } from '../services/fontService';
+import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts } from '../services/fontService';
 import { getGroups } from '../services/groupService';
 import { Trash2, Download, Settings2, X, Layers, Upload, Plus, ChevronLeft, ChevronRight, Check, ChevronDown, Dices } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,14 +26,23 @@ export const RANDOM_TEXTS = [
 export const GroupDetails = ({ 
   groupId, 
   groupData,
-  highlightedFont
+  highlightedFont,
+  isPublicAllFonts = false,
+  publicTagFilter = null,
+  onClearTagFilter,
+  onTagClick
 }: { 
   groupId?: string, 
   groupData?: Group,
-  highlightedFont?: { id: string, ts: number }
+  highlightedFont?: { id: string, ts: number },
+  isPublicAllFonts?: boolean,
+  publicTagFilter?: string | null,
+  onClearTagFilter?: () => void,
+  onTagClick?: (tag: string) => void
 }) => {
   const { id: paramId } = useParams<{ id: string }>();
   const id = groupId || paramId;
+
   const { t, dir } = useLanguage();
   const { user } = useAuth();
   const { addToUploadQueue, uploadQueue, addNotification, removeFromQueueByFontId } = useGlobal();
@@ -48,7 +57,7 @@ export const GroupDetails = ({
   }, [groupData]);
 
   const isAdmin = user?.app_metadata?.role === 'admin' || user?.user_metadata?.role === 'admin';
-  const isOwner = isAdmin || group?.is_owner === true || group?.user_id === user?.id;
+  const isOwner = isAdmin || (!isPublicAllFonts && (group?.is_owner === true || group?.user_id === user?.id));
   const [dbFonts, setDbFonts] = useState<Font[]>([]);
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +71,28 @@ export const GroupDetails = ({
   });
   const weightInputRef = useRef<HTMLInputElement>(null);
   const [uploadingWeightFor, setUploadingWeightFor] = useState<string | null>(null);
+
+  // Tags Editing Modal state
+  const [tagEditModal, setTagEditModal] = useState<{ isOpen: boolean, fontId: string | null, tagsText: string }>({ isOpen: false, fontId: null, tagsText: '' });
+  
+  // Pagination / Infinite scroll state
+  const [visibleCount, setVisibleCount] = useState(20);
+
+  useEffect(() => {
+    // Reset visible count when switching contexts
+    setVisibleCount(20);
+  }, [id, isPublicAllFonts, publicTagFilter]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // Increase visibleCount when nearing the bottom of the page
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 800) {
+        setVisibleCount(prev => prev + 20);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Toolbar State
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
@@ -127,12 +158,42 @@ export const GroupDetails = ({
   });
 
   useEffect(() => {
-    if (id) {
-      fetchGroupData();
+    if (id || isPublicAllFonts) {
+      fetchData();
     }
-  }, [id, user?.id]);
+  }, [id, user?.id, isPublicAllFonts, publicTagFilter]);
 
-  const fetchGroupData = async () => {
+  const fetchData = async () => {
+    if (isPublicAllFonts) {
+      // Public mode: fetch all public fonts, ignoring group logic
+      setGroup(null);
+      let fontsData = await getPublicFonts();
+      
+      // Filter by tag if selected
+      if (publicTagFilter) {
+        fontsData = fontsData.filter(font => 
+          font.tags && font.tags.includes(publicTagFilter)
+        );
+      }
+      
+      setDbFonts(fontsData || []);
+      
+      if (fontsData && fontsData.length > 0) {
+        const allRels: FontWeight[] = [];
+        for (const font of fontsData) {
+          try {
+            const fontRels = await getFontWeights(font.id);
+            allRels.push(...fontRels);
+          } catch (err) {
+            console.error(`Failed to fetch weights for ${font.id}`, err);
+          }
+        }
+        setWeightRelationships(allRels);
+      }
+      setLoading(false);
+      return;
+    }
+
     if (!id) return;
 
     // Fetch group using our group service which maps the fields correctly
@@ -190,7 +251,7 @@ export const GroupDetails = ({
   useEffect(() => {
     const isUploading = uploadQueue.some(t => t.groupId === id && (t.status === 'pending' || t.status === 'uploading'));
     if (wasUploadingRef.current && !isUploading) {
-      fetchGroupData();
+      fetchData();
       if (weightsModal.isOpen && weightsModal.parentFont) {
         getFontWeights(weightsModal.parentFont.id).then(weights => {
           setWeightsModal(prev => ({ ...prev, weights: weights || [] }));
@@ -395,11 +456,25 @@ export const GroupDetails = ({
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files.length || !id || !user || !isOwner) return;
+    if (!e.target.files || !e.target.files.length || (!id && !isPublicAllFonts) || !user || !isOwner) return;
     const allFiles = Array.from(e.target.files);
-    if (allFiles.length > 10) addNotification('error', t('common.error') || 'Error');
+    
+    let targetGroupId = id;
+    if (!targetGroupId && isPublicAllFonts) {
+        const { getGroups, createGroupSmart } = await import('../services/groupService');
+        const groups = await getGroups();
+        let pubGroup = groups.find(g => g.name === 'Public Uploads' && g.is_public);
+        if (!pubGroup) {
+            pubGroup = await createGroupSmart('Public Uploads', 'General public font uploads', true);
+        }
+        if (pubGroup) targetGroupId = pubGroup.id;
+    }
+    
+    if (!targetGroupId) return;
+
+    if (allFiles.length > 10) addNotification('error', t('font.max_limit') || 'Max 10');
     const filesToProcess = allFiles.slice(0, 10);
-    addToUploadQueue(filesToProcess, id);
+    addToUploadQueue(filesToProcess, targetGroupId);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -422,12 +497,12 @@ export const GroupDetails = ({
       // Run real deletion without blocking
       deleteFontPermanently(fontId)
         .then(() => {
-          // fetchGroupData() optional, let's keep it silent
+          // fetchData() optional, let's keep it silent
         })
         .catch((error) => {
           console.error(error);
           addNotification('error', t('font.delete_error'));
-          fetchGroupData(); // Rollback
+          fetchData(); // Rollback
         });
         
     } catch (error) {
@@ -477,8 +552,22 @@ export const GroupDetails = ({
     }
   };
 
+  const handleUpdateTags = async () => {
+    if (!tagEditModal.fontId) return;
+    try {
+      const tagsArray = tagEditModal.tagsText.split(',').map(t => t.trim()).filter(Boolean);
+      await import('../services/fontService').then(m => m.updateFontTags(tagEditModal.fontId!, tagsArray));
+      addNotification('success', 'تم تحديث الهاشتاغات بنجاح!');
+      setTagEditModal({ isOpen: false, fontId: null, tagsText: '' });
+      fetchData(); // Automatically reflect the changes
+    } catch (e) {
+      console.error(e);
+      addNotification('error', 'حدث خطأ أثناء تحديث الهاشتاغات');
+    }
+  };
+
   if (loading) return <div className="text-center py-20 text-white opacity-40 animate-pulse">{t('common.loading')}</div>;
-  if (!group) return <div className="text-center py-20 text-white opacity-40">Group not found</div>;
+  if (!isPublicAllFonts && !group) return <div className="text-center py-20 text-white opacity-40">Group not found</div>;
 
   return (
     <div className="relative pb-32 max-lg:landscape:pb-16 pt-0" dir={dir}>
@@ -488,8 +577,24 @@ export const GroupDetails = ({
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0 space-y-4">
               <div className="space-y-2">
-                <h1 className="text-2xl font-light text-white tracking-tight leading-tight">{group.name}</h1>
-                {group.description && <p className="text-sm text-white opacity-50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">{group.description}</p>}
+                <h1 className="text-2xl font-light text-white tracking-tight leading-tight">
+                  {isPublicAllFonts ? 'الخطوط العامة' : group?.name}
+                </h1>
+                {!isPublicAllFonts && group?.description && <p className="text-sm text-white opacity-50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">{group.description}</p>}
+                {isPublicAllFonts && publicTagFilter && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-sm text-white/90">
+                    <span className="opacity-50">#</span>
+                    <span>{publicTagFilter}</span>
+                    {onClearTagFilter && (
+                      <button 
+                        onClick={onClearTagFilter}
+                        className="ml-1 p-0.5 rounded-full hover:bg-white/10 transition-colors opacity-70 hover:opacity-100"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Customize View Toggle */}
@@ -617,7 +722,7 @@ export const GroupDetails = ({
       <div className="w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <AnimatePresence>
-            {displayFonts.map((item, i) => (
+            {displayFonts.slice(0, visibleCount).map((item, i) => (
             <motion.div
               key={item.metadata?.taskId || item.id}
               id={`font-card-${item.id}`}
@@ -652,9 +757,34 @@ export const GroupDetails = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-3">
-                      <div className="font-medium text-white text-base opacity-50 flex-1 flex items-center gap-2 min-w-0">
+                      <div className="font-medium text-white text-base opacity-50 flex-1 flex flex-wrap items-center gap-2 min-w-0">
                         <span dir="ltr" className="truncate text-left block">{formatFontName(item.name || '')}</span>
                         {item.metadata?.status === 'success' && <Check className="w-3.5 h-3.5 text-white flex-shrink-0" />}
+                        {isPublicAllFonts && (
+                          <div className="flex gap-1 overflow-hidden" dir="rtl">
+                            {item.tags && item.tags.slice(0, 3).map(tag => (
+                              <button 
+                                key={tag} 
+                                onClick={(e) => { e.stopPropagation(); onTagClick?.(tag); }}
+                                className="text-[9px] bg-white/[0.05] border border-white/[0.05] hover:bg-white/10 hover:text-white px-1.5 py-0.5 rounded text-white/50 tracking-wider whitespace-nowrap cursor-pointer transition-all"
+                              >
+                                #{tag}
+                              </button>
+                            ))}
+                            {isAdmin && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTagEditModal({ isOpen: true, fontId: item.id, tagsText: item.tags?.join(', ') || '' });
+                                }}
+                                className="text-[9px] bg-white/[0.02] border border-white/10 hover:border-white/30 hover:bg-white/[0.05] px-1.5 py-0.5 rounded text-white/50 hover:text-white transition-all cursor-pointer flex items-center justify-center"
+                                title="Edit Tags"
+                              >
+                                <Plus className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {item.metadata?.error && <span className="text-[10px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">Failed</span>}
                     </div>
@@ -765,22 +895,24 @@ export const GroupDetails = ({
                   const relevantWeightTasks = uploadQueue.filter(task => task.parentFontId === parentId);
                   
                   const realWeights = weightsModal.weights.map(w => {
-                     const matchedTask = relevantWeightTasks.find(t => t.fontId === w.child_font_id || t.file.name === w.child_font.name);
+                     const childFont = w.child_font;
+                     if (!childFont) return null;
+                     const matchedTask = relevantWeightTasks.find(t => t.fontId === w.child_font_id || t.file.name === childFont.name);
                      if (matchedTask) {
                         return { 
                           id: w.id, 
                           font: { 
-                            ...w.child_font, 
-                            download_url: matchedTask.localUrl || w.child_font.download_url,
-                            created_at: matchedTask.timestamp ? new Date(matchedTask.timestamp).toISOString() : w.child_font.created_at,
-                            metadata: { ...w.child_font.metadata, taskId: matchedTask.id, status: matchedTask.status } 
+                            ...childFont, 
+                            download_url: matchedTask.localUrl || childFont.download_url,
+                            created_at: matchedTask.timestamp ? new Date(matchedTask.timestamp).toISOString() : childFont.created_at,
+                            metadata: { ...childFont.metadata, taskId: matchedTask.id, status: matchedTask.status } 
                           }, 
                           isOptimistic: false, 
                           childFontId: w.child_font_id 
                         };
                      }
-                     return { id: w.id, font: w.child_font, isOptimistic: false, childFontId: w.child_font_id };
-                  });
+                     return { id: w.id, font: childFont, isOptimistic: false, childFontId: w.child_font_id };
+                  }).filter(Boolean) as any[];
 
                   const existingTaskIds = new Set(realWeights.map(rw => rw.font?.metadata?.taskId).filter(Boolean));
                   
@@ -826,7 +958,7 @@ export const GroupDetails = ({
                                   <Download className="w-3.5 h-3.5" />
                                 </button>
                                 {isOwner && !w.isOptimistic && (
-                                  <button onClick={(e) => { e.stopPropagation(); setDeleteWeightModal({ isOpen: true, childFontId: w.childFontId }); }} className="p-2 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-30 hover:text-red-400 transition-colors" title="Delete Weight">
+                                  <button onClick={(e) => { e.stopPropagation(); setDeleteWeightModal({ isOpen: true, childFontId: w.childFontId || null }); }} className="p-2 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-30 hover:text-red-400 transition-colors" title="Delete Weight">
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 )}
@@ -881,6 +1013,34 @@ export const GroupDetails = ({
         confirmText={t('common.delete')}
         variant="danger"
       />
+
+      <AnimatePresence>
+        {tagEditModal.isOpen && (
+           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setTagEditModal({ isOpen: false, fontId: null, tagsText: '' })} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-[#111] border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl overflow-hidden flex flex-col gap-4">
+               <div>
+                  <h3 className="text-white font-medium text-lg mb-1">إدارة الهاشتاغات</h3>
+                  <p className="text-white/50 text-sm">أدخل الهاشتاغات مفصولة بفاصلة (مثال: كوفي, حديث, عناوين)</p>
+               </div>
+               <input 
+                  type="text" 
+                  value={tagEditModal.tagsText} 
+                  autoFocus
+                  onChange={(e) => setTagEditModal(p => ({ ...p, tagsText: e.target.value }))}
+                  onKeyDown={e => e.key === 'Enter' && handleUpdateTags()}
+                  className="w-full bg-white/[0.03] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-white text-sm outline-none transition-all placeholder:text-white/20"
+                  placeholder="هاشتاغ 1, هاشتاغ 2"
+                  dir="auto"
+               />
+               <div className="flex justify-end gap-2 mt-2">
+                 <button onClick={() => setTagEditModal({ isOpen: false, fontId: null, tagsText: '' })} className="px-4 py-2 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all text-sm font-medium">إلغاء</button>
+                 <button onClick={handleUpdateTags} className="px-6 py-2 rounded-xl bg-white text-black hover:bg-white/90 transition-all text-sm font-medium">حفظ</button>
+               </div>
+             </motion.div>
+           </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
