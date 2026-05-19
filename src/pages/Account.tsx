@@ -19,7 +19,6 @@ export const Account = () => {
   const [isNotificationSettingsExpanded, setIsNotificationSettingsExpanded] = useState(false);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
   
   // Login State
   const [showEmailLogin, setShowEmailLogin] = useState(false);
@@ -72,11 +71,7 @@ export const Account = () => {
   };
 
   useEffect(() => {
-    if (user) {
-      supabase.from('profiles').select('created_at').eq('id', user.id).single().then(({data}) => {
-        setProfile(data);
-      });
-    }
+    // profile fetch removed
   }, [user]);
 
   const handleLogout = () => supabase.auth.signOut();
@@ -137,10 +132,10 @@ export const Account = () => {
               {/* Ranks / Badges */}
               <div className="flex gap-2 items-center justify-center mt-2">
                 <span className="px-3 py-1 rounded-full bg-white/10 text-white opacity-80 text-xs font-semibold backdrop-blur-md border border-white/10 uppercase tracking-wider">
-                  {user.app_metadata?.role === 'admin' || user.email === 'thameralsatam@gmail.com' ? (language === 'ar' ? 'مدير النظام' : 'Admin') : (language === 'ar' ? 'مستخدم' : 'Member')}
+                  {user.user_metadata?.role === 'admin' ? (language === 'ar' ? 'مدير النظام' : 'Admin') : (language === 'ar' ? 'مستخدم' : 'Member')}
                 </span>
                 <span className="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-semibold backdrop-blur-md border border-cyan-500/20">
-                  {profile?.created_at ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(profile.created_at)) : '2024'}
+                  {user?.created_at ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(user.created_at)) : '2024'}
                 </span>
               </div>
             </div>

@@ -102,7 +102,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   // Notification Modals state
   const [selectedAppNotification, setSelectedAppNotification] = useState<Notification | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const isAdmin = user?.email === 'thameralsatam@gmail.com' || user?.app_metadata?.role === 'admin' || user?.user_metadata?.role === 'admin';
+  const isAdmin = user?.user_metadata?.role === 'admin';
   
   useEffect(() => {
     window.scrollTo(0, 0);

@@ -57,7 +57,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   const { t, dir } = useLanguage();
   const { user } = useAuth();
   const { addNotification } = useGlobal();
-  const isAdmin = user?.app_metadata?.role === 'admin' || user?.user_metadata?.role === 'admin';
+  const isAdmin = user?.user_metadata?.role === 'admin';
 
   // Initialize from URL
   useEffect(() => {

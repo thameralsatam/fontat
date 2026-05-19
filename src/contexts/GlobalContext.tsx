@@ -6,7 +6,7 @@ import { Group } from '../types';
 interface UploadTask {
   id: string;
   file: File;
-  groupId: string;
+  groupId: string | null;
   parentFontId?: string;
   status: 'pending' | 'uploading' | 'success' | 'error';
   progress: number;
@@ -29,7 +29,7 @@ interface Notification {
 
 interface GlobalContextType {
   uploadQueue: UploadTask[];
-  addToUploadQueue: (files: File[], groupId: string, parentFontId?: string) => void;
+  addToUploadQueue: (files: File[], groupId: string | null, parentFontId?: string) => void;
   retryUpload: (taskId: string) => void;
   clearCompletedUploads: () => void;
   removeFromQueueByFontId: (fontId: string) => void;
@@ -120,7 +120,7 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   }, [addNotification]);
 
   // --- Upload Logic ---
-  const addToUploadQueue = useCallback(async (files: File[], groupId: string, parentFontId?: string) => {
+  const addToUploadQueue = useCallback(async (files: File[], groupId: string | null, parentFontId?: string) => {
     // 1. Handle Limit (Max 10)
     let filesToProcess = files;
     if (files.length > 10) {

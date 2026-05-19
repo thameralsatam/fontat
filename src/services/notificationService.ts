@@ -53,27 +53,22 @@ export const deleteNotification = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-// Get User Preferences
+// Get User Preferences (Local Storage Only)
 export const getUserNotificationPreferences = async (userId: string): Promise<NotificationPreferences> => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('notification_preferences')
-    .eq('id', userId)
-    .single();
-
-  if (error) throw error;
-  return data?.notification_preferences || { updates: true, alerts: true, info: true };
+  const local = localStorage.getItem('fontat_notification_prefs');
+  if (local) {
+    try {
+      return JSON.parse(local);
+    } catch(e) {}
+  }
+  return { updates: true, alerts: true, info: true };
 };
 
-// Update User Preferences
+// Update User Preferences (Local Storage Only)
 export const updateUserNotificationPreferences = async (
   userId: string,
   preferences: NotificationPreferences
 ): Promise<void> => {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ notification_preferences: preferences })
-    .eq('id', userId);
-
-  if (error) throw error;
+  localStorage.setItem('fontat_notification_prefs', JSON.stringify(preferences));
 };
+

@@ -7,15 +7,13 @@ export const getGroups = async (): Promise<Group[]> => {
   if (!data) return [];
   
   const mappedData: Group[] = data.map((item: any) => ({
-    id: item.group_id || item.id,
-    user_id: item.owner_id || item.user_id,
+    id: item.id,
+    user_id: item.user_id,
     name: item.name,
     description: item.description,
     is_public: item.is_public,
     created_at: item.created_at,
     updated_at: item.updated_at,
-    is_owner: item.is_owner,
-    font_count: item.font_count
   }));
 
   // Deduplicate by id just in case the RPC returns duplicates

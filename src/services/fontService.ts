@@ -11,7 +11,7 @@ export const calculateFileHash = async (file: File): Promise<string> => {
 
 export const uploadFontToGroup = async (
   file: File,
-  groupId: string,
+  groupId: string | null,
   allowDuplicate: boolean = false
 ): Promise<{ font: Font; isNewUpload: boolean }> => {
   try {
@@ -141,7 +141,7 @@ export const updateFontTags = async (fontId: string, tags: string[]) => {
   if (error) throw error;
 };
 
-export const getGroupFonts = async (groupId: string): Promise<Font[]> => {
+export const getGroupFonts = async (groupId: string | null): Promise<Font[]> => {
   // Use RPC to fetch fonts
   const { data, error } = await supabase.rpc('get_my_fonts', {
     p_group_id: groupId
@@ -182,11 +182,7 @@ export const getPublicFonts = async (): Promise<Font[]> => {
       download_url: item.download_url,
       size: item.size,
       created_at: item.created_at,
-      group_id: item.group_id,
-      group_name: item.group_name,
-      metadata: item.metadata,
       tags: item.tags || [],
-      weights: item.weights || []
     }));
 
   return Array.from(new Map(mappedFonts.map((f: any) => [f.id, f])).values()) as Font[];
@@ -195,7 +191,7 @@ export const getPublicFonts = async (): Promise<Font[]> => {
 export const uploadFontWeight = async (
   file: File,
   parentFontId: string,
-  groupId: string 
+  groupId: string | null
 ): Promise<Font> => {
   try {
     const hash = await calculateFileHash(file);
@@ -234,7 +230,7 @@ export const uploadFontWeight = async (
 
     // Return the newly linked weight
     return { 
-      id: saveResult.font_id || '', 
+      id: saveResult.child_font_id || '', 
       name: file.name, 
       hash: hash, 
       download_url: downloadUrl, 

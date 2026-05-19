@@ -56,7 +56,7 @@ export const GroupDetails = ({
     }
   }, [groupData]);
 
-  const isAdmin = user?.app_metadata?.role === 'admin' || user?.user_metadata?.role === 'admin';
+  const isAdmin = user?.user_metadata?.role === 'admin';
   const isOwner = isAdmin || (!isPublicAllFonts && (group?.is_owner === true || group?.user_id === user?.id));
   const [dbFonts, setDbFonts] = useState<Font[]>([]);
   const [loading, setLoading] = useState(true);
@@ -459,18 +459,7 @@ export const GroupDetails = ({
     if (!e.target.files || !e.target.files.length || (!id && !isPublicAllFonts) || !user || !isOwner) return;
     const allFiles = Array.from(e.target.files);
     
-    let targetGroupId = id;
-    if (!targetGroupId && isPublicAllFonts) {
-        const { getGroups, createGroupSmart } = await import('../services/groupService');
-        const groups = await getGroups();
-        let pubGroup = groups.find(g => g.name === 'Public Uploads' && g.is_public);
-        if (!pubGroup) {
-            pubGroup = await createGroupSmart('Public Uploads', 'General public font uploads', true);
-        }
-        if (pubGroup) targetGroupId = pubGroup.id;
-    }
-    
-    if (!targetGroupId) return;
+    let targetGroupId = id || null;
 
     if (allFiles.length > 10) addNotification('error', t('font.max_limit') || 'Max 10');
     const filesToProcess = allFiles.slice(0, 10);
@@ -479,15 +468,15 @@ export const GroupDetails = ({
   };
 
   const handleWeightUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files.length || !uploadingWeightFor || !user || !id) return;
+    if (!e.target.files || !e.target.files.length || !uploadingWeightFor || !user || (!id && !isPublicAllFonts)) return;
     const files = Array.from(e.target.files);
-    addToUploadQueue(files, id, uploadingWeightFor);
+    addToUploadQueue(files, id || null, uploadingWeightFor);
     setUploadingWeightFor(null);
     if (weightInputRef.current) weightInputRef.current.value = '';
   };
 
   const handleDeleteFont = async (fontId: string) => {
-    if (!id || !isOwner) return;
+    if ((!id && !isPublicAllFonts) || !isOwner) return;
     try {
       // Optimistic update
       setDbFonts(prev => prev.filter(f => f.id !== fontId));
