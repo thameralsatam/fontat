@@ -50,8 +50,9 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
+        const searchTerm = query.trim().startsWith('#') ? query.trim().substring(1) : query.trim();
         const { data, error } = await supabase.rpc('smart_search', {
-          search_term: query,
+          search_term: searchTerm || ' ',
           p_mode: mode
         });
 
@@ -131,18 +132,30 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
   const totalCount = results.length > 0 ? Number(results[0].total_count) : 0;
   const additionalCount = Array.isArray(results) ? (totalCount > 5 ? totalCount - results.length : 0) : 0;
 
+  const isHashtagSearch = query.trim().startsWith('#');
+  const hashtagSearchTerm = query.trim().substring(1).trim().toLowerCase();
+
   // Extract unique tags from results using simple loops
   const uniqueTags = new Set<string>();
   if (mode === 'public') {
     results.forEach(result => {
       if (Array.isArray(result.tags)) {
         result.tags.forEach(tag => {
-          if (tag && typeof tag === 'string') uniqueTags.add(tag);
+          if (tag && typeof tag === 'string') {
+            const cleanedTag = tag.trim();
+            if (isHashtagSearch) {
+              if (!hashtagSearchTerm || cleanedTag.toLowerCase().includes(hashtagSearchTerm)) {
+                uniqueTags.add(cleanedTag);
+              }
+            } else {
+              // Normally we do not mix hashtags
+            }
+          }
         });
       }
     });
   }
-  const tagsList = Array.from(uniqueTags).slice(0, 10); // Limit to top 10 tags
+  const tagsList = Array.from(uniqueTags).slice(0, 15);
 
 
   return (
@@ -182,70 +195,84 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
 
       {isOpen && query.trim() && (
         <div className="absolute top-14 left-0 right-0 bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl max-h-[80vh] flex flex-col z-50 ring-1 ring-white/5">
-          {results.length > 0 ? (
+          {((isHashtagSearch && tagsList.length > 0) || (!isHashtagSearch && results.length > 0)) ? (
             <>
-              <div className="flex flex-col overflow-y-auto w-full">
-                {results.map((result, idx) => (
-                  <button
-                    key={result.id || idx}
-                    onClick={() => handleSelect(result)}
-                    className="flex flex-col items-start w-full px-5 py-3 hover:bg-white/[0.04] transition-colors border-b border-white/[0.03] last:border-0 text-right group"
-                  >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <div className="flex flex-wrap items-center text-white opacity-40 text-[11px] font-light gap-x-1.5">
-                        {mode === 'private' ? (
-                          <>
-                            <span className="text-white opacity-80">{result.group_name}</span>
-                            {result.name && (
-                              <>
-                                <span className="text-[10px] opacity-60">/</span>
-                                <span>{formatFontName(result.name)}</span>
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-white opacity-80">{formatFontName(result.name)}</span>
-                        )}
-                      </div>
-                      {result.metadata?.weight && (
-                        <span className="text-[9px] bg-white/10 px-2 py-0.5 rounded text-white opacity-50 tracking-widest uppercase ml-2 shrink-0">
-                          {result.metadata.weight}
-                        </span>
-                      )}
-                    </div>
-                    <span 
-                      className="text-white text-[14px] overflow-hidden text-ellipsis whitespace-nowrap w-full text-right transition-opacity duration-300" 
-                      style={{ 
-                        fontFamily: loadedFontIds.has(result.id) ? `"search-preview-${result.id}", sans-serif` : 'sans-serif',
-                        fontWeight: 'normal',
-                        opacity: loadedFontIds.has(result.id) ? 1 : 0.3
-                      }}
+              {isHashtagSearch ? (
+                <div className="flex flex-col overflow-y-auto w-full divide-y divide-white/[0.04] p-2">
+                  <div className="text-[10px] text-white/30 px-4 py-2 uppercase font-medium tracking-wider mb-1 font-sans">
+                    الفرز بالهاشتاغات المطابقة ({tagsList.length})
+                  </div>
+                  {tagsList.map((tag, idx) => (
+                    <button
+                      key={tag || idx}
+                      onClick={() => handleSelect({ type: 'tag', tag })}
+                      className="flex items-center justify-between w-full px-4 py-3.5 hover:bg-white/[0.04] rounded-xl transition-all text-right group border-0"
                     >
-                      اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)
-                    </span>
-                  </button>
-                ))}
-              </div>
-              {additionalCount > 0 && (
-                <div className="px-5 py-2.5 text-center text-white/40 text-[11px] font-light border-y border-white/[0.03] shrink-0 bg-white/[0.01]">
-                   + {additionalCount} نتائج إضافية
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-cyan-400 font-mono text-lg font-light">#</span>
+                        <span className="text-white text-sm font-light group-hover:text-cyan-400 transition-colors">
+                          {tag}
+                        </span>
+                      </div>
+                      <span className="text-xs text-white/30 group-hover:text-white/50 transition-colors font-light">
+                        تصفية الخطوط العامة
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              )}
-              {tagsList.length > 0 && (
-                <div className="p-4 bg-[#050505]/50 shrink-0">
-                  <div className="flex flex-wrap gap-2">
-                    {tagsList.map(tag => (
+              ) : (
+                <>
+                  <div className="flex flex-col overflow-y-auto w-full p-2">
+                    <div className="text-[10px] text-white/30 px-4 py-2 uppercase font-medium tracking-wider mb-1 font-sans">
+                      الخطوط المطابقة ({results.length})
+                    </div>
+                    {results.map((result, idx) => (
                       <button
-                        key={tag}
-                        onClick={() => handleSelect({ type: 'tag', tag })}
-                        className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/10 border border-white/5 hover:border-white/20 rounded-lg text-xs text-white/70 hover:text-white transition-all backdrop-blur flex items-center gap-1.5"
+                        key={result.id || idx}
+                        onClick={() => handleSelect(result)}
+                        className="flex flex-col items-start w-full px-4 py-3 hover:bg-white/[0.04] rounded-xl transition-all text-right group mb-0.5 last:mb-0"
                       >
-                        <span className="opacity-50">#</span>
-                        {tag}
+                        <div className="flex items-center justify-between w-full mb-1">
+                          <div className="flex flex-wrap items-center text-white opacity-40 text-[11px] font-light gap-x-1.5">
+                            {mode === 'private' ? (
+                              <>
+                                <span className="text-white opacity-80">{result.group_name}</span>
+                                {result.name && (
+                                  <>
+                                    <span className="text-[10px] opacity-60">/</span>
+                                    <span>{formatFontName(result.name)}</span>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-white opacity-80">{formatFontName(result.name)}</span>
+                            )}
+                          </div>
+                          {result.metadata?.weight && (
+                            <span className="text-[9px] bg-white/10 px-2 py-0.5 rounded text-white opacity-50 tracking-widest uppercase ml-2 shrink-0">
+                              {result.metadata.weight}
+                            </span>
+                          )}
+                        </div>
+                        <span 
+                          className="text-white text-[14px] overflow-hidden text-ellipsis whitespace-nowrap w-full text-right transition-opacity duration-300" 
+                          style={{ 
+                            fontFamily: loadedFontIds.has(result.id) ? `"search-preview-${result.id}", sans-serif` : 'sans-serif',
+                            fontWeight: 'normal',
+                            opacity: loadedFontIds.has(result.id) ? 1 : 0.3
+                          }}
+                        >
+                          اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)
+                        </span>
                       </button>
                     ))}
                   </div>
-                </div>
+                  {additionalCount > 0 && (
+                    <div className="px-5 py-2.5 text-center text-white/40 text-[11px] font-light border-t border-white/[0.03] shrink-0 bg-white/[0.01]">
+                       + {additionalCount} نتائج إضافية
+                    </div>
+                  )}
+                </>
               )}
             </>
           ) : (

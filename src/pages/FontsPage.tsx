@@ -112,7 +112,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     try {
       // Need to fetch details. We can use getGroupFonts(null) and find what we need since we can't query private table.
       // But if we already have it in search, it's fine.
-      const fonts = await getGroupFonts(''); // we pass empty string or handled by service
+      const fonts = await getGroupFonts(null); // passing null directly to fetch public/general fonts without group filtering
       const matchedFonts = fonts.filter(f => idsToLoad.includes(f.id));
       
       setLoadedFontDetails(prev => ({ ...prev, ...Object.fromEntries(matchedFonts.map(f => [f.id, f])) }));

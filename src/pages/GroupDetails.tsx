@@ -8,11 +8,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts } from '../services/fontService';
 import { getGroups } from '../services/groupService';
-import { Trash2, Download, Settings2, X, Layers, Upload, Plus, ChevronLeft, ChevronRight, Check, ChevronDown, Dices } from 'lucide-react';
+import { Trash2, Download, X, Layers, Upload, Plus, Check, Dices, Filter, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
-import { FadeSection } from '../components/FadeSection';
 import { formatFontName } from '../utils/text';
 
 export const RANDOM_TEXTS = [
@@ -74,6 +73,25 @@ export const GroupDetails = ({
 
   // Tags Editing Modal state
   const [tagEditModal, setTagEditModal] = useState<{ isOpen: boolean, fontId: string | null, tagsText: string }>({ isOpen: false, fontId: null, tagsText: '' });
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+  const [newSingleTag, setNewSingleTag] = useState('');
+  const [tagRenameModal, setTagRenameModal] = useState<{ isOpen: boolean, oldTag: string, newTag: string }>({ isOpen: false, oldTag: '', newTag: '' });
+  const [tagDeleteGlobalModal, setTagDeleteGlobalModal] = useState<{ isOpen: boolean, tag: string }>({ isOpen: false, tag: '' });
+
+  // Extract all unique tags
+  const availableTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    dbFonts.forEach(f => {
+      if (Array.isArray(f.tags)) {
+        f.tags.forEach(t => {
+          if (t && typeof t === 'string' && t.trim()) {
+            tagsSet.add(t.trim());
+          }
+        });
+      }
+    });
+    return Array.from(tagsSet).sort();
+  }, [dbFonts]);
   
   // Pagination / Infinite scroll state
   const [visibleCount, setVisibleCount] = useState(20);
@@ -95,7 +113,6 @@ export const GroupDetails = ({
   }, []);
 
   // Toolbar State
-  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [fontSize, setFontSize] = useState(25); // Default size
   const [globalPreviewText, setGlobalPreviewText] = useState('اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)');
   const deferredGlobalPreviewText = useDeferredValue(globalPreviewText);
@@ -114,21 +131,6 @@ export const GroupDetails = ({
   };
 
   const toolbarRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(event.target as Node)) {
-        setIsToolbarOpen(false);
-      }
-    };
-
-    if (isToolbarOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isToolbarOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
@@ -168,13 +170,6 @@ export const GroupDetails = ({
       // Public mode: fetch all public fonts, ignoring group logic
       setGroup(null);
       let fontsData = await getPublicFonts();
-      
-      // Filter by tag if selected
-      if (publicTagFilter) {
-        fontsData = fontsData.filter(font => 
-          font.tags && font.tags.includes(publicTagFilter)
-        );
-      }
       
       setDbFonts(fontsData || []);
       
@@ -240,16 +235,16 @@ export const GroupDetails = ({
 
   const wasUploading = useRef(false);
   useEffect(() => {
-    const isUploading = uploadQueue.some(t => t.groupId === id && (t.status === 'pending' || t.status === 'uploading'));
+    const isUploading = uploadQueue.some(t => (t.groupId === id || (isPublicAllFonts && !t.groupId)) && (t.status === 'pending' || t.status === 'uploading'));
     if (isUploading && !wasUploading.current) {
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     }
     wasUploading.current = isUploading;
-  }, [uploadQueue, id]);
+  }, [uploadQueue, id, isPublicAllFonts]);
 
   const wasUploadingRef = useRef(false);
   useEffect(() => {
-    const isUploading = uploadQueue.some(t => t.groupId === id && (t.status === 'pending' || t.status === 'uploading'));
+    const isUploading = uploadQueue.some(t => (t.groupId === id || (isPublicAllFonts && !t.groupId)) && (t.status === 'pending' || t.status === 'uploading'));
     if (wasUploadingRef.current && !isUploading) {
       fetchData();
       if (weightsModal.isOpen && weightsModal.parentFont) {
@@ -259,7 +254,7 @@ export const GroupDetails = ({
       }
     }
     wasUploadingRef.current = isUploading;
-  }, [uploadQueue, id, weightsModal.isOpen, weightsModal.parentFont]);
+  }, [uploadQueue, id, isPublicAllFonts, weightsModal.isOpen, weightsModal.parentFont]);
 
   const { childFontIds, parentFontIds } = useMemo(() => {
     const children = new Set<string>();
@@ -272,7 +267,7 @@ export const GroupDetails = ({
   }, [weightRelationships]);
 
   const displayFonts = useMemo(() => {
-    const relevantQueueItems = uploadQueue.filter(task => task.groupId === id && !task.parentFontId);
+    const relevantQueueItems = uploadQueue.filter(task => (task.groupId === id || (isPublicAllFonts && !task.groupId)) && !task.parentFontId);
     
     // Map dbFonts to preserve React keys for recently uploaded items
     const mappedDbFonts = dbFonts.map(dbFont => {
@@ -319,8 +314,12 @@ export const GroupDetails = ({
     // ترتيب الخطوط بحيث الأقدم يظهر أولاً (أو في الأعلى)
     allFonts.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
 
+    if (isPublicAllFonts && publicTagFilter) {
+      return allFonts.filter(f => f.tags && f.tags.includes(publicTagFilter));
+    }
+
     return allFonts;
-  }, [dbFonts, uploadQueue, id, user, childFontIds]);
+  }, [dbFonts, uploadQueue, id, user, childFontIds, isPublicAllFonts, publicTagFilter]);
 
   useEffect(() => {
     if (loading) return; 
@@ -426,7 +425,7 @@ export const GroupDetails = ({
       toolbarTextareaRef.current.style.height = 'auto';
       toolbarTextareaRef.current.style.height = `${toolbarTextareaRef.current.scrollHeight}px`;
     }
-  }, [globalPreviewText, isToolbarOpen]);
+  }, [globalPreviewText]);
 
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -544,14 +543,130 @@ export const GroupDetails = ({
   const handleUpdateTags = async () => {
     if (!tagEditModal.fontId) return;
     try {
-      const tagsArray = tagEditModal.tagsText.split(',').map(t => t.trim()).filter(Boolean);
-      await import('../services/fontService').then(m => m.updateFontTags(tagEditModal.fontId!, tagsArray));
-      addNotification('success', 'تم تحديث الهاشتاغات بنجاح!');
-      setTagEditModal({ isOpen: false, fontId: null, tagsText: '' });
+      const targetFont = dbFonts.find(f => f.id === tagEditModal.fontId);
+      if (!targetFont) return;
+      
+      const cleanNewTag = newSingleTag
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '')
+        .trim();
+
+      if (!cleanNewTag) {
+        addNotification('error', 'يرجى إدخال هاشتاغ صالح');
+        return;
+      }
+
+      const existingTags = targetFont.tags || [];
+      if (existingTags.includes(cleanNewTag)) {
+        addNotification('error', 'هذا الهاشتاغ مضاف بالفعل لهذا الخط');
+        return;
+      }
+
+      const updatedTags = [...existingTags, cleanNewTag];
+      await import('../services/fontService').then(m => m.updateFontTags(tagEditModal.fontId!, updatedTags));
+      addNotification('success', 'تم إضافة الهاشتاغ بنجاح!');
+      setNewSingleTag('');
       fetchData(); // Automatically reflect the changes
     } catch (e) {
       console.error(e);
-      addNotification('error', 'حدث خطأ أثناء تحديث الهاشتاغات');
+      addNotification('error', 'حدث خطأ أثناء إضافة الهاشتاغ');
+    }
+  };
+
+  const handleRemoveTag = async (fontId: string, tagToRemove: string) => {
+    try {
+      const targetFont = dbFonts.find(f => f.id === fontId);
+      if (!targetFont) return;
+
+      const updatedTags = (targetFont.tags || []).filter(t => t !== tagToRemove);
+      await import('../services/fontService').then(m => m.updateFontTags(fontId, updatedTags));
+      addNotification('success', 'تم إزالة الهاشتاغ بنجاح!');
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      addNotification('error', 'حدث خطأ أثناء إزالة الهاشتاغ');
+    }
+  };
+
+  const handleRenameHashtagGlobally = async (oldTag: string, newTag: string) => {
+    const formattedNewTag = newTag
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9_\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '')
+      .trim();
+
+    if (!formattedNewTag) {
+      addNotification('error', 'الهاشتاغ الجديد غير صالح');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      // Find all public fonts that contain this oldTag
+      const allFonts = await getPublicFonts();
+      const fontsWithOldTag = allFonts.filter(f => f.tags && f.tags.includes(oldTag));
+      
+      if (fontsWithOldTag.length === 0) {
+        addNotification('error', 'لم يتم العثور على خطوط مرتبطة بهذا الهاشتاغ');
+        setLoading(false);
+        return;
+      }
+      
+      const updatePromises = fontsWithOldTag.map(font => {
+        const updatedTags = (font.tags || [])
+          .map(t => t === oldTag ? formattedNewTag : t)
+          .filter((value, index, self) => self.indexOf(value) === index); // Deduplicate
+        return import('../services/fontService').then(m => m.updateFontTags(font.id, updatedTags));
+      });
+      
+      await Promise.all(updatePromises);
+      addNotification('success', `تم تعديل الهاشتاغ من #${oldTag} إلى #${formattedNewTag} في جميع الخطوط!`);
+      
+      // Update public filter state in the parent if it matches oldTag
+      if (publicTagFilter === oldTag && onTagClick) {
+        onTagClick(formattedNewTag);
+      }
+      
+      setTagRenameModal({ isOpen: false, oldTag: '', newTag: '' });
+      await fetchData();
+    } catch (e) {
+      console.error(e);
+      addNotification('error', 'حدث خطأ أثناء تعديل الهاشتاغ العام');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteHashtagGlobally = async (tagToDelete: string) => {
+    try {
+      setLoading(true);
+      const allFonts = await getPublicFonts();
+      const fontsWithTag = allFonts.filter(f => f.tags && f.tags.includes(tagToDelete));
+      
+      if (fontsWithTag.length === 0) {
+        addNotification('info', `تم إزالة الهاشتاغ #${tagToDelete} بنجاح!`);
+        if (onClearTagFilter) onClearTagFilter();
+        setLoading(false);
+        return;
+      }
+
+      const updatePromises = fontsWithTag.map(font => {
+        const updatedTags = (font.tags || []).filter(t => t !== tagToDelete);
+        return import('../services/fontService').then(m => m.updateFontTags(font.id, updatedTags));
+      });
+
+      await Promise.all(updatePromises);
+      addNotification('success', `تم حذف الهاشتاغ #${tagToDelete} نهائياً من جميع الخطوط المرتبطة به!`);
+      
+      if (onClearTagFilter) {
+        onClearTagFilter();
+      }
+      setTagDeleteGlobalModal({ isOpen: false, tag: '' });
+      await fetchData();
+    } catch (e) {
+      console.error(e);
+      addNotification('error', 'حدث خطأ أثناء حذف الهاشتاغ عالمياً');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -560,151 +675,290 @@ export const GroupDetails = ({
 
   return (
     <div className="relative pb-32 max-lg:landscape:pb-16 pt-0" dir={dir}>
-      {/* Header */}
-      <div className="pb-8 pt-4 px-4 md:px-8 w-full xl:max-w-[1600px] mx-auto">
-        <div className="flex flex-col gap-6" ref={toolbarRef}>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0 space-y-4">
-              <div className="space-y-2">
-                <h1 className="text-2xl font-light text-white tracking-tight leading-tight">
+      {isPublicAllFonts && publicTagFilter ? (
+        /* ======================== DETACHED DEDICATED HASHTAG VIEW ======================== */
+        <div className="pb-8 pt-4 px-4 md:px-8 w-full xl:max-w-[1600px] mx-auto font-sans" key="hashtag-isolate">
+          <div className="flex flex-col gap-6">
+            {/* Top Navigation Row */}
+            <div className="flex items-center justify-between">
+              <button 
+                onClick={onClearTagFilter}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/5 hover:border-white/10 transition-all text-xs font-medium cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>العودة للخطوط العامة</span>
+              </button>
+              
+              <span className="text-[10px] tracking-wider uppercase font-bold text-cyan-400 bg-cyan-400/5 px-2.5 py-1 rounded-md border border-cyan-400/10">
+                صفحة التصنيف
+              </span>
+            </div>
+
+            {/* Huge Beautiful Hashtag Banner with Pencil/Trash Admin controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-br from-[#121212] to-[#0d0d0d] p-7 rounded-[2rem] border border-white/5 shadow-2xl relative overflow-hidden group">
+              {/* Dynamic decorative backdrop blur anchor */}
+              <div className="absolute right-0 top-0 w-[400px] h-[400px] bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none group-hover:bg-cyan-500/10 transition-all duration-700" />
+              
+              <div className="flex items-center gap-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.15)] shrink-0">
+                  <span className="font-mono text-3xl font-bold leading-none">#</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-none">
+                      {publicTagFilter}
+                    </h1>
+                    
+                    {/* Controls placed RIGHT BY the Hashtag as requested */}
+                    {isAdmin && (
+                      <div className="flex items-center gap-1 shrink-0 select-none">
+                        <button
+                          onClick={() => setTagRenameModal({ isOpen: true, oldTag: publicTagFilter, newTag: publicTagFilter })}
+                          className="w-8 h-8 rounded-lg bg-white/5 border border-white/15 flex items-center justify-center hover:bg-cyan-500/10 hover:border-cyan-500/35 text-white/60 hover:text-cyan-400 transition-all cursor-pointer active:scale-90"
+                          title="تعديل هذا الهاشتاغ عالمياً"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setTagDeleteGlobalModal({ isOpen: true, tag: publicTagFilter })}
+                          className="w-8 h-8 rounded-lg bg-white/5 border border-white/15 flex items-center justify-center hover:bg-red-500/10 hover:border-red-500/35 text-white/60 hover:text-red-400 transition-all cursor-pointer active:scale-90"
+                          title="حذف هذا الهاشتاغ عالمياً"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-white/40 mt-2 font-light">
+                    تم العثور على <span className="text-cyan-400 font-bold font-mono">{displayFonts.length}</span> خطوط مرتبطة بهذا التصنيف
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Consolidated Controls Container in Hashtag view */}
+            <div className="w-full bg-[#141414] border border-white/5 rounded-3xl p-4 flex flex-col md:flex-row items-stretch gap-4 hover:bg-white/[0.02] transition-all duration-300 relative overflow-hidden group/unified">
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent" />
+              
+              {/* Preview input */}
+              <div className="flex-1 min-w-0 flex flex-col justify-between gap-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.preview_text')}</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={applyRandomText}
+                      className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer"
+                      title={t('toolbar.random_text') || 'Random Text'}
+                    >
+                      <Dices className="w-3.5 h-3.5" />
+                    </button>
+                    <AnimatePresence>
+                      {globalPreviewText && (
+                        <motion.button 
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          onClick={() => { setGlobalPreviewText(''); setFontPreviews({}); }}
+                          className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+                <textarea
+                  ref={toolbarTextareaRef}
+                  value={globalPreviewText}
+                  onChange={(e) => {
+                    setGlobalPreviewText(e.target.value);
+                    setFontPreviews({});
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${e.target.scrollHeight}px`;
+                  }}
+                  className="w-full bg-transparent border-0 p-0 text-white text-base md:text-lg focus:ring-0 outline-none resize-none placeholder:text-white/15 transition-all duration-300 leading-normal font-light text-right"
+                  placeholder={t('toolbar.placeholder') || "اكتب نصاً للمعاينة..."}
+                  rows={1}
+                  style={{ minHeight: '32px', fontFeatureSettings: 'normal', fontVariantLigatures: 'normal' }}
+                />
+              </div>
+
+              {/* Slider splitter */}
+              <div className="w-full md:w-px md:h-auto h-px bg-white/5 shrink-0" />
+
+              {/* Slider component */}
+              <div className="w-full md:w-[220px] shrink-0 flex flex-col justify-between gap-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.font_size')}</span>
+                  <span className="font-mono text-cyan-400 bg-cyan-400/5 px-2 py-0.5 rounded-lg text-[10px] border border-cyan-400/10 font-medium">{fontSize}px</span>
+                </div>
+                <div className="relative w-full h-8 flex items-center">
+                  <input 
+                    type="range" 
+                    min="20" 
+                    max="50" 
+                    value={fontSize} 
+                    onChange={(e) => setFontSize(Number(e.target.value))} 
+                    className="w-full h-1 bg-[#222] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95 focus:outline-none focus:ring-0" 
+                    dir="ltr"
+                    style={{
+                      background: `linear-gradient(to right, rgb(34, 211, 238) ${((fontSize - 20) / 30) * 100}%, #222 ${((fontSize - 20) / 30) * 100}%)`
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ======================== STANDARD VIEW (GROUPS & LIST CORES) ======================== */
+        <div className="pb-8 pt-4 px-4 md:px-8 w-full xl:max-w-[1600px] mx-auto font-sans" key="standard-main">
+          <div className="flex flex-col gap-6" ref={toolbarRef}>
+            {/* Top Row: Title/Group Name opposite/next to Button Controls! */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-white/5 pb-6">
+              <div className="space-y-1">
+                <h1 className="text-2xl md:text-3xl font-light text-white tracking-tight leading-tight">
                   {isPublicAllFonts ? 'الخطوط العامة' : group?.name}
                 </h1>
-                {!isPublicAllFonts && group?.description && <p className="text-sm text-white opacity-50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">{group.description}</p>}
-                {isPublicAllFonts && publicTagFilter && (
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-sm text-white/90">
-                    <span className="opacity-50">#</span>
-                    <span>{publicTagFilter}</span>
-                    {onClearTagFilter && (
-                      <button 
-                        onClick={onClearTagFilter}
-                        className="ml-1 p-0.5 rounded-full hover:bg-white/10 transition-colors opacity-70 hover:opacity-100"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+              </div>
+
+              {/* Controls aligned visually opposite the title */}
+              <div className="flex items-center gap-3 shrink-0">
+                {/* Filter trigger */}
+                {isPublicAllFonts && (
+                  <button 
+                    onClick={() => setIsTagModalOpen(true)}
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 backdrop-blur-md relative cursor-pointer
+                      ${publicTagFilter ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] scale-105' : 'bg-white/5 text-white/70 border-white/10 hover:border-white/30 hover:text-white'}
+                    `}
+                    title={publicTagFilter ? `مصنف حسب: #${publicTagFilter}` : 'تصنيف بالهاشتاغات'}
+                  >
+                    <Filter className="w-4 h-4" />
+                    {publicTagFilter && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 border border-[#0a0a0a]" />
                     )}
+                  </button>
+                )}
+
+                {/* Upload Action with direct upload logic */}
+                {isOwner && (
+                  <div className="flex items-center">
+                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".ttf,.otf,.woff,.woff2" multiple />
+                    <button 
+                      onClick={() => fileInputRef.current?.click()} 
+                      className="flex items-center gap-2.5 px-5 h-10 rounded-full bg-cyan-400/10 text-cyan-400 border border-cyan-400/30 hover:bg-cyan-400/20 hover:border-cyan-400/50 hover:text-cyan-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)] transition-all duration-300 font-bold text-xs tracking-wide group active:scale-95 text-right font-sans focus:outline-none shrink-0 cursor-pointer"
+                      title={t('font.upload') || 'رفع خط'}
+                    >
+                      <Upload className="w-4 h-4 text-cyan-400 shrink-0 group-hover:-translate-y-0.5 group-hover:scale-110 transition-transform duration-300 animate-pulse" />
+                      <span>{t('font.upload') || 'رفع خطوط جديدة'}</span>
+                    </button>
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Customize View Toggle */}
-              <div className="flex items-center">
-                <button 
-                  onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-                  className={`group flex items-center gap-2.5 px-5 py-2.5 rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] text-sm font-medium
-                    ${isToolbarOpen ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'bg-transparent text-white/70 border-white/20 hover:border-white/40 hover:text-white hover:bg-white/5'}
-                  `}
-                >
-                  <span className="tracking-wide">{t('toolbar.customize')}</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${isToolbarOpen ? 'rotate-180' : ''}`} />
-                </button>
+            {/* Sub-header descriptions & Tag filters */}
+            {((!isPublicAllFonts && group?.description) || (isPublicAllFonts && publicTagFilter)) && (
+              <div className="space-y-2 -mt-4">
+                {!isPublicAllFonts && group?.description && (
+                  <p className="text-sm text-white opacity-50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">
+                    {group.description}
+                  </p>
+                )}
+                {isPublicAllFonts && publicTagFilter && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-xs text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                      <span className="opacity-50 font-mono">#</span>
+                      <span className="font-medium">{publicTagFilter}</span>
+                      {onClearTagFilter && (
+                        <button 
+                          onClick={onClearTagFilter}
+                          className="ml-1.5 p-0.5 rounded-full hover:bg-cyan-500/25 transition-colors opacity-70 hover:opacity-100 cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Unified Preview & Size Controls (Merged Single Card) */}
+            <div className="w-full bg-[#141414] border border-white/5 rounded-3xl p-4 flex flex-col md:flex-row items-stretch gap-4 hover:bg-white/[0.02] transition-all duration-300 relative overflow-hidden group/unified">
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent" />
+              
+              {/* Preview Text part - takes up remaining space */}
+              <div className="flex-1 min-w-0 flex flex-col justify-between gap-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.preview_text')}</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={applyRandomText}
+                      className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer"
+                      title={t('toolbar.random_text') || 'Random Text'}
+                    >
+                      <Dices className="w-3.5 h-3.5" />
+                    </button>
+                    <AnimatePresence>
+                      {globalPreviewText && (
+                        <motion.button 
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          onClick={() => { setGlobalPreviewText(''); setFontPreviews({}); }}
+                          className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+                <textarea
+                  ref={toolbarTextareaRef}
+                  value={globalPreviewText}
+                  onChange={(e) => {
+                    setGlobalPreviewText(e.target.value);
+                    setFontPreviews({});
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${e.target.scrollHeight}px`;
+                  }}
+                  className="w-full bg-transparent border-0 p-0 text-white text-base md:text-lg focus:ring-0 outline-none resize-none placeholder:text-white/15 transition-all duration-300 leading-normal font-light text-right"
+                  placeholder={t('toolbar.placeholder') || "اكتب نصاً للمعاينة..."}
+                  rows={1}
+                  style={{ minHeight: '32px', fontFeatureSettings: 'normal', fontVariantLigatures: 'normal' }}
+                />
+              </div>
+
+              {/* Vertical Divider for desktop / Horizontal for mobile */}
+              <div className="w-full md:w-px md:h-auto h-px bg-white/5 shrink-0" />
+
+              {/* Font Size Selector part */}
+              <div className="w-full md:w-[220px] shrink-0 flex flex-col justify-between gap-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.font_size')}</span>
+                  <span className="font-mono text-cyan-400 bg-cyan-400/5 px-2 py-0.5 rounded-lg text-[10px] border border-cyan-400/10 font-medium">{fontSize}px</span>
+                </div>
+                <div className="relative w-full h-8 flex items-center">
+                  <input 
+                    type="range" 
+                    min="20" 
+                    max="50" 
+                    value={fontSize} 
+                    onChange={(e) => setFontSize(Number(e.target.value))} 
+                    className="w-full h-1 bg-[#222] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95 focus:outline-none focus:ring-0" 
+                    dir="ltr"
+                    style={{
+                      background: `linear-gradient(to right, rgb(34, 211, 238) ${((fontSize - 20) / 30) * 100}%, #222 ${((fontSize - 20) / 30) * 100}%)`
+                    }}
+                  />
+                </div>
               </div>
             </div>
-            <div className="shrink-0 flex items-center">
-              {isOwner && (
-                <div className="flex flex-col items-center gap-1.5">
-                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".ttf,.otf,.woff,.woff2" multiple />
-                  <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white hover:text-black hover:border-transparent transition-all duration-300 group focus:outline-none" title={t('font.upload')}>
-                    <Upload className="w-4 h-4 stroke-[1.5] transition-transform duration-300 group-hover:-translate-y-0.5" />
-                  </button>
-                  <span className="text-[9px] text-white opacity-30 font-sans tracking-widest uppercase">{t('font.max_limit') || 'Max 10'}</span>
-                </div>
-              )}
-            </div>
           </div>
-
-          {/* Customize Section */}
-          <AnimatePresence>
-            {isToolbarOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="overflow-hidden w-full relative z-20 will-change-transform"
-              >
-                <div className="w-full pt-8 pb-4 flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
-                  {/* Font Size Row */}
-                  <div className="space-y-6 w-full md:w-1/3 shrink-0 bg-white/[0.02] border border-white/5 p-6 rounded-3xl relative overflow-hidden group/slidercontainer hover:bg-white/[0.04] transition-all duration-500">
-                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover/slidercontainer:opacity-100 transition-opacity duration-700" />
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-white/40 uppercase tracking-widest text-[10px] font-bold">{t('toolbar.font_size')}</span>
-                      <span className="font-mono text-[#dcdcdc] bg-white/5 px-2 py-0.5 rounded-md text-xs border border-white/10 shadow-inner block text-center min-w-[40px]">{fontSize}</span>
-                    </div>
-                    <div className="relative w-full h-8 flex items-center group cursor-pointer">
-                      <input 
-                        type="range" 
-                        min="20" 
-                        max="50" 
-                        value={fontSize} 
-                        onChange={(e) => setFontSize(Number(e.target.value))} 
-                        className="w-full h-1 bg-[#222] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:transition-transform hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95 focus:outline-none focus:ring-0" 
-                        dir="ltr"
-                        style={{
-                          background: `linear-gradient(to right, white ${((fontSize - 20) / 30) * 100}%, #222 ${((fontSize - 20) / 30) * 100}%)`
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Preview Text */}
-                  <div 
-                    className="space-y-4 flex-1 w-full bg-white/[0.02] border border-white/5 p-6 rounded-3xl relative overflow-hidden group/inputcontainer hover:bg-white/[0.04] transition-all duration-500"
-                  >
-                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover/inputcontainer:opacity-100 transition-opacity duration-700" />
-                    <div className="flex justify-between items-center text-sm relative z-10">
-                       <span className="text-white/40 uppercase tracking-widest text-[10px] font-bold">{t('toolbar.preview_text')}</span>
-                       <div className="flex items-center gap-2">
-                         <button
-                           onClick={applyRandomText}
-                           className="text-white/30 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-all bg-white/5 active:scale-95"
-                           title={t('toolbar.random_text') || 'Random Text'}
-                         >
-                           <Dices className="w-3 h-3" />
-                         </button>
-                         <AnimatePresence>
-                           {globalPreviewText && (
-                             <motion.button 
-                               initial={{ opacity: 0, scale: 0.8 }}
-                               animate={{ opacity: 1, scale: 1 }}
-                               exit={{ opacity: 0, scale: 0.8 }}
-                               onClick={() => { setGlobalPreviewText(''); setFontPreviews({}); }}
-                               className="text-white/30 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-all bg-white/5 active:scale-95"
-                             >
-                               <X className="w-3 h-3" />
-                             </motion.button>
-                           )}
-                         </AnimatePresence>
-                       </div>
-                    </div>
-                    <div className="relative group/input mt-2 z-10">
-                      <textarea
-                        ref={toolbarTextareaRef}
-                        value={globalPreviewText}
-                        onChange={(e) => {
-                          setGlobalPreviewText(e.target.value);
-                          setFontPreviews({});
-                          e.target.style.height = 'auto';
-                          e.target.style.height = `${e.target.scrollHeight}px`;
-                        }}
-                        className={`w-full bg-transparent border-0 border-b border-white/5 p-0 pb-3 text-white text-xl md:text-2xl lg:text-3xl focus:ring-0 focus:border-white/10 outline-none resize-none placeholder:text-white/10 transition-all duration-300 leading-relaxed font-light`}
-                        placeholder={t('toolbar.placeholder')}
-                        rows={1}
-                        style={{ minHeight: '44px', fontFeatureSettings: 'normal', fontVariantLigatures: 'normal' }}
-                      />
-                      <div 
-                        className={`absolute bottom-0 left-0 w-full h-[2px] transition-all duration-300 pointer-events-none opacity-0 group-hover/inputcontainer:opacity-100 group-focus-within/input:opacity-100`} 
-                        style={{
-                          background: `radial-gradient(100px circle at 50% 100%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 100%)`
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
-      </div>
+      )}
 
       <input type="file" ref={weightInputRef} onChange={handleWeightUpload} className="hidden" accept=".ttf,.otf,.woff,.woff2" multiple />
 
@@ -749,31 +1003,6 @@ export const GroupDetails = ({
                       <div className="font-medium text-white text-base opacity-50 flex-1 flex flex-wrap items-center gap-2 min-w-0">
                         <span dir="ltr" className="truncate text-left block">{formatFontName(item.name || '')}</span>
                         {item.metadata?.status === 'success' && <Check className="w-3.5 h-3.5 text-white flex-shrink-0" />}
-                        {isPublicAllFonts && (
-                          <div className="flex gap-1 overflow-hidden" dir="rtl">
-                            {item.tags && item.tags.slice(0, 3).map(tag => (
-                              <button 
-                                key={tag} 
-                                onClick={(e) => { e.stopPropagation(); onTagClick?.(tag); }}
-                                className="text-[9px] bg-white/[0.05] border border-white/[0.05] hover:bg-white/10 hover:text-white px-1.5 py-0.5 rounded text-white/50 tracking-wider whitespace-nowrap cursor-pointer transition-all"
-                              >
-                                #{tag}
-                              </button>
-                            ))}
-                            {isAdmin && (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTagEditModal({ isOpen: true, fontId: item.id, tagsText: item.tags?.join(', ') || '' });
-                                }}
-                                className="text-[9px] bg-white/[0.02] border border-white/10 hover:border-white/30 hover:bg-white/[0.05] px-1.5 py-0.5 rounded text-white/50 hover:text-white transition-all cursor-pointer flex items-center justify-center"
-                                title="Edit Tags"
-                              >
-                                <Plus className="w-2.5 h-2.5" />
-                              </button>
-                            )}
-                          </div>
-                        )}
                       </div>
                       {item.metadata?.error && <span className="text-[10px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">Failed</span>}
                     </div>
@@ -782,12 +1011,12 @@ export const GroupDetails = ({
 
                 <div className={`flex items-center shrink-0 transition-all duration-300 ${expandedFontId === item.id || focusedFontId === item.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
                    {item.download_url && !item.metadata?.isUploading && (
-                    <button onClick={(e) => { e.stopPropagation(); if (item.download_url) handleDownload(item.download_url, item.name); }} className="p-3 -mr-1 hover:bg-white/10 rounded-full text-white opacity-40 hover:opacity-100 transition-all active:scale-90" title="Download">
+                    <button onClick={(e) => { e.stopPropagation(); if (item.download_url) handleDownload(item.download_url, item.name); }} className="p-3 -mr-1 hover:bg-white/10 rounded-full text-white opacity-40 hover:opacity-100 transition-all active:scale-90 cursor-pointer" title="Download">
                       <Download className="w-4 h-4" />
                     </button>
                   )}
                   {isOwner && !item.metadata?.isUploading && (
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteFontModal({ isOpen: true, fontId: item.id }); }} className="p-3 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-40 hover:opacity-100 transition-all active:scale-90" title="Delete">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteFontModal({ isOpen: true, fontId: item.id }); }} className="p-3 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-40 hover:opacity-100 transition-all active:scale-90 cursor-pointer" title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -826,6 +1055,36 @@ export const GroupDetails = ({
                   }} 
                 />
               </div>
+
+              {/* Bottom Hashtags Section with modern layered background (Separated & Larger) */}
+              {isPublicAllFonts && ((item.tags && item.tags.length > 0) || isAdmin) && (
+                <div className="mt-auto pt-2 bg-transparent flex flex-wrap items-center gap-1 relative z-20 border-t border-white/[0.02]" onClick={(e) => e.stopPropagation()}>
+                  <div className="w-full bg-black/30 backdrop-blur-md rounded-xl p-1.5 flex flex-wrap items-center gap-1 border border-white/5">
+                    {item.tags && item.tags.map(tag => (
+                      <button 
+                        key={tag} 
+                        onClick={(e) => { e.stopPropagation(); onTagClick?.(tag); }}
+                        className="text-xs bg-white/[0.02] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 px-2.5 py-1 rounded-lg text-white/60 cursor-pointer transition-all duration-300 flex items-center gap-1 font-sans font-light"
+                      >
+                        <span className="text-cyan-400 opacity-50 font-mono">#</span>
+                        <span>{tag}</span>
+                      </button>
+                    ))}
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTagEditModal({ isOpen: true, fontId: item.id, tagsText: '' });
+                        }}
+                        className="w-7 h-7 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 rounded-lg flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0"
+                        title="إضافة هاشتاغ جديد"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </motion.div>
           ))}
           </AnimatePresence>
@@ -975,6 +1234,85 @@ export const GroupDetails = ({
         document.body
       )}
 
+      {/* Tags Selection Modal */}
+      {createPortal(
+        <AnimatePresence>
+          {isTagModalOpen && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" dir={dir}>
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                onClick={() => setIsTagModalOpen(false)} 
+                className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 15 }} 
+                animate={{ opacity: 1, scale: 1, y: 0 }} 
+                exit={{ opacity: 0, scale: 0.95, y: 15 }} 
+                transition={{ type: "spring", damping: 25, stiffness: 350 }} 
+                className="bg-[#0f0f0f]/95 border border-white/10 w-full max-w-lg rounded-3xl p-6 relative z-10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] max-h-[80vh] flex flex-col font-sans"
+              >
+                <div className="flex items-center justify-between mb-5 border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+                      <Filter className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-md font-bold text-white tracking-tight">تصنيف الخطوط حسب الهاشتاغ</h3>
+                  </div>
+                  <button 
+                    onClick={() => setIsTagModalOpen(false)} 
+                    className="p-1.5 bg-white/5 rounded-full hover:bg-white/10 transition-colors"
+                  >
+                    <X className="w-4 h-4 text-white opacity-70" />
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto pr-1 custom-scrollbar flex-1 mb-5">
+                  {availableTags.length === 0 ? (
+                    <div className="text-sm text-white/40 py-8 text-center font-light">لا توجد هاشتاغات متاحة حالياً للتصنيف</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 pt-1" dir="rtl">
+                      {availableTags.map(tag => (
+                        <button
+                          key={tag}
+                          onClick={() => {
+                            onTagClick?.(tag);
+                            setIsTagModalOpen(false);
+                          }}
+                          className={`px-3.5 py-2 rounded-xl text-xs transition-all duration-300 flex items-center gap-2 border font-light cursor-pointer
+                            ${publicTagFilter === tag 
+                              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] scale-105' 
+                              : 'bg-white/[0.03] text-white/70 border-white/5 hover:border-white/20 hover:text-white'
+                            }
+                          `}
+                        >
+                          <span className="opacity-40 font-mono">#</span>
+                          <span>{tag}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {publicTagFilter && (
+                  <button
+                    onClick={() => {
+                      onClearTagFilter?.();
+                      setIsTagModalOpen(false);
+                    }}
+                    className="w-full py-2.5 rounded-xl text-xs text-red-400 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 hover:border-red-500/20 transition-all font-light mt-auto cursor-pointer"
+                  >
+                    إلغاء التصفية النشطة
+                  </button>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
       <ConfirmationModal
         isOpen={deleteFontModal.isOpen}
         onClose={() => setDeleteFontModal({ isOpen: false, fontId: null })}
@@ -1004,32 +1342,199 @@ export const GroupDetails = ({
       />
 
       <AnimatePresence>
-        {tagEditModal.isOpen && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setTagEditModal({ isOpen: false, fontId: null, tagsText: '' })} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-[#111] border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl overflow-hidden flex flex-col gap-4">
-               <div>
-                  <h3 className="text-white font-medium text-lg mb-1">إدارة الهاشتاغات</h3>
-                  <p className="text-white/50 text-sm">أدخل الهاشتاغات مفصولة بفاصلة (مثال: كوفي, حديث, عناوين)</p>
-               </div>
-               <input 
-                  type="text" 
-                  value={tagEditModal.tagsText} 
-                  autoFocus
-                  onChange={(e) => setTagEditModal(p => ({ ...p, tagsText: e.target.value }))}
-                  onKeyDown={e => e.key === 'Enter' && handleUpdateTags()}
-                  className="w-full bg-white/[0.03] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-white text-sm outline-none transition-all placeholder:text-white/20"
-                  placeholder="هاشتاغ 1, هاشتاغ 2"
-                  dir="auto"
-               />
-               <div className="flex justify-end gap-2 mt-2">
-                 <button onClick={() => setTagEditModal({ isOpen: false, fontId: null, tagsText: '' })} className="px-4 py-2 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all text-sm font-medium">إلغاء</button>
-                 <button onClick={handleUpdateTags} className="px-6 py-2 rounded-xl bg-white text-black hover:bg-white/90 transition-all text-sm font-medium">حفظ</button>
-               </div>
-             </motion.div>
-           </div>
+        {tagEditModal.isOpen && (() => {
+          const currentFont = dbFonts.find(f => f.id === tagEditModal.fontId);
+          return (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 font-sans" dir={dir}>
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                onClick={() => {
+                  setTagEditModal({ isOpen: false, fontId: null, tagsText: '' });
+                  setNewSingleTag('');
+                }} 
+                className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 15 }} 
+                animate={{ opacity: 1, scale: 1, y: 0 }} 
+                exit={{ opacity: 0, scale: 0.95, y: 15 }} 
+                className="relative bg-[#0f0f0f]/95 border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-5 z-10"
+              >
+                <div>
+                   <h3 className="text-white font-bold text-lg mb-1">إدارة هاشتاغات الخط</h3>
+                   <p className="text-white/40 text-xs font-light">لخط: <span className="text-cyan-400 font-mono text-xs">{formatFontName(currentFont?.name || '')}</span></p>
+                </div>
+
+                {/* Existing Tags Chips list */}
+                <div>
+                  <h4 className="text-white/60 text-xs font-medium mb-2.5">الهاشتاغات الحالية المضافة:</h4>
+                  {(!currentFont?.tags || currentFont.tags.length === 0) ? (
+                    <div className="text-white/30 text-xs py-2 font-light">لا توجد هاشتاغات مضافة بعد لهذا الخط</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
+                      {currentFont.tags.map(tag => (
+                        <div 
+                          key={tag} 
+                          className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-xl bg-cyan-500/5 hover:bg-cyan-500/10 border border-cyan-500/10 text-cyan-400 text-xs font-light transition-colors"
+                        >
+                          <span className="opacity-50 font-mono">#</span>
+                          <span>{tag}</span>
+                          <button 
+                            onClick={() => handleRemoveTag(currentFont.id, tag)}
+                            className="p-0.5 rounded-md hover:bg-cyan-500/20 text-cyan-400/50 hover:text-cyan-300 transition-colors cursor-pointer"
+                            title="إزالة الهاشتاغ"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Add new Tag Input with frozen `#` prefix */}
+                <div className="space-y-2">
+                  <label className="text-white/60 text-xs font-medium">إضافة هاشتاغ جديد:</label>
+                  <div className="relative flex items-center bg-white/[0.03] border border-white/10 focus-within:border-cyan-500/50 rounded-2xl px-4 py-3.5 transition-all duration-300">
+                    <span className="text-cyan-400 font-bold select-none text-base mr-1 font-mono">#</span>
+                    <input 
+                      type="text" 
+                      value={newSingleTag} 
+                      autoFocus
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const cleaned = val
+                          .replace(/\s+/g, '_')
+                          .replace(/[^a-zA-Z0-9_\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '');
+                        setNewSingleTag(cleaned);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleUpdateTags();
+                        }
+                      }}
+                      className="w-full bg-transparent border-none p-0 text-white text-sm outline-none focus:ring-0 leading-none placeholder:text-white/20 font-sans"
+                      placeholder="اكتب_الهاشتاغ"
+                      dir="ltr"
+                    />
+                  </div>
+                  <p className="text-[10px] text-white/30 font-light pr-1">يبدأ بالرمز # تلقائياً. المسافات تتحول تلقائياً إلى شرطة سفلية _</p>
+                </div>
+
+                <div className="flex justify-end gap-2.5 mt-2 border-t border-white/5 pt-4">
+                  <button 
+                    onClick={() => {
+                      setTagEditModal({ isOpen: false, fontId: null, tagsText: '' });
+                      setNewSingleTag('');
+                    }} 
+                    className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-2xl text-white/60 hover:text-white transition-all text-sm font-medium cursor-pointer"
+                  >
+                    إغلاق
+                  </button>
+                  <button 
+                    onClick={handleUpdateTags} 
+                    className="px-6 py-2 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black transition-all text-sm font-bold cursor-pointer hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                  >
+                    إضافة الهاشتاغ
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {tagRenameModal.isOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 font-sans" dir={dir}>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setTagRenameModal({ isOpen: false, oldTag: '', newTag: '' })} 
+              className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 15 }} 
+              className="relative bg-[#0f0f0f]/95 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-5 z-10"
+            >
+              <div>
+                 <h3 className="text-white font-bold text-lg mb-1">تعديل الهاشتاغ العام</h3>
+                 <p className="text-white/40 text-xs font-light">سيتم تعديل هذا الهاشتاغ عند <span className="text-cyan-400 font-bold">كل الخطوط المرتبطة به</span> في قاعدة البيانات</p>
+              </div>
+
+              <div className="text-xs text-white/50 bg-white/[0.02] border border-white/5 p-3 rounded-2xl flex flex-col gap-1">
+                <span>الهاشتاغ القديم:</span>
+                <span className="text-sm font-bold text-red-400 font-mono">#{tagRenameModal.oldTag}</span>
+              </div>
+
+              {/* Rename Tag Input with frozen `#` prefix */}
+              <div className="space-y-2">
+                <label className="text-white/60 text-xs font-medium">الاسم الجديد للهاشتاغ:</label>
+                <div className="relative flex items-center bg-white/[0.03] border border-white/10 focus-within:border-cyan-500/50 rounded-2xl px-4 py-3.5 transition-all duration-300">
+                  <span className="text-cyan-400 font-bold select-none text-base mr-1 font-mono">#</span>
+                  <input 
+                    type="text" 
+                    value={tagRenameModal.newTag} 
+                    autoFocus
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const cleaned = val
+                        .replace(/\s+/g, '_')
+                        .replace(/[^a-zA-Z0-9_\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '');
+                      setTagRenameModal(p => ({ ...p, newTag: cleaned }));
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleRenameHashtagGlobally(tagRenameModal.oldTag, tagRenameModal.newTag);
+                      }
+                    }}
+                    className="w-full bg-transparent border-none p-0 text-white text-sm outline-none focus:ring-0 leading-none placeholder:text-white/20 font-sans"
+                    placeholder="الاسم_الجديد"
+                    dir="ltr"
+                  />
+                </div>
+                <p className="text-[10px] text-white/30 font-light pr-1">يقبل فقط الحروف والأرقام والشرطة السفلية _</p>
+              </div>
+
+              <div className="flex justify-end gap-2.5 border-t border-white/5 pt-4">
+                <button 
+                  onClick={() => setTagRenameModal({ isOpen: false, oldTag: '', newTag: '' })} 
+                  className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-2xl text-white/60 hover:text-white transition-all text-sm font-medium cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button 
+                  onClick={() => handleRenameHashtagGlobally(tagRenameModal.oldTag, tagRenameModal.newTag)} 
+                  className="px-5 py-2 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black transition-all text-sm font-bold cursor-pointer hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                >
+                  تعديل الاسم
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={tagDeleteGlobalModal.isOpen}
+        onClose={() => setTagDeleteGlobalModal({ isOpen: false, tag: '' })}
+        onConfirm={() => {
+          if (tagDeleteGlobalModal.tag) {
+            handleDeleteHashtagGlobally(tagDeleteGlobalModal.tag);
+          }
+        }}
+        title="حذف الهاشتاغ نهائياً"
+        message={`هل أنت متأكد من رغبتك في حذف الهاشتاغ #${tagDeleteGlobalModal.tag} نهائياً؟ سيتم إزالته من جميع الخطوط كلياً.`}
+        confirmText="حذف الهاشتاغ"
+        variant="danger"
+      />
     </div>
   );
 };
