@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import { Notification, NotificationPreferences } from '../types';
 
 // Get notifications
-export const getNotifications = async (userId: string | null): Promise<Notification[]> => {
+export const getNotifications = async (_userId: string | null): Promise<Notification[]> => {
   const { data, error } = await supabase.rpc('get_my_notifications');
   
   if (error) {
@@ -54,7 +54,7 @@ export const deleteNotification = async (id: string): Promise<void> => {
 };
 
 // Get User Preferences (Local Storage Only)
-export const getUserNotificationPreferences = async (userId: string): Promise<NotificationPreferences> => {
+export const getUserNotificationPreferences = async (_userId: string): Promise<NotificationPreferences> => {
   const local = localStorage.getItem('fontat_notification_prefs');
   if (local) {
     try {
@@ -66,7 +66,7 @@ export const getUserNotificationPreferences = async (userId: string): Promise<No
 
 // Update User Preferences (Local Storage Only)
 export const updateUserNotificationPreferences = async (
-  userId: string,
+  _userId: string,
   preferences: NotificationPreferences
 ): Promise<void> => {
   localStorage.setItem('fontat_notification_prefs', JSON.stringify(preferences));

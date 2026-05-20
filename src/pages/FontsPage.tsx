@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
-import { Group, Font } from '../types';
+import { Group } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import { Folder, Plus, Search, X, Download, MoreVertical, ChevronDown, Grid, Settings2 } from 'lucide-react';
+import { Folder, Plus, MoreVertical, Grid } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Modal } from '../components/ui/Modal';
@@ -14,14 +14,10 @@ import { SmartSearch, SearchResult } from '../components/SmartSearch';
 
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { updateGroup, deleteGroupSmart, createGroupSmart, getGroups } from '../services/groupService';
-import { getGroupFonts, getPublicFonts } from '../services/fontService';
-import { FadeSection } from '../components/FadeSection';
 
 export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [groups, setGroups] = useState<Group[]>([]);
-  const [fontResults, setFontResults] = useState<Font[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAllGroupsOpen, setIsAllGroupsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -32,21 +28,6 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
   const [isPublic, setIsPublic] = useState(false);
-  const [fontPreviews, setFontPreviews] = useState<Record<string, string>>({});
-  const [globalPreviewText] = useState('اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)');
-  const [loadedFontDetails, setLoadedFontDetails] = useState<Record<string, Font>>({});
-  const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
-
-  const handlePreviewChange = (fontId: string, text: string) => {
-    setFontPreviews(prev => ({
-      ...prev,
-      [fontId]: text
-    }));
-  };
-
-  const getPreviewText = (fontId: string) => {
-    return fontPreviews[fontId] || globalPreviewText;
-  };
   
   // Confirmation Modal State
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; groupId: string | null }>({
@@ -92,7 +73,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     // Actually, listening to all group changes ensures the UI stays perfectly synced across multiple tabs.
     const channel = supabase
       .channel('groups_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, () => {
          // Silently fetch groups to keep UI in sync without user interruption
          fetchGroups(true);
       })
@@ -103,109 +84,19 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     };
   }, [mode]);
 
-  const loadFontDetails = async (fontIds: string[]) => {
-    const idsToLoad = fontIds.filter(id => !loadedFontDetails[id] && !loadingDetails[id]);
-    if (idsToLoad.length === 0) return;
-
-    setLoadingDetails(prev => ({ ...prev, ...Object.fromEntries(idsToLoad.map(id => [id, true])) }));
-
-    try {
-      // Need to fetch details. We can use getGroupFonts(null) and find what we need since we can't query private table.
-      // But if we already have it in search, it's fine.
-      const fonts = await getGroupFonts(null); // passing null directly to fetch public/general fonts without group filtering
-      const matchedFonts = fonts.filter(f => idsToLoad.includes(f.id));
-      
-      setLoadedFontDetails(prev => ({ ...prev, ...Object.fromEntries(matchedFonts.map(f => [f.id, f])) }));
-    } catch (e) {
-      console.error(e);
-    }
-    
-    setLoadingDetails(prev => ({ ...prev, ...Object.fromEntries(idsToLoad.map(id => [id, false])) }));
-  };
-
-  const handleDownload = async (url: string, filename: string) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename.endsWith('.ttf') || filename.endsWith('.otf') || filename.endsWith('.woff') || filename.endsWith('.woff2') 
-        ? filename 
-        : `${filename}.ttf`; // Fallback extension if missing
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (error) {
-      console.error('Download failed:', error);
-      // Fallback to direct link
-      window.open(url, '_blank');
-    }
-  };
-
-  // Load fonts for preview using FontFace API
-  useEffect(() => {
-    const loadFonts = async () => {
-      // Collect all fonts that need loading
-      const fontsToLoad: Font[] = Object.values(loadedFontDetails);
-
-      for (const font of fontsToLoad) {
-        if (font.download_url && font.id) {
-          const styleId = `style-${font.id}`;
-          if (!document.getElementById(styleId)) {
-            const style = document.createElement('style');
-            style.id = styleId;
-
-            let format = "format('truetype')";
-            const lowerName = (font.name || '').toLowerCase();
-            if (lowerName.endsWith('.woff2') || font.download_url.includes('.woff2')) format = "format('woff2')";
-            else if (lowerName.endsWith('.woff') || font.download_url.includes('.woff')) format = "format('woff')";
-            else if (lowerName.endsWith('.otf') || font.download_url.includes('.otf')) format = "format('opentype')";
-
-            style.textContent = `
-              @font-face {
-                font-family: "${font.name}";
-                src: url("${font.download_url}") ${format};
-                font-display: swap;
-              }
-            `;
-            document.head.appendChild(style);
-
-            // Preload link to handle CORS explicitly as requested
-            const link = document.createElement('link');
-            link.rel = 'preload';
-            link.as = 'font';
-            link.href = font.download_url;
-            link.crossOrigin = 'anonymous';
-            document.head.appendChild(link);
-          }
-        }
-      }
-    };
-
-    loadFonts();
-  }, [loadedFontDetails]);
-
   // Search implementation removed because we now use the SmartSearch component directly.
   
-  const fetchGroups = async (hideLoader = false) => {
+  const fetchGroups = async (_hideLoader = false) => {
     if (mode === 'public') {
       setGroups([]);
-      if (!hideLoader) setLoading(false);
       return;
     }
     
-    if (!hideLoader) setLoading(true);
     try {
       const data = await getGroups();
       setGroups(data);
     } catch (error) {
       console.error('Error fetching groups:', error);
-    } finally {
-      if (!hideLoader) setLoading(false);
     }
   };
 
@@ -391,7 +282,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             let groupId = meta?.group_id;
             
             if (!groupId && res.id) {
-              const { data, error } = await supabase.from('fonts').select('group_id').eq('id', res.id).single();
+              const { data } = await supabase.from('fonts').select('group_id').eq('id', res.id).single();
               if (data) groupId = data.group_id;
             }
 
@@ -409,7 +300,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
                setViewingGroupId(groupId);
                setHighlightedFont({ id: res.id, ts: Date.now() });
             } else {
-               addNotification('error', `عذراً، لم نتمكن من الوصول للمجموعة الخاصة بهذا الخط.`);
+               addNotification('error', dir === 'rtl' ? 'عذراً، لم نتمكن من الوصول للمجموعة الخاصة بهذا الخط.' : 'Sorry, we could not access the group for this font.');
             }
           }} 
         />

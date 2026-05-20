@@ -4,7 +4,6 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
-import { FadeSection } from '../components/FadeSection';
 
 export const Login = () => {
   const [email, setEmail] = useState('');

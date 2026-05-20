@@ -200,7 +200,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
               {isHashtagSearch ? (
                 <div className="flex flex-col overflow-y-auto w-full divide-y divide-white/[0.04] p-2">
                   <div className="text-[10px] text-white/30 px-4 py-2 uppercase font-medium tracking-wider mb-1 font-sans">
-                    الفرز بالهاشتاغات المطابقة ({tagsList.length})
+                    {dir === 'rtl' ? `الفرز بالهاشتاغات المطابقة (${tagsList.length})` : `Filter by matching tags (${tagsList.length})`}
                   </div>
                   {tagsList.map((tag, idx) => (
                     <button
@@ -215,7 +215,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                         </span>
                       </div>
                       <span className="text-xs text-white/30 group-hover:text-white/50 transition-colors font-light">
-                        تصفية الخطوط العامة
+                        {dir === 'rtl' ? 'تصفية الخطوط العامة' : 'Filter Public Fonts'}
                       </span>
                     </button>
                   ))}
@@ -224,7 +224,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                 <>
                   <div className="flex flex-col overflow-y-auto w-full p-2">
                     <div className="text-[10px] text-white/30 px-4 py-2 uppercase font-medium tracking-wider mb-1 font-sans">
-                      الخطوط المطابقة ({results.length})
+                      {dir === 'rtl' ? `الخطوط المطابقة (${results.length})` : `Matching Fonts (${results.length})`}
                     </div>
                     {results.map((result, idx) => (
                       <button
@@ -269,7 +269,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                   </div>
                   {additionalCount > 0 && (
                     <div className="px-5 py-2.5 text-center text-white/40 text-[11px] font-light border-t border-white/[0.03] shrink-0 bg-white/[0.01]">
-                       + {additionalCount} نتائج إضافية
+                       + {additionalCount} {dir === 'rtl' ? 'نتائج إضافية' : 'additional results'}
                     </div>
                   )}
                 </>
@@ -277,7 +277,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
             </>
           ) : (
             <div className="px-5 py-6 text-center text-white opacity-40 font-light text-sm bg-transparent">
-              لم نعثر على نتيجة تطابق بحثك :(
+              {dir === 'rtl' ? 'لم نعثر على نتيجة تطابق بحثك :(' : 'No matching results found :('}
             </div>
           )}
         </div>

@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LogOut, Settings, Loader2, Instagram, Mail, Eye, EyeOff, Bell, ChevronDown, ChevronUp, Shield, Key, Trash2, UserCircle2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { LogOut, Settings, Loader2, Mail, Eye, EyeOff, Bell, ChevronDown, ChevronUp, Shield, Key, Trash2, UserCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
-import { FadeSection } from '../components/FadeSection';
 import { getUserNotificationPreferences, updateUserNotificationPreferences } from '../services/notificationService';
 
 const PREFS_KEY = 'fontat_notification_prefs';

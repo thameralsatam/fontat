@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, Image as ImageIcon, Upload, Loader2, Save } from 'lucide-react';
+import { X, Plus, Trash2, Image as ImageIcon, Loader2, Save } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { NotificationSlide } from '../../types';
 import { createNotification, uploadNotificationImage } from '../../services/notificationService';
@@ -12,7 +12,7 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
       { id: Math.random().toString(), title: '', description: '', image_url: '' }
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { t, dir } = useLanguage();
+  const { dir } = useLanguage();
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
 
@@ -52,7 +52,7 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
 
       setIsSubmitting(true);
       try {
-          const result = await createNotification(type, slides, null);
+          await createNotification(type, slides, null);
           alert('تم النشر بنجاح! 🚀');
           onSuccess();
           onClose();

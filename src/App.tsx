@@ -36,7 +36,19 @@ const AppRoutes = () => {
         </Layout>
       } />
       
+      <Route path="/fonts/:fontParam" element={
+        <Layout>
+          <FontsPage mode="public" />
+        </Layout>
+      } />
+      
       <Route path="/my-fonts" element={
+        <Layout>
+          <FontsPage mode="private" />
+        </Layout>
+      } />
+
+      <Route path="/my-fonts/:fontParam" element={
         <Layout>
           <FontsPage mode="private" />
         </Layout>

@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Beaker, Download, Settings, Type, Search, Clock, ArrowRight } from 'lucide-react';
+import { Upload, Beaker, Download, Settings, Type, Search, Clock, ArrowRight, X, Copy } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
 import opentype from 'opentype.js';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useGlobal } from '../contexts/GlobalContext';
 import { saveFontHistory, getFontHistoryList, getFontHistoryItem, FontHistoryItem, clearFontHistory } from '../lib/db';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
-import { FadeSection } from '../components/FadeSection';
 import { formatFontName } from '../utils/text';
 
 export const Lab = () => {
   const { t, language } = useLanguage();
+  const { addNotification } = useGlobal();
   const [font, setFont] = useState<any>(null);
   const [originalFontBlob, setOriginalFontBlob] = useState<Blob | null>(null);
   const [axes, setAxes] = useState<any[]>([]);
@@ -25,10 +27,30 @@ export const Lab = () => {
   const [history, setHistory] = useState<Omit<FontHistoryItem, 'blob'>[]>([]);
   const [currentFontId, setCurrentFontId] = useState<string | null>(null);
   const [isClearHistoryModalOpen, setIsClearHistoryModalOpen] = useState(false);
+  const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<string | null>(null);
   const glyphsContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadHistory();
+    const handleAutoload = async () => {
+      await loadHistory();
+      const autoLoadId = localStorage.getItem('lab_autoload_id');
+      if (autoLoadId) {
+        localStorage.removeItem('lab_autoload_id');
+        handleLoadHistoryItem(autoLoadId);
+      }
+    };
+    handleAutoload();
+  }, []);
+
+  useEffect(() => {
+    (window as any).onLabGlyphClick = (char: string) => {
+      setSelectedGlyphZoom(char);
+    };
+    return () => {
+      try {
+        delete (window as any).onLabGlyphClick;
+      } catch (e) {}
+    };
   }, []);
 
   const loadHistory = async () => {
@@ -298,7 +320,11 @@ export const Lab = () => {
         card.onclick = () => {
           if (glyph.unicode) {
             const char = String.fromCharCode(glyph.unicode);
-            setPreviewText(prev => prev + char);
+            if (typeof (window as any).onLabGlyphClick === 'function') {
+              (window as any).onLabGlyphClick(char);
+            } else {
+              setPreviewText(prev => prev + char);
+            }
           }
         };
         
@@ -640,6 +666,92 @@ export const Lab = () => {
           </div>
         )}
       </div>
+
+      {/* Giant Zoom Overlay lens for Lab glyphs */}
+      <AnimatePresence>
+        {selectedGlyphZoom && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedGlyphZoom(null)}
+              className="absolute inset-0 bg-[#020202]/90 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 15 }}
+              className="relative bg-[#0d0d0d] border border-cyan-400/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col justify-center items-center gap-6 z-10 text-center"
+            >
+              <div className="absolute top-5 right-5">
+                <button 
+                  onClick={() => setSelectedGlyphZoom(null)}
+                  className="p-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-full transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-[10px] uppercase font-bold tracking-widest text-[#cbd5e1]/30 font-sans">
+                {t('dir') === 'rtl' ? 'معاينة هندسية مكبرة' : 'Macro Geometry Preview'}
+              </div>
+
+              {/* Character display styling with loaded dynamic font if present */}
+              {font ? (
+                <div 
+                  className="text-[110px] select-all leading-none py-10 text-white select-text font-serif min-h-[140px] flex items-center justify-center"
+                  style={{
+                    fontFamily: `'LabFont-${currentFontId}', sans-serif`,
+                  }}
+                  title="اسحب أو انسخ الحرف"
+                >
+                  {selectedGlyphZoom}
+                </div>
+              ) : (
+                <div 
+                  className="text-[110px] select-all leading-none py-10 text-white select-text font-serif font-extrabold min-h-[140px] flex items-center justify-center"
+                  title="اسحب أو انسخ الحرف"
+                >
+                  {selectedGlyphZoom}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="w-full flex flex-col gap-2.5 pb-2 mt-4 font-sans">
+                {/* 1. Copy character string */}
+                <button
+                  onClick={() => {
+                    if (selectedGlyphZoom) {
+                      navigator.clipboard.writeText(selectedGlyphZoom);
+                      addNotification('success', t('dir') === 'rtl' ? 'تم نسخ المحرف للحافظة!' : 'Copied to clipboard!');
+                    }
+                  }}
+                  className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>{t('dir') === 'rtl' ? 'نسخ هذا المحرف كـ نص' : 'Copy Character Text'}</span>
+                </button>
+
+                {/* 2. Insert into typing preview text editor */}
+                <button
+                  onClick={() => {
+                    if (selectedGlyphZoom) {
+                      setPreviewText(prev => prev + selectedGlyphZoom);
+                      addNotification('success', t('dir') === 'rtl' ? 'تمت إضافة المحرف للمحرر!' : 'Added character to editor!');
+                      setSelectedGlyphZoom(null);
+                    }
+                  }}
+                  className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/5"
+                >
+                  <ArrowRight className={`w-4 h-4 ${t('dir') === 'rtl' ? 'rotate-180' : ''}`} />
+                  <span>{t('dir') === 'rtl' ? 'إدراج في مساحة التجربة' : 'Insert into Sandbox editor'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <ConfirmationModal
         isOpen={isClearHistoryModalOpen}

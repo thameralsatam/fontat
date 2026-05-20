@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Upload, Compass, Beaker, Send, Camera, Search, Focus } from "lucide-react";
+import { Upload, Compass, Beaker, Send, Camera, Focus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "../contexts/LanguageContext";
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Link, useLocation } from 'react-router-dom';
 import { Upload, AlertTriangle, Info, Check, X, LogIn, Beaker } from 'lucide-react';
@@ -92,7 +92,7 @@ const NotificationItem = ({ notification, onToggle, onRemove }: { notification: 
 };
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { dir, t, language, setLanguage } = useLanguage();
+  const { dir, t } = useLanguage();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const { notifications, toggleNotification, removeNotification } = useGlobal();

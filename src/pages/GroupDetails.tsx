@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Group, FontWeight, Font } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -8,8 +8,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts } from '../services/fontService';
 import { getGroups } from '../services/groupService';
-import { Trash2, Download, X, Layers, Upload, Plus, Check, Dices, Filter, Edit3 } from 'lucide-react';
+import { Trash2, Download, X, Layers, Upload, Plus, Check, Dices, Filter, Edit3, ArrowRight, ArrowLeft, Sliders, Layout, Copy, Sparkles, BookOpen, Beaker } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { saveFontHistory } from '../lib/db';
+// @ts-ignore
+import opentype from 'opentype.js';
 
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { formatFontName } from '../utils/text';
@@ -39,8 +42,9 @@ export const GroupDetails = ({
   onClearTagFilter?: () => void,
   onTagClick?: (tag: string) => void
 }) => {
-  const { id: paramId } = useParams<{ id: string }>();
+  const { id: paramId, fontParam } = useParams<{ id: string, fontParam: string }>();
   const id = groupId || paramId;
+  const navigate = useNavigate();
 
   const { t, dir } = useLanguage();
   const { user } = useAuth();
@@ -48,12 +52,350 @@ export const GroupDetails = ({
   
   const [group, setGroup] = useState<Group | null>(groupData || null);
 
+  const [selectedFontDetail, setSelectedFontDetail] = useState<Font | null>(null);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [customPoemTexts, setCustomPoemTexts] = useState<Record<string, string>>({});
+
+  const [selectedPoemIndex, setSelectedPoemIndex] = useState(0);
+  const [detailLayoutMode, setDetailLayoutMode] = useState<'poem' | 'paragraph' | 'glyphs' | 'poster'>('poem');
+  const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<string | null>(null);
+
+  const [randomBackdropChar, setRandomBackdropChar] = useState('ع');
+  const [selectedFontWeights, setSelectedFontWeights] = useState<any[]>([]);
+  const [isDetailScrolled, setIsDetailScrolled] = useState(false);
+  const [parsedGlyphs, setParsedGlyphs] = useState<{ char: string; index: number; unicode?: string }[]>([]);
+  const [detectedLangs, setDetectedLangs] = useState<string[]>([]);
+  const [loadingGlyphs, setLoadingGlyphs] = useState(false);
+  const [glyphSearch, setGlyphSearch] = useState('');
+
+  const POEMS = [
+    {
+      title: 'حكم سيوفك في رقاب العذل',
+      author: 'عنترة بن شداد',
+      text: `حكم سيوفك في رقاب العذل
+وإذا نزلت بدار ذل فارحل
+وإذا بليت بظالم كن ظالما
+وإذا لقيت ذوي الجهالة فاجهلي
+وإذا الجبان نهاك يوم كريهة
+خوفا عليك من ازدحام الجحفل
+فاعص مقالته ولا تحفل بها
+واقدم إذا حق اللقا في الأول
+واختر لنفسك منزلا تعلو به
+أو مت كريما تحت ظل القسطل
+فالموت لا ينجيك من آفاته
+حصن ولو شيدته بالجندل`
+    },
+    {
+      title: 'وداع الروض والخيل والليل',
+      author: 'أبو الطيب المتنبي',
+      text: `الخَيلُ وَاللّيلُ وَالبَيداءُ تَعرِفُني
+وَالسّيفُ وَالرّمحُ وَالقِرطاسُ وَالقَلَمُ
+صَحِبتُ في الفَلَواتِ الوَحشَ مُنفَرِداً
+حَتّى تَعَجَّبَ مِنّي القورُ وَالأَكَمُ
+يا مَن يَعِزُّ عَلَينا أَن نُفارِقَهُم
+وِجدانُنا كُلَّ شَيءٍ بَعدَكُم عَدَمُ
+ما كانَ أَخلَقَنا مِنكُم بِتَكرِمَةٍ
+لَو أَنَّ أَمرَكُمُ مِن أَمرِنا أَمَمُ
+إِن كانَ سَرَّكُمُ ما قالَ حاسِدُنا
+فَما لِجُرحٍ إِذا أَرضاكُمُ أَلَمُ`
+    },
+    {
+      title: 'كن جميلاً تر الوجود جميلاً',
+      author: 'إيليا أبو ماضي',
+      text: `أَيُّهَذا الشّاكِي وَما بِكَ داءُ
+كَيفَ تَغدو إِذا غَدَوتَ عَليلا
+إِنَّ شَرَّ الجُناةِ في الأَرضِ نَفسٌ
+تَتَوَقّى قَبلَ الرَّحيلِ الرَّحيلا
+وَتَرى الشَّوكَ في الوُرودِ وَتَعمى
+أَن تَرى فَوقَها النَّدى إِكليلا
+هُوَ عِبءٌ عَلى الحَياةِ ثَقيلٌ
+مَن يَظُنُّ الحَياةَ عِبئاً ثَقيلا
+أَيُّهَذا الشّاكِي وَما بِكَ داءُ
+كُن جَميلاً تَرى الوُجودَ جَميلاً`
+    },
+    {
+      title: 'سلوا قلبي غداة سلا وثابا',
+      author: 'أحمد شوقي',
+      text: `سَلوا قَلبي غَداةَ سَلا وَثابا
+لَعَلَّ عَلى الجَمالِ لَهُ عِتابا
+وَيُثلى في الغَرامِ سِنونَ فُرضَت
+تُعيدُ عُهودَ مَن بَعُدوا شَبابا
+وَتَرجِعُني الذِكرى لِعَهدِ جَميلٍ
+تَذوقُ بِهِ الشِّفاهُ لَنا شَرابا
+إِذا ما جِئتَ سَيِّدَةَ العَذارى
+فَقُل يا لَيتَني كُنتُ التُرابا`
+    }
+  ];
+
+  const getPoemText = (fontId: string) => customPoemTexts[`${fontId}_${selectedPoemIndex}`] || POEMS[selectedPoemIndex].text;
+
+  const handlePoemChange = (fontId: string, text: string) => {
+    setCustomPoemTexts(prev => ({ ...prev, [`${fontId}_${selectedPoemIndex}`]: text }));
+  };
+
+  const activeTheme = {
+    bg: 'bg-[#030303]',
+    cardBg: 'bg-[#090b0e]/90 border-white/5 backdrop-blur-3xl',
+    text: 'text-white',
+    textSecondary: 'text-white/40',
+    accentBg: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20',
+    btnAccent: 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_20px_rgba(6,182,212,0.15)]',
+    accentGlow: 'bg-cyan-500/5',
+    borderColor: 'border-white/5',
+    inputBg: 'bg-white/5 text-white focus:border-cyan-400/30'
+  };
+
+  const handleTransferToLab = async (font: Font) => {
+    if (!font.download_url) {
+      addNotification('error', dir === 'rtl' ? 'رابط تحميل الخط غير متوفر' : 'Font download url not available');
+      return;
+    }
+    setIsTransferring(true);
+    try {
+      const response = await fetch(font.download_url);
+      if (!response.ok) throw new Error('Failed to fetch font file');
+      const blob = await response.blob();
+
+      const fontId = font.id || crypto.randomUUID();
+      const historyItem = {
+        id: fontId,
+        name: font.name,
+        blob: blob,
+        axes: {},
+        features: {},
+        lastModified: Date.now()
+      };
+      await saveFontHistory(historyItem);
+
+      localStorage.setItem('lab_autoload_id', fontId);
+      addNotification('success', dir === 'rtl' ? 'تم نقل الخط بنجاح إلى المختبر!' : 'Font transferred to Lab successfully!');
+      
+      setSelectedFontDetail(null);
+      navigate('/lab');
+    } catch (err: any) {
+      console.error(err);
+      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء نقل الخط إلى المختبر' : 'An error occurred while transferring to Lab');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
   // Sync with parent updates
   useEffect(() => {
     if (groupData) {
       setGroup(groupData);
     }
   }, [groupData]);
+
+  // Set random backdrop char when selectedFontDetail opens
+  useEffect(() => {
+    if (selectedFontDetail) {
+      const RANDOM_LETTERS = ['ع', 'ك', 'ل', 'م', 'هـ', 'ض', 'ق', 'ش', 'أ', 'ي', 'ج', 'خ', 'ط', 'ظ', 'ص', 'س'];
+      const randomIdx = Math.floor(Math.random() * RANDOM_LETTERS.length);
+      setRandomBackdropChar(RANDOM_LETTERS[randomIdx]);
+    }
+  }, [selectedFontDetail]);
+
+  // Fetch and parse font for actual real glyph map
+  useEffect(() => {
+    if (!selectedFontDetail || !selectedFontDetail.download_url) {
+      setParsedGlyphs([]);
+      return;
+    }
+
+    let isCancelled = false;
+    const fetchAndParseFont = async () => {
+      setLoadingGlyphs(true);
+      try {
+        const response = await fetch(selectedFontDetail.download_url!);
+        if (!response.ok) throw new Error('Failed to fetch font file');
+        const arrayBuffer = await response.arrayBuffer();
+        const parsedFont = opentype.parse(arrayBuffer);
+        
+        const numGlyphs = parsedFont.numGlyphs || 0;
+        const glyphsList: { char: string; index: number; unicode?: string }[] = [];
+        
+        for (let i = 0; i < numGlyphs; i++) {
+          const glyph = parsedFont.glyphs.get(i);
+          if (glyph && glyph.unicode) {
+            const char = String.fromCharCode(glyph.unicode);
+            glyphsList.push({
+              char,
+              index: glyph.index,
+              unicode: glyph.unicode.toString(16).toUpperCase().padStart(4, '0')
+            });
+          }
+        }
+        
+        let hasArabic = false;
+        let hasLatin = false;
+        let hasChinese = false;
+        let hasCyrillic = false;
+        let hasHebrew = false;
+        let hasDevanagari = false;
+        let hasThai = false;
+        let hasJapanese = false;
+        let hasKorean = false;
+        
+        const nonLatinCandidates: string[] = [];
+        const latinCandidates: string[] = [];
+
+        // Scan for specific characters
+        for (const g of glyphsList) {
+          if (!g.unicode) continue;
+          const code = parseInt(g.unicode, 16);
+          // Check Arabic block
+          if (code >= 0x0600 && code <= 0x06FF) hasArabic = true;
+          // Check Latin block
+          if ((code >= 0x0041 && code <= 0x005A) || (code >= 0x0061 && code <= 0x007A) || (code >= 0x00C0 && code <= 0x00FF)) hasLatin = true;
+          // Check Chinese block
+          if (code >= 0x4E00 && code <= 0x9FFF) hasChinese = true;
+          // Check Cyrillic
+          if (code >= 0x0400 && code <= 0x04FF) hasCyrillic = true;
+          // Check Hebrew
+          if (code >= 0x0590 && code <= 0x05FF) hasHebrew = true;
+          // Check Devanagari
+          if (code >= 0x0900 && code <= 0x097F) hasDevanagari = true;
+          // Check Thai
+          if (code >= 0x0E00 && code <= 0x0E7F) hasThai = true;
+          // Check Japanese (Hiragana/Katakana)
+          if ((code >= 0x3040 && code <= 0x309F) || (code >= 0x30A0 && code <= 0x30FF)) hasJapanese = true;
+          // Check Korean (Hangul)
+          if (code >= 0xAC00 && code <= 0xD7AF) hasKorean = true;
+
+          // Gather candidate chars for backdrop (skip common space, punctuation and math blocks)
+          // Rough filter: exclude < 0x0041 (spaces, numbers, punctuation)
+          // also we want letters preferably
+          if (g.char && g.char.trim() !== '') {
+             const isLatin = (code >= 0x0041 && code <= 0x005A) || (code >= 0x0061 && code <= 0x007A) || (code >= 0x00C0 && code <= 0x00FF);
+             
+             if (!isLatin && code > 0x00BF) { // Above Basic/Latin-1 mostly
+               nonLatinCandidates.push(g.char);
+             } else if (isLatin) {
+               latinCandidates.push(g.char);
+             }
+          }
+        }
+        
+        const bestCandidates = nonLatinCandidates.length > 0 ? nonLatinCandidates : latinCandidates;
+
+        const langs = [];
+        if (hasArabic) langs.push(dir === 'rtl' ? 'العربية' : 'Arabic');
+        if (hasLatin) langs.push(dir === 'rtl' ? 'اللاتينية' : 'Latin');
+        if (hasChinese) langs.push(dir === 'rtl' ? 'الصينية' : 'Chinese');
+        if (hasCyrillic) langs.push(dir === 'rtl' ? 'السيريلية' : 'Cyrillic');
+        if (hasHebrew) langs.push(dir === 'rtl' ? 'العبرية' : 'Hebrew');
+        if (hasDevanagari) langs.push(dir === 'rtl' ? 'الديوناكرية' : 'Devanagari');
+        if (hasThai) langs.push(dir === 'rtl' ? 'التايلندية' : 'Thai');
+        if (hasJapanese) langs.push(dir === 'rtl' ? 'اليابانية' : 'Japanese');
+        if (hasKorean) langs.push(dir === 'rtl' ? 'الكورية' : 'Korean');
+        
+        if (langs.length === 0) langs.push(dir === 'rtl' ? 'غير محدد' : 'Unknown');
+        
+        if (!isCancelled) {
+          if (bestCandidates.length > 0) {
+            const randomIdx = Math.floor(Math.random() * bestCandidates.length);
+            setRandomBackdropChar(bestCandidates[randomIdx]);
+          }
+          setDetectedLangs(langs);
+          setParsedGlyphs(glyphsList.slice(0, 450));
+        }
+      } catch (err) {
+        console.error('Error parsing font in GroupDetails:', err);
+        if (!isCancelled) {
+          const fallbackChars = 'أ ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن هـ و ي لأ لإ لآ ٠ ١ ٢ ٣ ٤ ٥ ٦ ٧ ٨ ٩ 0 1 2 3 4 5 6 7 8 9 َ ُ ِ ّ ً ٌ ٍ ْ ٰ ~ ، ؛ ؟ . ! : - + = *'.split(' ');
+          setParsedGlyphs(fallbackChars.map((char, index) => ({ char, index })));
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoadingGlyphs(false);
+        }
+      }
+    };
+
+    fetchAndParseFont();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedFontDetail]);
+
+  // Fetch weights when font selected
+  useEffect(() => {
+    if (selectedFontDetail) {
+      getFontWeights(selectedFontDetail.id)
+        .then(weights => {
+          setSelectedFontWeights(weights || []);
+        })
+        .catch(err => {
+          console.error('Error fetching font weights:', err);
+          setSelectedFontWeights([]);
+        });
+    } else {
+      setSelectedFontWeights([]);
+    }
+  }, [selectedFontDetail]);
+
+  // Search filtered glyph list
+  const filteredGlyphs = useMemo(() => {
+    if (!glyphSearch.trim()) return parsedGlyphs;
+    const query = glyphSearch.toLowerCase().trim();
+    return parsedGlyphs.filter(g => 
+      g.char.toLowerCase().includes(query) || 
+      (g.unicode && g.unicode.toLowerCase().includes(query)) ||
+      String(g.index).includes(query)
+    );
+  }, [parsedGlyphs, glyphSearch]);
+
+  // Dynamic font format extractor
+  const getFontFormat = (url?: string) => {
+    if (!url) return 'TTF';
+    const lower = url.toLowerCase();
+    if (lower.includes('.otf')) return 'OTF';
+    if (lower.includes('.woff2')) return 'WOFF2';
+    if (lower.includes('.woff')) return 'WOFF';
+    return 'TTF';
+  };
+
+  // Dynamic weights string extractor
+  const getWeightsDisplay = () => {
+    const count = selectedFontWeights.length;
+    if (count === 0) return '-';
+    if (count === 1) return dir === 'rtl' ? 'وزن واحد' : '1 weight';
+    if (count === 2) return dir === 'rtl' ? 'وزنان' : '2 weights';
+    if (count === 3) return dir === 'rtl' ? '٣ أوزان' : '3 weights';
+    if (count === 4) return dir === 'rtl' ? '٤ أوزان' : '4 weights';
+    return dir === 'rtl' ? `${count} أوزان` : `${count} weights`;
+  };
+
+  // Dynamic languages analyzer
+  const getSupportedLanguages = () => {
+    if (detectedLangs.length > 2) return dir === 'rtl' ? `${detectedLangs.length} لغات مدعومة` : `${detectedLangs.length} Languages`;
+    if (detectedLangs.length > 0) return detectedLangs.join('، ');
+    if (parsedGlyphs.length === 0) return dir === 'rtl' ? 'جاري الفحص...' : 'Detecting...';
+    
+    let hasArabic = false;
+    let hasLatin = false;
+    
+    for (const g of parsedGlyphs) {
+      if (g.unicode) {
+        const code = parseInt(g.unicode, 16);
+        if (code >= 0x0600 && code <= 0x06FF) {
+          hasArabic = true;
+        }
+        if ((code >= 0x0041 && code <= 0x005A) || (code >= 0x0061 && code <= 0x007A)) {
+          hasLatin = true;
+        }
+      }
+    }
+    
+    const langs: string[] = [];
+    if (hasArabic) langs.push(dir === 'rtl' ? 'العربية' : 'Arabic');
+    if (hasLatin) langs.push(dir === 'rtl' ? 'اللاتينية' : 'Latin');
+    
+    if (langs.length === 0) return dir === 'rtl' ? 'العربية' : 'Arabic';
+    return langs.join(' / ');
+  };
 
   const isAdmin = user?.user_metadata?.role === 'admin';
   const isOwner = isAdmin || (!isPublicAllFonts && (group?.is_owner === true || group?.user_id === user?.id));
@@ -117,8 +459,6 @@ export const GroupDetails = ({
   const [globalPreviewText, setGlobalPreviewText] = useState('اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)');
   const deferredGlobalPreviewText = useDeferredValue(globalPreviewText);
   const [fontPreviews, setFontPreviews] = useState<Record<string, string>>({});
-  const [expandedFontId, setExpandedFontId] = useState<string | null>(null);
-  const [focusedFontId, setFocusedFontId] = useState<string | null>(null);
   const [pulseFontId, setPulseFontId] = useState<string | null>(null);
   const [modalPulseFontId, setModalPulseFontId] = useState<string | null>(null);
   const [processedHighlightedId, setProcessedHighlightedId] = useState<number | null>(null);
@@ -132,22 +472,7 @@ export const GroupDetails = ({
 
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.font-card-item')) {
-        setFocusedFontId(null);
-        setExpandedFontId(null);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, []);
 
   const [deleteFontModal, setDeleteFontModal] = useState<{ isOpen: boolean; fontId: string | null }>({
     isOpen: false,
@@ -321,6 +646,8 @@ export const GroupDetails = ({
     return allFonts;
   }, [dbFonts, uploadQueue, id, user, childFontIds, isPublicAllFonts, publicTagFilter]);
 
+
+
   useEffect(() => {
     if (loading) return; 
 
@@ -333,7 +660,6 @@ export const GroupDetails = ({
           const element = document.getElementById(`font-card-${targetId}`);
           if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setFocusedFontId(targetId);
             setPulseFontId(targetId);
             setProcessedHighlightedId(highlightedFont.ts);
             
@@ -355,6 +681,22 @@ export const GroupDetails = ({
       }
     }
   }, [highlightedFont?.ts, loading, displayFonts.length, weightRelationships.length, processedHighlightedId]);
+
+  useEffect(() => {
+    if (loading) return; 
+    
+    if (fontParam && !selectedFontDetail) {
+      const targetFont = isPublicAllFonts 
+        ? displayFonts.find(f => f.name === fontParam)
+        : displayFonts.find(f => f.id === fontParam);
+        
+      if (targetFont) {
+        setSelectedFontDetail(targetFont);
+      }
+    } else if (!fontParam && selectedFontDetail) {
+      setSelectedFontDetail(null);
+    }
+  }, [fontParam, displayFonts, loading]);
 
   useEffect(() => {
     const loadFonts = async () => {
@@ -421,11 +763,16 @@ export const GroupDetails = ({
   }, [displayFonts, weightsModal.isOpen, weightsModal.weights, weightsModal.parentFont]);
 
   useEffect(() => {
-    if (toolbarTextareaRef.current) {
-      toolbarTextareaRef.current.style.height = 'auto';
-      toolbarTextareaRef.current.style.height = `${toolbarTextareaRef.current.scrollHeight}px`;
-    }
-  }, [globalPreviewText]);
+    const adjust = () => {
+      if (toolbarTextareaRef.current) {
+        toolbarTextareaRef.current.style.height = 'auto';
+        toolbarTextareaRef.current.style.height = `${toolbarTextareaRef.current.scrollHeight}px`;
+      }
+    };
+    adjust();
+    const frameId = requestAnimationFrame(adjust);
+    return () => cancelAnimationFrame(frameId);
+  }, [globalPreviewText, publicTagFilter, isPublicAllFonts]);
 
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -552,24 +899,24 @@ export const GroupDetails = ({
         .trim();
 
       if (!cleanNewTag) {
-        addNotification('error', 'يرجى إدخال هاشتاغ صالح');
+        addNotification('error', dir === 'rtl' ? 'يرجى إدخال هاشتاغ صالح' : 'Please enter a valid tag');
         return;
       }
 
       const existingTags = targetFont.tags || [];
       if (existingTags.includes(cleanNewTag)) {
-        addNotification('error', 'هذا الهاشتاغ مضاف بالفعل لهذا الخط');
+        addNotification('error', dir === 'rtl' ? 'هذا الهاشتاغ مضاف بالفعل لهذا الخط' : 'Tag already exists for this font');
         return;
       }
 
       const updatedTags = [...existingTags, cleanNewTag];
       await import('../services/fontService').then(m => m.updateFontTags(tagEditModal.fontId!, updatedTags));
-      addNotification('success', 'تم إضافة الهاشتاغ بنجاح!');
+      addNotification('success', dir === 'rtl' ? 'تم إضافة الهاشتاغ بنجاح!' : 'Tag added successfully!');
       setNewSingleTag('');
       fetchData(); // Automatically reflect the changes
     } catch (e) {
       console.error(e);
-      addNotification('error', 'حدث خطأ أثناء إضافة الهاشتاغ');
+      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء إضافة الهاشتاغ' : 'Error adding tag');
     }
   };
 
@@ -580,11 +927,11 @@ export const GroupDetails = ({
 
       const updatedTags = (targetFont.tags || []).filter(t => t !== tagToRemove);
       await import('../services/fontService').then(m => m.updateFontTags(fontId, updatedTags));
-      addNotification('success', 'تم إزالة الهاشتاغ بنجاح!');
+      addNotification('success', dir === 'rtl' ? 'تم إزالة الهاشتاغ بنجاح!' : 'Tag removed successfully!');
       fetchData();
     } catch (e) {
       console.error(e);
-      addNotification('error', 'حدث خطأ أثناء إزالة الهاشتاغ');
+      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء إزالة الهاشتاغ' : 'Error removing tag');
     }
   };
 
@@ -595,7 +942,7 @@ export const GroupDetails = ({
       .trim();
 
     if (!formattedNewTag) {
-      addNotification('error', 'الهاشتاغ الجديد غير صالح');
+      addNotification('error', dir === 'rtl' ? 'الهاشتاغ الجديد غير صالح' : 'Invalid new tag');
       return;
     }
     
@@ -606,7 +953,7 @@ export const GroupDetails = ({
       const fontsWithOldTag = allFonts.filter(f => f.tags && f.tags.includes(oldTag));
       
       if (fontsWithOldTag.length === 0) {
-        addNotification('error', 'لم يتم العثور على خطوط مرتبطة بهذا الهاشتاغ');
+        addNotification('error', dir === 'rtl' ? 'لم يتم العثور على خطوط مرتبطة بهذا الهاشتاغ' : 'No fonts found with this tag');
         setLoading(false);
         return;
       }
@@ -619,7 +966,7 @@ export const GroupDetails = ({
       });
       
       await Promise.all(updatePromises);
-      addNotification('success', `تم تعديل الهاشتاغ من #${oldTag} إلى #${formattedNewTag} في جميع الخطوط!`);
+      addNotification('success', dir === 'rtl' ? `تم تعديل الهاشتاغ من #${oldTag} إلى #${formattedNewTag} في جميع الخطوط!` : `Tag renamed from #${oldTag} to #${formattedNewTag} in all fonts!`);
       
       // Update public filter state in the parent if it matches oldTag
       if (publicTagFilter === oldTag && onTagClick) {
@@ -630,7 +977,7 @@ export const GroupDetails = ({
       await fetchData();
     } catch (e) {
       console.error(e);
-      addNotification('error', 'حدث خطأ أثناء تعديل الهاشتاغ العام');
+      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء تعديل الهاشتاغ العام' : 'Error renaming global tag');
     } finally {
       setLoading(false);
     }
@@ -643,7 +990,7 @@ export const GroupDetails = ({
       const fontsWithTag = allFonts.filter(f => f.tags && f.tags.includes(tagToDelete));
       
       if (fontsWithTag.length === 0) {
-        addNotification('info', `تم إزالة الهاشتاغ #${tagToDelete} بنجاح!`);
+        addNotification('info', dir === 'rtl' ? `تم إزالة الهاشتاغ #${tagToDelete} بنجاح!` : `Tag #${tagToDelete} removed successfully!`);
         if (onClearTagFilter) onClearTagFilter();
         setLoading(false);
         return;
@@ -655,7 +1002,7 @@ export const GroupDetails = ({
       });
 
       await Promise.all(updatePromises);
-      addNotification('success', `تم حذف الهاشتاغ #${tagToDelete} نهائياً من جميع الخطوط المرتبطة به!`);
+      addNotification('success', dir === 'rtl' ? `تم حذف الهاشتاغ #${tagToDelete} نهائياً من جميع الخطوط المرتبطة به!` : `Tag #${tagToDelete} permanently deleted from all associated fonts!`);
       
       if (onClearTagFilter) {
         onClearTagFilter();
@@ -664,7 +1011,7 @@ export const GroupDetails = ({
       await fetchData();
     } catch (e) {
       console.error(e);
-      addNotification('error', 'حدث خطأ أثناء حذف الهاشتاغ عالمياً');
+      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء حذف الهاشتاغ عالمياً' : 'Error deleting tag globally');
     } finally {
       setLoading(false);
     }
@@ -683,14 +1030,18 @@ export const GroupDetails = ({
             <div className="flex items-center justify-between">
               <button 
                 onClick={onClearTagFilter}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/5 hover:border-white/10 transition-all text-xs font-medium cursor-pointer"
+                className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/5 hover:bg-white/10 text-white hover:text-white border border-white/10 hover:border-white/20 hover:shadow-lg transition-all cursor-pointer active:scale-95 select-none shrink-0"
+                title={dir === 'rtl' ? 'العودة للخطوط العامة' : 'Back to public fonts'}
               >
-                <X className="w-3.5 h-3.5" />
-                <span>العودة للخطوط العامة</span>
+                {dir === 'rtl' ? (
+                  <ArrowRight className="w-5 h-5 text-cyan-400" />
+                ) : (
+                  <ArrowLeft className="w-5 h-5 text-cyan-400" />
+                )}
               </button>
               
               <span className="text-[10px] tracking-wider uppercase font-bold text-cyan-400 bg-cyan-400/5 px-2.5 py-1 rounded-md border border-cyan-400/10">
-                صفحة التصنيف
+                {dir === 'rtl' ? 'صفحة التصنيف' : 'Filter Page'}
               </span>
             </div>
 
@@ -705,7 +1056,7 @@ export const GroupDetails = ({
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
-                    <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-none">
+                    <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-none font-display">
                       {publicTagFilter}
                     </h1>
                     
@@ -715,14 +1066,14 @@ export const GroupDetails = ({
                         <button
                           onClick={() => setTagRenameModal({ isOpen: true, oldTag: publicTagFilter, newTag: publicTagFilter })}
                           className="w-8 h-8 rounded-lg bg-white/5 border border-white/15 flex items-center justify-center hover:bg-cyan-500/10 hover:border-cyan-500/35 text-white/60 hover:text-cyan-400 transition-all cursor-pointer active:scale-90"
-                          title="تعديل هذا الهاشتاغ عالمياً"
+                          title={dir === 'rtl' ? 'تعديل هذا الهاشتاغ عالمياً' : 'Edit this globally'}
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setTagDeleteGlobalModal({ isOpen: true, tag: publicTagFilter })}
                           className="w-8 h-8 rounded-lg bg-white/5 border border-white/15 flex items-center justify-center hover:bg-red-500/10 hover:border-red-500/35 text-white/60 hover:text-red-400 transition-all cursor-pointer active:scale-90"
-                          title="حذف هذا الهاشتاغ عالمياً"
+                          title={dir === 'rtl' ? 'حذف هذا الهاشتاغ عالمياً' : 'Delete this globally'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -730,7 +1081,11 @@ export const GroupDetails = ({
                     )}
                   </div>
                   <p className="text-xs text-white/40 mt-2 font-light">
-                    تم العثور على <span className="text-cyan-400 font-bold font-mono">{displayFonts.length}</span> خطوط مرتبطة بهذا التصنيف
+                    {dir === 'rtl' ? (
+                      <>تم العثور على <span className="text-cyan-400 font-bold font-mono">{displayFonts.length}</span> خطوط مرتبطة بهذا التصنيف</>
+                    ) : (
+                      <>Found <span className="text-cyan-400 font-bold font-mono">{displayFonts.length}</span> fonts related to this filter</>
+                    )}
                   </p>
                 </div>
               </div>
@@ -817,7 +1172,7 @@ export const GroupDetails = ({
             {/* Top Row: Title/Group Name opposite/next to Button Controls! */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-white/5 pb-6">
               <div className="space-y-1">
-                <h1 className="text-2xl md:text-3xl font-light text-white tracking-tight leading-tight">
+                <h1 className="text-2xl md:text-3xl font-bold font-display text-white tracking-tight leading-tight">
                   {isPublicAllFonts ? 'الخطوط العامة' : group?.name}
                 </h1>
               </div>
@@ -831,7 +1186,7 @@ export const GroupDetails = ({
                     className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 backdrop-blur-md relative cursor-pointer
                       ${publicTagFilter ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] scale-105' : 'bg-white/5 text-white/70 border-white/10 hover:border-white/30 hover:text-white'}
                     `}
-                    title={publicTagFilter ? `مصنف حسب: #${publicTagFilter}` : 'تصنيف بالهاشتاغات'}
+                    title={publicTagFilter ? (dir === 'rtl' ? `مصنف حسب: #${publicTagFilter}` : `Filtered by: #${publicTagFilter}`) : (dir === 'rtl' ? 'تصنيف بالهاشتاغات' : 'Filter by Tags')}
                   >
                     <Filter className="w-4 h-4" />
                     {publicTagFilter && (
@@ -842,16 +1197,23 @@ export const GroupDetails = ({
 
                 {/* Upload Action with direct upload logic */}
                 {isOwner && (
-                  <div className="flex items-center">
+                  <div className="relative flex items-center shrink-0 group">
                     <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".ttf,.otf,.woff,.woff2" multiple />
                     <button 
                       onClick={() => fileInputRef.current?.click()} 
-                      className="flex items-center gap-2.5 px-5 h-10 rounded-full bg-cyan-400/10 text-cyan-400 border border-cyan-400/30 hover:bg-cyan-400/20 hover:border-cyan-400/50 hover:text-cyan-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)] transition-all duration-300 font-bold text-xs tracking-wide group active:scale-95 text-right font-sans focus:outline-none shrink-0 cursor-pointer"
+                      className="flex items-center gap-2.5 px-5 h-10 rounded-full bg-cyan-400/10 text-cyan-400 border border-cyan-400/30 hover:bg-cyan-400/20 hover:border-cyan-400/50 hover:text-cyan-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)] transition-all duration-300 font-bold text-xs tracking-wide group/btn active:scale-95 text-right font-sans focus:outline-none shrink-0 cursor-pointer animate-fade-in"
                       title={t('font.upload') || 'رفع خط'}
                     >
-                      <Upload className="w-4 h-4 text-cyan-400 shrink-0 group-hover:-translate-y-0.5 group-hover:scale-110 transition-transform duration-300 animate-pulse" />
+                      <Upload className="w-4 h-4 text-cyan-400 shrink-0 group-hover/btn:-translate-y-0.5 group-hover/btn:scale-110 transition-transform duration-300" />
                       <span>{t('font.upload') || 'رفع خطوط جديدة'}</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 relative block ml-0.5">
+                        <span className="absolute inset-0 bg-cyan-400 rounded-full animate-ping opacity-75"></span>
+                      </span>
                     </button>
+                    {/* Perfect layout-safe micro hover tooltip */}
+                    <div className="absolute top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 bg-[#0f0f0f] border border-white/5 py-1 px-2.5 rounded-xl text-[10px] text-white/50 shadow-[0_4px_20px_rgba(0,0,0,0.5)] whitespace-nowrap scale-95 group-hover:scale-100 font-light font-sans tracking-wide">
+                      {dir === 'rtl' ? 'الحد الأقصى لكل دفعة: ١٠ ملفات' : 'Batch limit: 10 files max'}
+                    </div>
                   </div>
                 )}
               </div>
@@ -973,22 +1335,12 @@ export const GroupDetails = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2, delay: i * 0.05 }}
-              className={`font-card-item bg-[#141414] p-4 rounded-2xl border transition-all duration-700 group flex flex-col gap-3 relative overflow-hidden ${focusedFontId === item.id ? 'border-white/30 shadow-lg' : 'border-white/5 hover:border-white/10'} ${pulseFontId === item.id ? 'ring-1 ring-white/50 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'ring-0 ring-transparent shadow-none'}`}
+              className={`group font-card-item bg-[#141414] p-4 rounded-2xl border transition-all duration-300 flex flex-col gap-3 relative overflow-hidden border-white/5 hover:border-white/10 cursor-pointer ${pulseFontId === item.id ? 'ring-1 ring-white/50 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'ring-0 ring-transparent shadow-none'}`}
               onClick={() => {
-                if (expandedFontId !== item.id) setExpandedFontId(item.id);
-                setFocusedFontId(item.id);
+                navigate(isPublicAllFonts ? `/fonts/${item.name}` : `/my-fonts/${item.id}${id ? `?group=${id}` : ''}`);
+                setSelectedFontDetail(item);
               }}
-              onTouchStart={() => setFocusedFontId(item.id)}
-              onMouseEnter={() => setFocusedFontId(item.id)}
             >
-              {(parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading && (
-                <div className={`absolute bottom-0 ${dir === 'rtl' ? 'left-0 rounded-tr-2xl' : 'right-0 rounded-tl-2xl'} p-2 z-20 transition-all duration-300 bg-[#141414] ${expandedFontId === item.id || focusedFontId === item.id ? 'opacity-100 pointer-events-auto'  : 'opacity-0 pointer-events-none'}`}>
-                  <button onClick={(e) => { e.stopPropagation(); openWeightsModal(item); }} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all active:scale-90 group/weight" title="Weights">
-                     <Layers className={`w-3.5 h-3.5 transition-colors ${parentFontIds.has(item.id) ? 'text-white opacity-60 group-hover/weight:text-white' : 'text-white opacity-20 group-hover/weight:text-white opacity-40'}`} />
-                  </button>
-                </div>
-              )}
-
               <div className="flex items-center justify-between w-full gap-4">
                 <div className="flex items-center gap-4 min-w-0">
                   <div className="bg-white/5 w-10 h-10 rounded-xl text-white opacity-60 group-hover:text-white group-hover:bg-white/10 transition-all shrink-0 flex items-center justify-center overflow-hidden">
@@ -1009,14 +1361,23 @@ export const GroupDetails = ({
                   </div>
                 </div>
 
-                <div className={`flex items-center shrink-0 transition-all duration-300 ${expandedFontId === item.id || focusedFontId === item.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                   {item.download_url && !item.metadata?.isUploading && (
-                    <button onClick={(e) => { e.stopPropagation(); if (item.download_url) handleDownload(item.download_url, item.name); }} className="p-3 -mr-1 hover:bg-white/10 rounded-full text-white opacity-40 hover:opacity-100 transition-all active:scale-90 cursor-pointer" title="Download">
+                <div className="flex items-center shrink-0 gap-1.5 relative z-10 transition-all duration-300">
+                  {item.download_url && !item.metadata?.isUploading && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); if (item.download_url) handleDownload(item.download_url, item.name); }} 
+                      className="w-9 h-9 bg-white/[0.03] hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-400/30 text-white/70 hover:text-cyan-400 rounded-xl transition-all duration-300 flex items-center justify-center active:scale-90 cursor-pointer shadow-sm" 
+                      title="Download"
+                    >
                       <Download className="w-4 h-4" />
                     </button>
                   )}
                   {isOwner && !item.metadata?.isUploading && (
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteFontModal({ isOpen: true, fontId: item.id }); }} className="p-3 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-40 hover:opacity-100 transition-all active:scale-90 cursor-pointer" title="Delete">
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); setDeleteFontModal({ isOpen: true, fontId: item.id }); }} 
+                      className="w-9 h-9 bg-white/[0.03] hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 text-white/50 hover:text-red-400 rounded-xl transition-all duration-300 flex items-center justify-center active:scale-90 cursor-pointer shadow-sm" 
+                      title="Delete"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -1028,59 +1389,72 @@ export const GroupDetails = ({
                   value={getPreviewText(item.id)} 
                   onChange={(e) => {
                     handlePreviewChange(item.id, e.target.value);
-                    if (e.target) {
-                      e.target.style.height = 'auto';
-                      e.target.style.height = `${e.target.scrollHeight}px`;
-                    }
                   }} 
                   onFocus={(e) => {
                     e.stopPropagation();
-                    if (expandedFontId !== item.id) setExpandedFontId(item.id);
-                    setFocusedFontId(item.id);
-                    if (e.target) {
-                      e.target.style.height = 'auto';
-                      e.target.style.height = `${e.target.scrollHeight}px`;
-                    }
                   }}
-                  onClick={(e) => { e.stopPropagation(); if (expandedFontId !== item.id) setExpandedFontId(item.id); setFocusedFontId(item.id); }} 
-                  className={`w-full bg-transparent border-none outline-none text-white font-light resize-none transition-all duration-300 focus:bg-white/5 focus:rounded-xl focus:p-3 -ml-3 p-3 overflow-hidden ${expandedFontId === item.id || focusedFontId === item.id ? 'z-10 relative' : ''}`} 
+                  onClick={(e) => { e.stopPropagation(); }} 
+                  className="w-full bg-transparent border-none outline-none text-white font-light resize-none -ml-3 p-3 overflow-hidden" 
                   style={{ 
                     fontFamily: `"${item.name}", sans-serif`, 
                     fontSize: `${fontSize}px`, 
                     lineHeight: '1.6',
-                    height: expandedFontId === item.id || focusedFontId === item.id ? undefined : `calc(${fontSize * 1.6}px + 24px)`,
-                    minHeight: `calc(${fontSize * 1.6}px + 24px)`,
+                    height: `${fontSize * 1.6 * 2 + 24}px`,
+                    minHeight: `${fontSize * 1.6 * 2 + 24}px`,
+                    maxHeight: `${fontSize * 1.6 * 2 + 24}px`,
                     fontFeatureSettings: 'normal',
                     fontVariantLigatures: 'normal'
                   }} 
                 />
               </div>
 
-              {/* Bottom Hashtags Section with modern layered background (Separated & Larger) */}
-              {isPublicAllFonts && ((item.tags && item.tags.length > 0) || isAdmin) && (
+              {/* Bottom Hashtags & Weights Section with modern layered background (Separated & Larger) */}
+              {(((isPublicAllFonts && ((item.tags && item.tags.length > 0) || isAdmin))) || ((parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading)) && (
                 <div className="mt-auto pt-2 bg-transparent flex flex-wrap items-center gap-1 relative z-20 border-t border-white/[0.02]" onClick={(e) => e.stopPropagation()}>
-                  <div className="w-full bg-black/30 backdrop-blur-md rounded-xl p-1.5 flex flex-wrap items-center gap-1 border border-white/5">
-                    {item.tags && item.tags.map(tag => (
+                  <div className="w-full bg-black/30 backdrop-blur-md rounded-xl p-1.5 flex flex-wrap items-center gap-1 border border-white/5 relative">
+                    {isPublicAllFonts && item.tags && item.tags.map(tag => (
                       <button 
-                        key={tag} 
-                        onClick={(e) => { e.stopPropagation(); onTagClick?.(tag); }}
-                        className="text-xs bg-white/[0.02] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 px-2.5 py-1 rounded-lg text-white/60 cursor-pointer transition-all duration-300 flex items-center gap-1 font-sans font-light"
+                         key={tag} 
+                         onClick={(e) => { e.stopPropagation(); onTagClick?.(tag); }}
+                         className="text-xs bg-white/[0.02] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 px-2.5 py-1 rounded-lg text-white/60 cursor-pointer transition-all duration-300 flex items-center gap-1 font-sans font-light"
                       >
                         <span className="text-cyan-400 opacity-50 font-mono">#</span>
                         <span>{tag}</span>
                       </button>
                     ))}
-                    {isAdmin && (
+                    {isPublicAllFonts && isAdmin && (
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
                           setTagEditModal({ isOpen: true, fontId: item.id, tagsText: '' });
                         }}
                         className="w-7 h-7 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 rounded-lg flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0"
-                        title="إضافة هاشتاغ جديد"
+                        title={dir === 'rtl' ? 'إضافة هاشتاغ جديد' : 'Add new tag'}
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
+                    )}
+
+                    {/* Elegant vertical separator and Weights button aligned to the far opposite side */}
+                    {((parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading) && (
+                      <>
+                        {isPublicAllFonts && (((item.tags && item.tags.length > 0) || isAdmin)) && (
+                          <div className={`h-4 w-[1px] bg-gradient-to-b from-cyan-500/30 via-white/20 to-cyan-500/30 mx-1.5 self-center shrink-0 ${dir === 'rtl' ? 'mr-auto' : 'ml-auto'}`} />
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openWeightsModal(item);
+                          }}
+                          className={`w-7 h-7 cursor-pointer transition-all duration-300 flex items-center justify-center rounded-lg shrink-0 
+                            ${parentFontIds.has(item.id) 
+                              ? 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.1)]' 
+                              : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white'} ${(!isPublicAllFonts || !(((item.tags && item.tags.length > 0) || isAdmin))) ? (dir === 'rtl' ? 'mr-auto' : 'ml-auto') : ''}`}
+                          title={dir === 'rtl' ? 'أوزان الخط' : 'Font Weights'}
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1108,7 +1482,7 @@ export const GroupDetails = ({
                 
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex flex-col">
-                    <h3 className="text-lg font-bold text-white leading-tight">{formatFontName(weightsModal.parentFont?.name || '')}</h3>
+                    <h3 className="text-lg font-bold text-white leading-tight font-display">{formatFontName(weightsModal.parentFont?.name || '')}</h3>
                     <span className="text-xs text-white opacity-40">{t('font.weights')}</span>
                   </div>
                   <button onClick={() => setWeightsModal(prev => ({ ...prev, isOpen: false }))} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
@@ -1258,7 +1632,7 @@ export const GroupDetails = ({
                     <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
                       <Filter className="w-4 h-4" />
                     </div>
-                    <h3 className="text-md font-bold text-white tracking-tight">تصنيف الخطوط حسب الهاشتاغ</h3>
+                    <h3 className="text-md font-bold text-white tracking-tight font-display">{dir === 'rtl' ? 'تصنيف الخطوط حسب الهاشتاغ' : 'Filter Fonts by Tag'}</h3>
                   </div>
                   <button 
                     onClick={() => setIsTagModalOpen(false)} 
@@ -1270,7 +1644,7 @@ export const GroupDetails = ({
 
                 <div className="overflow-y-auto pr-1 custom-scrollbar flex-1 mb-5">
                   {availableTags.length === 0 ? (
-                    <div className="text-sm text-white/40 py-8 text-center font-light">لا توجد هاشتاغات متاحة حالياً للتصنيف</div>
+                    <div className="text-sm text-white/40 py-8 text-center font-light">{dir === 'rtl' ? 'لا توجد هاشتاغات متاحة حالياً للتصنيف' : 'No tags available for filtering'}</div>
                   ) : (
                     <div className="flex flex-wrap gap-2 pt-1" dir="rtl">
                       {availableTags.map(tag => (
@@ -1363,15 +1737,15 @@ export const GroupDetails = ({
                 className="relative bg-[#0f0f0f]/95 border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-5 z-10"
               >
                 <div>
-                   <h3 className="text-white font-bold text-lg mb-1">إدارة هاشتاغات الخط</h3>
-                   <p className="text-white/40 text-xs font-light">لخط: <span className="text-cyan-400 font-mono text-xs">{formatFontName(currentFont?.name || '')}</span></p>
+                   <h3 className="text-white font-bold text-lg mb-1 font-display">{dir === 'rtl' ? 'إدارة هاشتاغات الخط' : 'Manage Font Tags'}</h3>
+                   <p className="text-white/40 text-xs font-light">{dir === 'rtl' ? 'لخط:' : 'For font:'} <span className="text-cyan-400 font-mono text-xs">{formatFontName(currentFont?.name || '')}</span></p>
                 </div>
 
                 {/* Existing Tags Chips list */}
                 <div>
-                  <h4 className="text-white/60 text-xs font-medium mb-2.5">الهاشتاغات الحالية المضافة:</h4>
+                  <h4 className="text-white/60 text-xs font-medium mb-2.5">{dir === 'rtl' ? 'الهاشتاغات الحالية المضافة:' : 'Current added tags:'}</h4>
                   {(!currentFont?.tags || currentFont.tags.length === 0) ? (
-                    <div className="text-white/30 text-xs py-2 font-light">لا توجد هاشتاغات مضافة بعد لهذا الخط</div>
+                    <div className="text-white/30 text-xs py-2 font-light">{dir === 'rtl' ? 'لا توجد هاشتاغات مضافة بعد لهذا الخط' : 'No tags added yet for this font'}</div>
                   ) : (
                     <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
                       {currentFont.tags.map(tag => (
@@ -1384,7 +1758,7 @@ export const GroupDetails = ({
                           <button 
                             onClick={() => handleRemoveTag(currentFont.id, tag)}
                             className="p-0.5 rounded-md hover:bg-cyan-500/20 text-cyan-400/50 hover:text-cyan-300 transition-colors cursor-pointer"
-                            title="إزالة الهاشتاغ"
+                            title={dir === 'rtl' ? 'إزالة الهاشتاغ' : 'Remove tag'}
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -1396,7 +1770,7 @@ export const GroupDetails = ({
 
                 {/* Add new Tag Input with frozen `#` prefix */}
                 <div className="space-y-2">
-                  <label className="text-white/60 text-xs font-medium">إضافة هاشتاغ جديد:</label>
+                  <label className="text-white/60 text-xs font-medium">{dir === 'rtl' ? 'إضافة هاشتاغ جديد:' : 'Add new tag:'}</label>
                   <div className="relative flex items-center bg-white/[0.03] border border-white/10 focus-within:border-cyan-500/50 rounded-2xl px-4 py-3.5 transition-all duration-300">
                     <span className="text-cyan-400 font-bold select-none text-base mr-1 font-mono">#</span>
                     <input 
@@ -1417,11 +1791,11 @@ export const GroupDetails = ({
                         }
                       }}
                       className="w-full bg-transparent border-none p-0 text-white text-sm outline-none focus:ring-0 leading-none placeholder:text-white/20 font-sans"
-                      placeholder="اكتب_الهاشتاغ"
+                      placeholder={dir === 'rtl' ? 'اكتب_الهاشتاغ' : 'type_tag'}
                       dir="ltr"
                     />
                   </div>
-                  <p className="text-[10px] text-white/30 font-light pr-1">يبدأ بالرمز # تلقائياً. المسافات تتحول تلقائياً إلى شرطة سفلية _</p>
+                  <p className="text-[10px] text-white/30 font-light pr-1">{dir === 'rtl' ? 'يبدأ بالرمز # تلقائياً. المسافات تتحول تلقائياً إلى شرطة سفلية _' : 'Auto prepended with #. Spaces turn into underscores _'}</p>
                 </div>
 
                 <div className="flex justify-end gap-2.5 mt-2 border-t border-white/5 pt-4">
@@ -1432,13 +1806,13 @@ export const GroupDetails = ({
                     }} 
                     className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-2xl text-white/60 hover:text-white transition-all text-sm font-medium cursor-pointer"
                   >
-                    إغلاق
+                    {t('common.cancel')}
                   </button>
                   <button 
                     onClick={handleUpdateTags} 
                     className="px-6 py-2 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black transition-all text-sm font-bold cursor-pointer hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]"
                   >
-                    إضافة الهاشتاغ
+                    {dir === 'rtl' ? 'إضافة الهاشتاغ' : 'Add Tag'}
                   </button>
                 </div>
               </motion.div>
@@ -1464,18 +1838,18 @@ export const GroupDetails = ({
               className="relative bg-[#0f0f0f]/95 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-5 z-10"
             >
               <div>
-                 <h3 className="text-white font-bold text-lg mb-1">تعديل الهاشتاغ العام</h3>
-                 <p className="text-white/40 text-xs font-light">سيتم تعديل هذا الهاشتاغ عند <span className="text-cyan-400 font-bold">كل الخطوط المرتبطة به</span> في قاعدة البيانات</p>
+                 <h3 className="text-white font-bold text-lg mb-1 font-display">{dir === 'rtl' ? 'تعديل الهاشتاغ العام' : 'Edit Global Tag'}</h3>
+                 <p className="text-white/40 text-xs font-light">{dir === 'rtl' ? 'سيتم تعديل هذا الهاشتاغ عند' : 'This will modify the tag for'} <span className="text-cyan-400 font-bold">{dir === 'rtl' ? 'كل الخطوط المرتبطة به' : 'all associated fonts'}</span> {dir === 'rtl' ? 'في قاعدة البيانات' : 'in the database'}</p>
               </div>
 
               <div className="text-xs text-white/50 bg-white/[0.02] border border-white/5 p-3 rounded-2xl flex flex-col gap-1">
-                <span>الهاشتاغ القديم:</span>
+                <span>{dir === 'rtl' ? 'الهاشتاغ القديم:' : 'Old Tag:'}</span>
                 <span className="text-sm font-bold text-red-400 font-mono">#{tagRenameModal.oldTag}</span>
               </div>
 
               {/* Rename Tag Input with frozen `#` prefix */}
               <div className="space-y-2">
-                <label className="text-white/60 text-xs font-medium">الاسم الجديد للهاشتاغ:</label>
+                <label className="text-white/60 text-xs font-medium">{dir === 'rtl' ? 'الاسم الجديد للهاشتاغ:' : 'New Tag Name:'}</label>
                 <div className="relative flex items-center bg-white/[0.03] border border-white/10 focus-within:border-cyan-500/50 rounded-2xl px-4 py-3.5 transition-all duration-300">
                   <span className="text-cyan-400 font-bold select-none text-base mr-1 font-mono">#</span>
                   <input 
@@ -1500,7 +1874,7 @@ export const GroupDetails = ({
                     dir="ltr"
                   />
                 </div>
-                <p className="text-[10px] text-white/30 font-light pr-1">يقبل فقط الحروف والأرقام والشرطة السفلية _</p>
+                <p className="text-[10px] text-white/30 font-light pr-1">{dir === 'rtl' ? 'يقبل فقط الحروف والأرقام والشرطة السفلية _' : 'Only accepts letters, numbers, and underscores _'}</p>
               </div>
 
               <div className="flex justify-end gap-2.5 border-t border-white/5 pt-4">
@@ -1508,17 +1882,494 @@ export const GroupDetails = ({
                   onClick={() => setTagRenameModal({ isOpen: false, oldTag: '', newTag: '' })} 
                   className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-2xl text-white/60 hover:text-white transition-all text-sm font-medium cursor-pointer"
                 >
-                  إلغاء
+                  {t('common.cancel')}
                 </button>
                 <button 
                   onClick={() => handleRenameHashtagGlobally(tagRenameModal.oldTag, tagRenameModal.newTag)} 
                   className="px-5 py-2 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black transition-all text-sm font-bold cursor-pointer hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]"
                 >
-                  تعديل الاسم
+                  {dir === 'rtl' ? 'تعديل الاسم' : 'Rename'}
                 </button>
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Detailed Isolated Font View */}
+      <AnimatePresence>
+        {selectedFontDetail && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed inset-0 z-[155] ${activeTheme.bg} transition-colors duration-700 flex flex-col font-sans select-none overflow-hidden`}
+            dir={dir}
+          >
+            {/* Background Aesthetic Atmosphere Mesh */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+              <div className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[150px] opacity-[0.06] ${activeTheme.accentGlow} animate-pulse duration-[8s]`} />
+              <div className={`absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[180px] opacity-[0.04] ${activeTheme.accentGlow} animate-pulse duration-[12s]`} />
+              {/* Thin Blueprint Grid Overlay in Dark Themes */}
+              <div className="absolute inset-0 bg-[radial-gradient(#ffffff03_1px,transparent_1px)] [background-size:16px_16px] opacity-60" />
+            </div>
+
+            {/* Top Navigation & Action Header */}
+            <header className={`flex items-center justify-between px-6 py-4 border-b transition-colors duration-300 ${isDetailScrolled ? 'border-white/20 bg-[#080808]/80' : 'border-transparent bg-transparent'} relative z-10 backdrop-blur-md`}>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => {
+                    navigate(isPublicAllFonts ? '/fonts' : `/my-fonts${id ? `?group=${id}` : ''}`);
+                    setSelectedFontDetail(null);
+                    setSelectedGlyphZoom(null);
+                    setIsDetailScrolled(false);
+                  }}
+                  className={`flex items-center gap-2 h-11 px-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/30 text-white/80 hover:text-white transition-all cursor-pointer active:scale-95 font-display`}
+                  title={dir === 'rtl' ? 'العودة للخلف' : 'Back'}
+                >
+                  {dir === 'rtl' ? <ArrowRight className="w-4 h-4 text-white" /> : <ArrowLeft className="w-4 h-4 text-white" />}
+                  <span className="text-xs font-bold">{dir === 'rtl' ? 'رجوع' : 'Back'}</span>
+                </button>
+              </div>
+
+              {/* Header Right Actions */}
+              <div className="flex items-center gap-2.5">
+                {/* Direct Download in Header */}
+                {selectedFontDetail.download_url && (
+                  <button
+                    onClick={() => handleDownload(selectedFontDetail.download_url!, selectedFontDetail.name)}
+                    className={`inline-flex items-center gap-2 px-5 py-3 h-11 rounded-2xl bg-white hover:bg-gray-200 text-black font-bold text-xs tracking-wide transition-all cursor-pointer active:scale-95 shadow-md shadow-white/5 focus:outline-none shrink-0`}
+                    title={dir === 'rtl' ? 'تحميل ملف الخط مباشرة' : 'Download font directly'}
+                  >
+                    <Download className="w-4 h-4 text-black" />
+                    <span className="hidden sm:inline">{dir === 'rtl' ? 'تحميل الخط' : 'Download Font'}</span>
+                  </button>
+                )}
+
+                {/* Lab transfer trigger button */}
+                <button
+                  disabled={isTransferring}
+                  onClick={() => handleTransferToLab(selectedFontDetail)}
+                  className={`inline-flex items-center gap-2 px-5 py-3 h-11 rounded-2xl bg-white hover:bg-gray-200 text-black font-bold text-xs tracking-wide transition-all cursor-pointer active:scale-95 shadow-md shadow-white/5 disabled:opacity-50 select-none focus:outline-none shrink-0`}
+                >
+                  {isTransferring ? (
+                    <span className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
+                  ) : (
+                    <Beaker className="w-4 h-4" />
+                  )}
+                  <span>{dir === 'rtl' ? 'فتح في المختبر' : 'Open in Lab'}</span>
+                </button>
+              </div>
+            </header>
+
+            {/* Main Content Workspace - Vertical Stack, single-column */}
+            <main 
+              onScroll={(e) => {
+                setIsDetailScrolled(e.currentTarget.scrollTop > 10);
+              }}
+              className="flex-1 overflow-y-auto w-full max-w-[1240px] mx-auto flex flex-col gap-6 p-4 md:p-6 pb-24 relative z-10 custom-scrollbar"
+            >
+              
+              {/* TOP DASHBOARD CONTROL AREA (Stacked side-by-side on wide screens) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 select-none shrink-0">
+                
+                {/* 1. LAYOUT COMPASS - CHOOSE MODE */}
+                <div className={`${activeTheme.cardBg} rounded-3xl p-5 border ${activeTheme.borderColor} flex flex-col gap-4`}>
+                  <div className="flex items-center gap-2 border-b border-white/[0.03] pb-2.5">
+                    <Layout className="w-4 h-4 text-white/80" />
+                    <span className={`text-[11px] uppercase tracking-wider font-bold ${activeTheme.textSecondary}`}>
+                      {dir === 'rtl' ? 'نمط المعاينة البصرية' : 'Preview Layout Mode'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'poem', label: dir === 'rtl' ? 'أبيات الشعر' : 'Classical Poem', icon: BookOpen },
+                      { id: 'paragraph', label: dir === 'rtl' ? 'محتوى مقالي' : 'Extended Text', icon: Edit3 },
+                      { id: 'glyphs', label: dir === 'rtl' ? 'خريطة المحارف' : 'Glyph Explorer', icon: Sliders },
+                      { id: 'poster', label: dir === 'rtl' ? 'عرض إبداعي' : 'Artistic Poster', icon: Sparkles }
+                    ].map(mode => {
+                      const Icon = mode.icon;
+                      const isActive = detailLayoutMode === mode.id;
+                      return (
+                        <button
+                          key={mode.id}
+                          onClick={() => setDetailLayoutMode(mode.id as any)}
+                          className={`flex items-center gap-2.5 p-3 rounded-2xl cursor-pointer text-xs select-none text-right transition-all duration-300 border ${
+                            isActive 
+                              ? 'bg-white/10 border-white/20 text-white font-bold shadow-lg shadow-white/5'
+                              : 'bg-white/[0.02] border-white/5 text-white/50 font-normal hover:bg-white/5 hover:text-white/80'
+                          }`}
+                        >
+                          <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-current'}`} />
+                          <span>{mode.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. SPEC SHEET & METADATA info */}
+                <div className={`${activeTheme.cardBg} rounded-3xl p-5 border ${activeTheme.borderColor} flex flex-col gap-3.5`}>
+                  <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest text-[#cbd5e1]/30 pb-1.5 border-b border-white/[0.03] font-display">
+                    <span>{dir === 'rtl' ? 'المواصفات الفنية للخط' : 'Technical Font Specifications'}</span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-[11px]">
+                    <div className="flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center">
+                      <span className={activeTheme.textSecondary}>{dir === 'rtl' ? 'الصيغة' : 'Format'}</span>
+                      <span className={`${activeTheme.text} font-bold font-mono mt-1 uppercase`}>
+                        {getFontFormat(selectedFontDetail.download_url)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center">
+                      <span className={activeTheme.textSecondary}>{dir === 'rtl' ? 'الأوزان' : 'Weights'}</span>
+                      <span className={`${activeTheme.text} font-bold mt-1`}>
+                        {getWeightsDisplay()}
+                      </span>
+                    </div>
+                    <div className="flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center">
+                      <span className={activeTheme.textSecondary}>{dir === 'rtl' ? 'اللغات' : 'Languages'}</span>
+                      <span className={`${activeTheme.text} font-bold mt-1 truncate`} title={detectedLangs.length > 0 ? detectedLangs.join(', ') : getSupportedLanguages()}>
+                        {getSupportedLanguages()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Isolated Tag view within details */}
+                  <div className="flex flex-col gap-1.5 mt-1 border-t border-white/[0.03] pt-3">
+                    <span className={`${activeTheme.textSecondary} text-[11px] font-bold`}>{dir === 'rtl' ? 'الهاشتاغات' : 'Tags'}</span>
+                    {(!selectedFontDetail.tags || selectedFontDetail.tags.length === 0) ? (
+                      <span className={`font-light ${activeTheme.textSecondary} opacity-40 text-xs`}>{dir === 'rtl' ? 'لا يوجد هاشتاغات' : 'No tags found'}</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {selectedFontDetail.tags.map(tag => (
+                          <button 
+                            key={tag} 
+                            onClick={() => {
+                              if (isOwner) {
+                                setTagEditModal({ isOpen: true, fontId: selectedFontDetail.id, tagsText: selectedFontDetail.tags?.join(', ') || '' });
+                              }
+                            }}
+                            className={`text-[11px] px-2.5 py-1 rounded-lg border ${activeTheme.accentBg} hover:bg-white/10 transition-colors select-none font-medium cursor-pointer`}
+                          >
+                            #{tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* PRIMARY INTERACTIVE PREVIEW SANDBOX (THE LONG TEXT SPACE - ثابت عادي بالشاشة) */}
+              <div 
+                className={`min-h-[420px] flex flex-col rounded-3xl border ${activeTheme.borderColor} ${activeTheme.cardBg} transition-all duration-300 relative overflow-hidden shadow-2xl p-6 md:p-8 shrink-0`}
+              >
+                {/* Absolute subtle background decorative seal */}
+                <div 
+                  className={`absolute right-12 bottom-4 select-none pointer-events-none opacity-[0.035] transform rotate-12 text-[260px] font-extrabold leading-none ${activeTheme.text}`}
+                  style={{ fontFamily: `"${selectedFontDetail.name}", sans-serif` }}
+                >
+                  {randomBackdropChar}
+                </div>
+
+                {/* RENDERING MODE: CLASSICAL POEM (أبيات الشعر) */}
+                {detailLayoutMode === 'poem' && (
+                  <div className="flex-1 flex flex-col gap-5 overflow-hidden h-full">
+                    {/* Sub-Selection: Visual Preset Poetry Switcher */}
+                    <div className="flex gap-2 pb-2 overflow-x-auto select-none no-scrollbar border-b border-white/[0.03] shrink-0">
+                      {POEMS.map((poem, idx) => (
+                        <button
+                          key={poem.title}
+                          onClick={() => setSelectedPoemIndex(idx)}
+                          className={`px-4 py-2 rounded-2xl cursor-pointer text-xs font-bold whitespace-nowrap transition-all flex flex-col items-start gap-1 border ${
+                            selectedPoemIndex === idx
+                              ? 'bg-white/10 border-white/20 text-white font-bold'
+                              : 'bg-white/[0.02] border-white/5 text-white/50 hover:bg-white/5'
+                          }`}
+                        >
+                          <span className="leading-none">{poem.title}</span>
+                          <span className="text-[9px] opacity-60 font-light font-sans">{poem.author}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Main Poem Textarea Wrapper - FIXED size to 15px directly */}
+                    <div className="flex-1 overflow-y-auto pr-1 min-h-[250px]">
+                      <textarea
+                        value={getPoemText(selectedFontDetail.id)}
+                        onChange={(e) => handlePoemChange(selectedFontDetail.id, e.target.value)}
+                        className={`w-full h-full min-h-[240px] bg-transparent border-none outline-none resize-none leading-loose focus:ring-0 text-center select-text font-serif ${activeTheme.text} transition-all`}
+                        style={{
+                          fontFamily: `"${selectedFontDetail.name}", sans-serif`,
+                          fontSize: '15px',
+                          lineHeight: '1.9',
+                          fontFeatureSettings: 'normal',
+                          fontVariantLigatures: 'normal'
+                        }}
+                        placeholder={dir === 'rtl' ? 'ضع أبيات قصيدتك وعش سحر الكلمة...' : 'Write your classical poetry lines here...'}
+                      />
+                    </div>
+
+                    {/* Designer seal watermark */}
+                    <div className={`mt-auto pt-2 border-t border-white/[0.02] flex items-center justify-end ${activeTheme.textSecondary} text-[10px]`}>
+                      <div className="font-sans text-white/80 font-medium">
+                        {POEMS[selectedPoemIndex].author}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* RENDERING MODE: PARAGRAPH (الكتابة النثرية الحرة) */}
+                {detailLayoutMode === 'paragraph' && (
+                  <div className="flex-1 flex flex-col gap-4 overflow-hidden h-full">
+                    {/* Short helper note */}
+                    <div className={`border-b border-white/[0.03] pb-2 text-[10px] uppercase font-bold tracking-widest ${activeTheme.textSecondary} select-none`}>
+                      {dir === 'rtl' ? 'معمل النثر الحر (اكتب أوعدّل بحرية)' : 'Prose Creative Sandbox (Fully Editable)'}
+                    </div>
+
+                    {/* Main Paragraph Textarea - FIXED size to 15px directly */}
+                    <div className="flex-1 overflow-y-auto min-h-[250px]">
+                      <textarea
+                        value={getPreviewText(selectedFontDetail.id)}
+                        onChange={(e) => handlePreviewChange(selectedFontDetail.id, e.target.value)}
+                        className={`w-full h-full min-h-[240px] bg-transparent border-none outline-none resize-none px-2 focus:ring-0 ${activeTheme.text} transition-all font-light`}
+                        style={{
+                          fontFamily: `"${selectedFontDetail.name}", sans-serif`,
+                          fontSize: '15px',
+                          lineHeight: '1.8'
+                        }}
+                        placeholder={dir === 'rtl' ? 'ابدأ بصنع عباراتك البديعة هنا...' : 'Type anything dynamically to check the flow...'}
+                      />
+                    </div>
+
+                    {/* Tiny status metric */}
+                    <div className={`mt-auto pt-2 border-t border-white/[0.02] flex justify-end ${activeTheme.textSecondary} text-[9px] font-sans`}>
+                      <span>
+                        {getPreviewText(selectedFontDetail.id).length} {dir === 'rtl' ? 'حرف' : 'chars'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* RENDERING MODE: GLYPHS MAP (خارطة الحروف للجغرافيين) */}
+                {detailLayoutMode === 'glyphs' && (
+                  <div className="flex-1 flex flex-col gap-5 overflow-hidden h-full">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-white/[0.03] pb-3 select-none">
+                      <div className="flex flex-col font-sans">
+                        <span className="text-cyan-400 text-xs font-bold leading-none">
+                          {dir === 'rtl' ? 'اضغط على المحرف واستمتع!!' : 'Press on glyph and enjoy!!'}
+                        </span>
+                      </div>
+                      
+                      {/* Search input inside glyph map */}
+                      <div className="relative w-full md:w-56 shrink-0 font-sans">
+                        <input
+                          type="text"
+                          placeholder={dir === 'rtl' ? 'ابحث عن محرف معين...' : 'Search for glyph...'}
+                          value={glyphSearch}
+                          onChange={(e) => setGlyphSearch(e.target.value)}
+                          className={`w-full bg-white/[0.02] border border-white/5 rounded-xl py-1.5 px-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-cyan-400/30 transition-colors`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Characters Explorer Grid */}
+                    <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-4 custom-scrollbar select-none min-h-[250px]">
+                      {loadingGlyphs ? (
+                        <div className="flex-1 flex flex-col items-center justify-center py-12 gap-3 font-sans">
+                          <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-xs text-white/40">{dir === 'rtl' ? 'جاري استخراج خارطة المحارف للخط...' : 'Extracting glyphs map...'}</span>
+                        </div>
+                      ) : filteredGlyphs.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center py-12 text-xs text-white/30 font-sans">
+                          {dir === 'rtl' ? 'لم يتم العثور على محارف تطابق البحث' : 'No matching glyphs found'}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5">
+                          {filteredGlyphs.map((glyph, idx) => (
+                            <button
+                              key={`${glyph.unicode || idx}-${glyph.index}`}
+                              onClick={() => setSelectedGlyphZoom(glyph.char)}
+                              className="aspect-square rounded-xl bg-white/[0.02] border border-white/5 text-white/90 hover:border-white hover:text-white hover:bg-white/5 hover:scale-[1.12] flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 shadow-lg shadow-black/30"
+                              style={{
+                                fontFamily: `"${selectedFontDetail.name}", sans-serif`,
+                                fontSize: '18px'
+                              }}
+                              title={glyph.unicode ? `U+${glyph.unicode}` : undefined}
+                            >
+                              <span>{glyph.char}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer characters description */}
+                    <div className={`mt-auto pt-2 border-t border-white/[0.02] flex justify-end ${activeTheme.textSecondary} text-[9px] font-sans`}>
+                      <span>{selectedFontDetail.name}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* RENDERING MODE: EDITORIAL POSTER (ملصق احترافي دعائي) */}
+                {detailLayoutMode === 'poster' && (
+                  <div className="flex-1 flex flex-col justify-between h-full relative p-4 border border-white/5 rounded-3xl overflow-hidden bg-gradient-to-br from-[#101010]/95 via-transparent to-transparent">
+                    {/* Decorative elements */}
+                    <div className="absolute top-0 right-0 w-24 h-24 border-r border-t border-white/10 rounded-tr-3xl" />
+                    <div className="absolute bottom-0 left-0 w-24 h-24 border-l border-b border-white/10 rounded-bl-3xl" />
+                    
+                    <div className="flex flex-col mt-0 relative z-10 text-right">
+                      {/* Large Headline Quote */}
+                      <div className="flex flex-col gap-4 text-right">
+                        <h2 
+                          className={`font-extrabold leading-tight tracking-tight ${activeTheme.text}`}
+                          style={{
+                            fontFamily: `"${selectedFontDetail.name}", sans-serif`,
+                            fontSize: '28px'
+                          }}
+                        >
+                          خطوطنا تعبر عن مشاعرنا، وترسم بجمالها لوحة أفكارنا
+                        </h2>
+                        <p 
+                          className={`text-xs ${activeTheme.textSecondary} max-w-lg leading-relaxed mt-1`}
+                          style={{
+                            fontFamily: `"${selectedFontDetail.name}", sans-serif`,
+                            fontSize: '14px'
+                          }}
+                        >
+                          {dir === 'rtl' 
+                            ? 'صمم من أجل كتابة عربية فصحى تتمتع بالرقي والأصالة والخطوط المنسابة، هذا الخط هو رفيق مثالي لتجسيد المخطوطات والملصقات البديعة الراقية.'
+                            : 'Specially engineered for Arabic typography, highlighting flow, elegance and historic heritage in modern UI compositions.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Editorial Watermark Footer */}
+                    <div className="flex flex-row justify-between items-center mt-auto pt-4 pb-1 border-t border-white/[0.05] bg-black/40 rounded-b-3xl -mx-4 px-4 -mb-4 relative z-10 shrink-0 select-none gap-4">
+                      <div className="flex flex-col gap-1 text-right sm:text-left">
+                        <span className={`text-[10px] tracking-widest ${activeTheme.textSecondary} uppercase font-mono`}>
+                          {formatFontName(selectedFontDetail.name)}
+                        </span>
+                      </div>
+                      <div className="text-right font-display select-none pb-1">
+                        <span className="text-sm font-bold tracking-widest text-white leading-none">
+                          Fontat
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+            </main>
+
+            {/* Giant ZOOM LENS Portal overlay for calligraphic glyph zoom */}
+            <AnimatePresence>
+              {selectedGlyphZoom && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setSelectedGlyphZoom(null)}
+                    className="absolute inset-0 bg-[#020202]/90 backdrop-blur-md"
+                  />
+                  <motion.div 
+                    initial={{ scale: 0.9, y: 15 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.9, y: 15 }}
+                    className="relative bg-[#0d0d0d] border border-cyan-400/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col justify-center items-center gap-6 z-10 text-center"
+                  >
+                    <div className="absolute top-5 right-5">
+                      <button 
+                        onClick={() => setSelectedGlyphZoom(null)}
+                        className="p-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-full transition-all cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="text-[10px] uppercase font-bold tracking-widest text-[#cbd5e1]/30">
+                      {dir === 'rtl' ? 'معاينة هندسية مكبرة' : 'Macro Geometry Preview'}
+                    </div>
+
+                    {/* Character Lens display */}
+                    <div 
+                      className="text-[110px] select-all leading-none py-10 text-white cursor-help select-text font-serif"
+                      style={{
+                        fontFamily: `"${selectedFontDetail.name}", sans-serif`
+                      }}
+                      title="اسحب أو انسخ الحرف"
+                    >
+                      {selectedGlyphZoom}
+                    </div>
+
+                    {/* Metadata detail & Copy Action */}
+                    <div className="w-full flex flex-col gap-3 pb-2 mt-4">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedGlyphZoom);
+                          addNotification('success', dir === 'rtl' ? 'تم نسخ المحرف للحافظة!' : 'Copied to clipboard!');
+                        }}
+                        className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
+                      >
+                        <Copy className="w-4 h-4" />
+                        <span>{dir === 'rtl' ? 'نسخ هذا المحرف كـ نص' : 'Copy Character Text'}</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* Hyperdrive Digital Portal Portal Animation Overlay */}
+            <AnimatePresence>
+              {isTransferring && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[120] bg-black flex flex-col items-center justify-center text-center p-6 select-none"
+                >
+                  <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+                    {/* Ring Animations */}
+                    {[1, 2, 3].map(ringIdx => (
+                      <motion.div
+                        key={ringIdx}
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: [0.5, 2.5], opacity: [0, 0.5, 0] }}
+                        transition={{ duration: 3, repeat: Infinity, delay: ringIdx * 0.9, ease: 'easeOut' }}
+                        className="absolute inset-0 m-auto w-[250px] h-[250px] border border-cyan-400/20 rounded-full"
+                      />
+                    ))}
+                    {/* Glowing Stars */}
+                    <div className="absolute inset-0 bg-[radial-gradient(#22d3ee08_1px,transparent_1px)] [background-size:24px_24px]" />
+                  </div>
+
+                  <div className="relative z-10 flex flex-col items-center gap-6">
+                    <div className="w-20 h-20 rounded-full bg-cyan-400/10 border-2 border-cyan-400/40 border-t-transparent animate-spin flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+                      <Dices className="w-8 h-8 text-cyan-400 animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-2xl font-bold tracking-tight text-white font-display">
+                        {dir === 'rtl' ? 'رقمنة الخط ونقله لمختبر الـ UI...' : 'Digitizing and Transferring to Lab...'}
+                      </h2>
+                      <p className="text-[#94a3b8] text-sm font-light leading-relaxed max-w-sm mx-auto">
+                        {dir === 'rtl' 
+                          ? 'يتم أخذ عينة فيزيائية ثنائية وتجهيز كود التحميل الفوري للمحاكاة ثلاثية الأبعاد.' 
+                          : 'Preparing vectors and layout coordinates for advanced multi-axis rendering in the Lab.'}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -1530,9 +2381,9 @@ export const GroupDetails = ({
             handleDeleteHashtagGlobally(tagDeleteGlobalModal.tag);
           }
         }}
-        title="حذف الهاشتاغ نهائياً"
-        message={`هل أنت متأكد من رغبتك في حذف الهاشتاغ #${tagDeleteGlobalModal.tag} نهائياً؟ سيتم إزالته من جميع الخطوط كلياً.`}
-        confirmText="حذف الهاشتاغ"
+        title={dir === 'rtl' ? 'حذف الهاشتاغ نهائياً' : 'Delete Globally'}
+        message={dir === 'rtl' ? `هل أنت متأكد من رغبتك في حذف الهاشتاغ #${tagDeleteGlobalModal.tag} نهائياً؟ سيتم إزالته من جميع الخطوط كلياً.` : `Are you sure you want to delete #${tagDeleteGlobalModal.tag} globally? This will remove it from all fonts.`}
+        confirmText={dir === 'rtl' ? 'حذف الهاشتاغ' : 'Delete Tag'}
         variant="danger"
       />
     </div>
