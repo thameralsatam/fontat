@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts } from '../services/fontService';
 import { getGroups } from '../services/groupService';
-import { Trash2, Download, X, Layers, Upload, Plus, Check, Dices, Filter, Edit3, ArrowRight, ArrowLeft, Sliders, Layout, Copy, Sparkles, BookOpen, Beaker } from 'lucide-react';
+import { Trash2, Download, X, Layers, Upload, Plus, Check, Dices, Filter, Edit3, ArrowRight, ArrowLeft, Sliders, Layout, Copy, Sparkles, BookOpen, Beaker, ExternalLink, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { saveFontHistory } from '../lib/db';
 // @ts-ignore
@@ -61,13 +61,39 @@ export const GroupDetails = ({
   const [detailLayoutMode, setDetailLayoutMode] = useState<'poem' | 'paragraph' | 'glyphs' | 'poster'>('poem');
   const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<string | null>(null);
 
-  const [randomBackdropChar, setRandomBackdropChar] = useState('ع');
+  const [backdropChars, setBackdropChars] = useState<{ char: string; className: string; fontSize: string }[]>([]);
   const [selectedFontWeights, setSelectedFontWeights] = useState<any[]>([]);
   const [isDetailScrolled, setIsDetailScrolled] = useState(false);
-  const [parsedGlyphs, setParsedGlyphs] = useState<{ char: string; index: number; unicode?: string }[]>([]);
+  const [parsedGlyphs, setParsedGlyphs] = useState<{ char: string; index: number; unicode?: string; colSpan?: number }[]>([]);
   const [detectedLangs, setDetectedLangs] = useState<string[]>([]);
   const [loadingGlyphs, setLoadingGlyphs] = useState(false);
   const [glyphSearch, setGlyphSearch] = useState('');
+  
+  // Save to account modal state
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [saveToGroupId, setSaveToGroupId] = useState<string>('new');
+  const [newSaveGroupName, setNewSaveGroupName] = useState<string>('');
+  const [isSavingFont, setIsSavingFont] = useState(false);
+  const [userGroups, setUserGroups] = useState<Group[]>([]);
+  
+  const [isExternalMenuOpen, setIsExternalMenuOpen] = useState(false);
+  const [isWeightsMenuOpen, setIsWeightsMenuOpen] = useState(false);
+
+  // Close menus on outside click or esc
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.external-menu-container')) {
+        setIsExternalMenuOpen(false);
+      }
+      if (!target.closest('.weights-menu-container')) {
+        setIsWeightsMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
 
   const POEMS = [
     {
@@ -146,6 +172,83 @@ export const GroupDetails = ({
     inputBg: 'bg-white/5 text-white focus:border-cyan-400/30'
   };
 
+  const handleOpenSaveModal = async () => {
+    if (!user) {
+      addNotification('error', dir === 'rtl' ? 'يرجى تسجيل الدخول لحفظ الخطوط في مساحتك' : 'Please log in to save fonts to your workspace');
+      return;
+    }
+    setIsSaveModalOpen(true);
+    const groups = await getGroups();
+    setUserGroups(groups);
+  };
+
+  const executeFontSave = async () => {
+    if (!selectedFontDetail || !selectedFontDetail.download_url) return;
+    setIsSavingFont(true);
+    try {
+      // Create or select group
+      let finalGroupId = saveToGroupId;
+      if (saveToGroupId === 'new') {
+        if (!newSaveGroupName.trim()) {
+           addNotification('error', dir === 'rtl' ? 'يرجى إدخال اسم المجموعة' : 'Please enter a group name');
+           setIsSavingFont(false);
+           return;
+        }
+        const { createGroupSmart } = await import('../services/groupService');
+        const newGroup = await createGroupSmart(newSaveGroupName.trim(), '', false);
+        if (!newGroup) throw new Error('Failed to create group');
+        finalGroupId = newGroup.id;
+      }
+
+      const filesToUpload: File[] = [];
+
+      // Fetch base font
+      const baseResponse = await fetch(selectedFontDetail.download_url);
+      if (!baseResponse.ok) throw new Error('Failed to fetch the base font');
+      const baseBlob = await baseResponse.blob();
+      const baseFile = new File([baseBlob], selectedFontDetail.name, { type: baseBlob.type });
+      filesToUpload.push(baseFile);
+
+      // We need to associate weights after base is uploaded. Since addToUploadQueue can do parent/child, 
+      // but it assumes the first file might just be uploaded.
+      // Wait, addToUploadQueue doesn't easily let us say "File 1 is parent of File 2" in a single array unless we do it sequentially.
+      // Since it's a save feature, we can actually just call uploadFontToGroup directly to have precise control,
+      // OR just put them in queue and assume user can fix weights, but user expects automatic weights.
+      // Let's do it manually but pushing to uploadQueue might be complex if we want to establish relationship immediately without a parent DB ID.
+      // Actually, addToUploadQueue creates them and we can just let them upload without parent, OR we can upload base manually, get ID, then upload weights?
+      // Since we want to use the queue for UI:
+      const { uploadFontToGroup } = await import('../services/fontService');
+      const { font: uploadData } = await uploadFontToGroup(baseFile, finalGroupId, true);
+      
+      const newParentId = uploadData.id;
+
+      // Handle weights
+      if (selectedFontWeights && selectedFontWeights.length > 0) {
+         for (const weight of selectedFontWeights) {
+            if (weight.child_font && weight.child_font.download_url) {
+                const wRes = await fetch(weight.child_font.download_url);
+                const wBlob = await wRes.blob();
+                const wFile = new File([wBlob], weight.child_font.name, { type: wBlob.type });
+                
+                const { uploadFontWeight } = await import('../services/fontService');
+                await uploadFontWeight(wFile, newParentId, finalGroupId);
+            }
+         }
+      }
+
+      addNotification('success', dir === 'rtl' ? 'تم الحفظ في مساحتك بنجاح!' : 'Saved to your workspace successfully!');
+      setIsSaveModalOpen(false);
+      setSaveToGroupId('new');
+      setNewSaveGroupName('');
+      
+    } catch (err) {
+      console.error(err);
+      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء حفظ الخط' : 'Error saving font');
+    } finally {
+      setIsSavingFont(false);
+    }
+  };
+
   const handleTransferToLab = async (font: Font) => {
     if (!font.download_url) {
       addNotification('error', dir === 'rtl' ? 'رابط تحميل الخط غير متوفر' : 'Font download url not available');
@@ -188,12 +291,23 @@ export const GroupDetails = ({
     }
   }, [groupData]);
 
-  // Set random backdrop char when selectedFontDetail opens
+  // Set random backdrop chars when selectedFontDetail opens
   useEffect(() => {
     if (selectedFontDetail) {
       const RANDOM_LETTERS = ['ع', 'ك', 'ل', 'م', 'هـ', 'ض', 'ق', 'ش', 'أ', 'ي', 'ج', 'خ', 'ط', 'ظ', 'ص', 'س'];
-      const randomIdx = Math.floor(Math.random() * RANDOM_LETTERS.length);
-      setRandomBackdropChar(RANDOM_LETTERS[randomIdx]);
+      const shuffled = [...RANDOM_LETTERS].sort(() => 0.5 - Math.random());
+      const picked = shuffled.slice(0, 4);
+      while (picked.length < 4) {
+        picked.push(RANDOM_LETTERS[0]);
+      }
+      
+      const CONFIG = [
+        { char: picked[0], className: 'absolute right-[4%] bottom-[5%] pointer-events-none select-none opacity-[0.018] transform rotate-[15deg] leading-none text-white', fontSize: '170px' },
+        { char: picked[1], className: 'absolute left-[5%] top-[8%] pointer-events-none select-none opacity-[0.015] transform -rotate-[15deg] leading-none text-white', fontSize: '120px' },
+        { char: picked[2], className: 'absolute left-[4%] bottom-[12%] pointer-events-none select-none opacity-[0.012] transform rotate-[25deg] leading-none text-white', fontSize: '135px' },
+        { char: picked[3], className: 'absolute right-[8%] top-[10%] pointer-events-none select-none opacity-[0.01] transform -rotate-12 leading-none text-white', fontSize: '105px' }
+      ];
+      setBackdropChars(CONFIG);
     }
   }, [selectedFontDetail]);
 
@@ -214,16 +328,27 @@ export const GroupDetails = ({
         const parsedFont = opentype.parse(arrayBuffer);
         
         const numGlyphs = parsedFont.numGlyphs || 0;
-        const glyphsList: { char: string; index: number; unicode?: string }[] = [];
+        const unitsPerEm = parsedFont.unitsPerEm || 1000;
+        const glyphsList: { char: string; index: number; unicode?: string; colSpan?: number }[] = [];
         
         for (let i = 0; i < numGlyphs; i++) {
           const glyph = parsedFont.glyphs.get(i);
           if (glyph && glyph.unicode) {
             const char = String.fromCharCode(glyph.unicode);
+            const advanceWidth = glyph.advanceWidth || unitsPerEm;
+            const widthRatio = advanceWidth / unitsPerEm;
+            
+            let colSpan = 1;
+            if (widthRatio > 1.2) colSpan = 2;
+            if (widthRatio > 2.2) colSpan = 3;
+            if (widthRatio > 3.2) colSpan = 4;
+            if (widthRatio > 4.2) colSpan = 5;
+
             glyphsList.push({
               char,
               index: glyph.index,
-              unicode: glyph.unicode.toString(16).toUpperCase().padStart(4, '0')
+              unicode: glyph.unicode.toString(16).toUpperCase().padStart(4, '0'),
+              colSpan
             });
           }
         }
@@ -295,8 +420,18 @@ export const GroupDetails = ({
         
         if (!isCancelled) {
           if (bestCandidates.length > 0) {
-            const randomIdx = Math.floor(Math.random() * bestCandidates.length);
-            setRandomBackdropChar(bestCandidates[randomIdx]);
+            const shuffledCandidates = [...bestCandidates].sort(() => 0.5 - Math.random());
+            const picked = shuffledCandidates.slice(0, 4);
+            while (picked.length < 4) {
+              picked.push(bestCandidates[0] || 'ع');
+            }
+            
+            setBackdropChars([
+              { char: picked[0], className: 'absolute right-[4%] bottom-[5%] pointer-events-none select-none opacity-[0.018] transform rotate-[15deg] leading-none text-white', fontSize: '170px' },
+              { char: picked[1], className: 'absolute left-[5%] top-[8%] pointer-events-none select-none opacity-[0.015] transform -rotate-[15deg] leading-none text-white', fontSize: '120px' },
+              { char: picked[2], className: 'absolute left-[4%] bottom-[12%] pointer-events-none select-none opacity-[0.012] transform rotate-[25deg] leading-none text-white', fontSize: '135px' },
+              { char: picked[3], className: 'absolute right-[8%] top-[10%] pointer-events-none select-none opacity-[0.01] transform -rotate-12 leading-none text-white', fontSize: '105px' }
+            ]);
           }
           setDetectedLangs(langs);
           setParsedGlyphs(glyphsList.slice(0, 450));
@@ -359,17 +494,6 @@ export const GroupDetails = ({
     return 'TTF';
   };
 
-  // Dynamic weights string extractor
-  const getWeightsDisplay = () => {
-    const count = selectedFontWeights.length;
-    if (count === 0) return '-';
-    if (count === 1) return dir === 'rtl' ? 'وزن واحد' : '1 weight';
-    if (count === 2) return dir === 'rtl' ? 'وزنان' : '2 weights';
-    if (count === 3) return dir === 'rtl' ? '٣ أوزان' : '3 weights';
-    if (count === 4) return dir === 'rtl' ? '٤ أوزان' : '4 weights';
-    return dir === 'rtl' ? `${count} أوزان` : `${count} weights`;
-  };
-
   // Dynamic languages analyzer
   const getSupportedLanguages = () => {
     if (detectedLangs.length > 2) return dir === 'rtl' ? `${detectedLangs.length} لغات مدعومة` : `${detectedLangs.length} Languages`;
@@ -402,6 +526,18 @@ export const GroupDetails = ({
   const isAdmin = user?.user_metadata?.role === 'admin';
   const isOwner = isAdmin || (!isPublicAllFonts && (group?.is_owner === true || group?.user_id === user?.id));
   const [dbFonts, setDbFonts] = useState<Font[]>([]);
+
+  // Helper to truncate long names with two-dots (..)
+  const truncateTwoDots = (str: string, max: number = 10) => {
+    if (!str) return '';
+    if (str.length <= max) return str;
+    return str.slice(0, max) + '..';
+  };
+
+  // Derive base/parent font metadata so tags don't disappear when selecting weights
+  const baseFontForMetadata = selectedFontDetail 
+    ? (dbFonts.find(f => f.id === (activeParentFontId || selectedFontDetail.id)) || selectedFontDetail)
+    : null;
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -1444,52 +1580,67 @@ export const GroupDetails = ({
 
               {/* Bottom Hashtags & Weights Section with modern layered background (Separated & Larger) */}
               {(((isPublicAllFonts && ((item.tags && item.tags.length > 0) || isAdmin))) || ((parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading)) && (
-                <div className="mt-auto pt-2 bg-transparent flex flex-wrap items-center gap-1 relative z-20 border-t border-white/[0.02]" onClick={(e) => e.stopPropagation()}>
-                  <div className="w-full bg-black/30 backdrop-blur-md rounded-xl p-1.5 flex flex-wrap items-center gap-1 border border-white/5 relative">
-                    {isPublicAllFonts && item.tags && item.tags.map(tag => (
-                      <button 
-                         key={tag} 
-                         onClick={(e) => { e.stopPropagation(); onTagClick?.(tag); }}
-                         className="text-xs bg-white/[0.02] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 px-2.5 py-1 rounded-lg text-white/60 cursor-pointer transition-all duration-300 flex items-center gap-1 font-sans font-light"
-                      >
-                        <span className="text-cyan-400 opacity-50 font-mono">#</span>
-                        <span>{tag}</span>
-                      </button>
-                    ))}
-                    {isPublicAllFonts && isAdmin && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setTagEditModal({ isOpen: true, fontId: item.id, tagsText: '' });
-                        }}
-                        className="w-7 h-7 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 rounded-lg flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0"
-                        title={dir === 'rtl' ? 'إضافة هاشتاغ جديد' : 'Add new tag'}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
-                    {/* Elegant vertical separator and Weights button aligned to the far opposite side */}
-                    {((parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading) && (
-                      <>
-                        {isPublicAllFonts && (((item.tags && item.tags.length > 0) || isAdmin)) && (
-                          <div className={`h-4 w-[1px] bg-gradient-to-b from-cyan-500/30 via-white/20 to-cyan-500/30 mx-1.5 self-center shrink-0 ${dir === 'rtl' ? 'mr-auto' : 'ml-auto'}`} />
+                <div className="mt-auto pt-2 bg-transparent flex items-center gap-1 relative z-20 border-t border-white/[0.02]" onClick={(e) => e.stopPropagation()}>
+                  <div className="w-full bg-black/40 backdrop-blur-md rounded-xl p-1 flex items-center justify-between border border-white/5 relative overflow-hidden h-[34px]">
+                    
+                    {/* Tags Slider Area */}
+                    <div className="flex-1 overflow-hidden relative h-full flex items-center">
+                      <div className={`flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap py-0.5 ${dir === 'rtl' ? 'pl-8' : 'pr-8'}`}>
+                        {isPublicAllFonts && item.tags && item.tags.map(tag => (
+                          <button 
+                             key={tag} 
+                             onClick={(e) => { e.stopPropagation(); onTagClick?.(tag); }}
+                             className="text-[10px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 px-2.5 py-1 rounded-lg text-white/60 cursor-pointer transition-all duration-300 flex items-center gap-1 font-sans font-light shrink-0"
+                          >
+                            <span className="text-cyan-400 opacity-50 font-mono">#</span>
+                            <span>{tag}</span>
+                          </button>
+                        ))}
+                        {isPublicAllFonts && isAdmin && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTagEditModal({ isOpen: true, fontId: item.id, tagsText: '' });
+                            }}
+                            className="w-6 h-6 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 rounded-lg flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0"
+                            title={dir === 'rtl' ? 'إضافة هاشتاغ جديد' : 'Add new tag'}
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
                         )}
+                      </div>
+                      
+                      {/* Elegant Fade Mask to conceal tags smoothly */}
+                      <div className={`absolute top-0 bottom-0 w-8 pointer-events-none z-10 ${
+                        dir === 'rtl' 
+                          ? 'left-0 bg-gradient-to-r from-black/80 to-transparent' 
+                          : 'right-0 bg-gradient-to-l from-black/80 to-transparent'
+                      }`} />
+                    </div>
+
+                    {/* Isolated Layer with the separator line and weights action */}
+                    {((parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading) && (
+                      <div className={`flex items-center shrink-0 z-20 self-stretch bg-[#0c0f14]/95 backdrop-blur-md px-1.5 ${
+                        dir === 'rtl' 
+                          ? 'border-r border-white/10 rounded-l-xl' 
+                          : 'border-l border-white/10 rounded-r-xl'
+                      }`}>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             openWeightsModal(item);
                           }}
-                          className={`w-7 h-7 cursor-pointer transition-all duration-300 flex items-center justify-center rounded-lg shrink-0 
+                          className={`w-6 h-6 cursor-pointer transition-all duration-300 flex items-center justify-center rounded-lg shrink-0 
                             ${parentFontIds.has(item.id) 
-                              ? 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.1)]' 
-                              : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white'} ${(!isPublicAllFonts || !(((item.tags && item.tags.length > 0) || isAdmin))) ? (dir === 'rtl' ? 'mr-auto' : 'ml-auto') : ''}`}
+                              ? 'bg-cyan-500/11 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/25 shadow-[0_0_10px_rgba(6,182,212,0.15)]' 
+                              : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white'}`}
                           title={dir === 'rtl' ? 'أوزان الخط' : 'Font Weights'}
                         >
-                          <Layers className="w-3.5 h-3.5" />
+                          <Layers className="w-3 h-3" />
                         </button>
-                      </>
+                      </div>
                     )}
+
                   </div>
                 </div>
               )}
@@ -1948,7 +2099,7 @@ export const GroupDetails = ({
             </div>
 
             {/* Top Navigation & Action Header */}
-            <header className={`flex items-center justify-between px-6 py-4 border-b transition-colors duration-300 ${isDetailScrolled ? 'border-white/20 bg-[#080808]/80' : 'border-transparent bg-transparent'} relative z-10 backdrop-blur-md`}>
+            <header className={`flex items-center justify-between px-6 py-4 border-b transition-colors duration-300 ${isDetailScrolled ? 'border-white/20 bg-[#080808]/80' : 'border-transparent bg-transparent'} relative z-[200] backdrop-blur-md`}>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => {
@@ -1971,27 +2122,64 @@ export const GroupDetails = ({
                 {selectedFontDetail.download_url && (
                   <button
                     onClick={() => handleDownload(selectedFontDetail.download_url!, selectedFontDetail.name)}
-                    className={`inline-flex items-center gap-2 px-5 py-3 h-11 rounded-2xl bg-white hover:bg-gray-200 text-black font-bold text-xs tracking-wide transition-all cursor-pointer active:scale-95 shadow-md shadow-white/5 focus:outline-none shrink-0`}
+                    className={`inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95 shadow-md shadow-white/5 focus:outline-none shrink-0 border border-white/10`}
                     title={dir === 'rtl' ? 'تحميل ملف الخط مباشرة' : 'Download font directly'}
                   >
-                    <Download className="w-4 h-4 text-black" />
-                    <span className="hidden sm:inline">{dir === 'rtl' ? 'تحميل الخط' : 'Download Font'}</span>
+                    <Download className="w-5 h-5" />
                   </button>
                 )}
 
-                {/* Lab transfer trigger button */}
-                <button
-                  disabled={isTransferring}
-                  onClick={() => handleTransferToLab(selectedFontDetail)}
-                  className={`inline-flex items-center gap-2 px-5 py-3 h-11 rounded-2xl bg-white hover:bg-gray-200 text-black font-bold text-xs tracking-wide transition-all cursor-pointer active:scale-95 shadow-md shadow-white/5 disabled:opacity-50 select-none focus:outline-none shrink-0`}
-                >
-                  {isTransferring ? (
-                    <span className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
-                  ) : (
-                    <Beaker className="w-4 h-4" />
-                  )}
-                  <span>{dir === 'rtl' ? 'فتح في المختبر' : 'Open in Lab'}</span>
-                </button>
+                {/* External Actions Dropdown */}
+                <div className="relative external-menu-container">
+                  <button
+                    onClick={() => setIsExternalMenuOpen(!isExternalMenuOpen)}
+                    className={`inline-flex items-center justify-center w-11 h-11 rounded-2xl ${isExternalMenuOpen ? 'bg-white text-black' : 'bg-white hover:bg-gray-200 text-black'} transition-all cursor-pointer active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)] focus:outline-none shrink-0`}
+                    title={dir === 'rtl' ? 'إجراءات إضافية' : 'More actions'}
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                  </button>
+
+                  <AnimatePresence>
+                    {isExternalMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className={`absolute top-[calc(100%+8px)] ${dir === 'rtl' ? 'left-0' : 'right-0'} w-[200px] bg-[#1a1d24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 p-1.5`}
+                      >
+                        <button
+                          disabled={isTransferring}
+                          onClick={() => {
+                            setIsExternalMenuOpen(false);
+                            handleTransferToLab(selectedFontDetail);
+                          }}
+                          className={`flex items-center gap-3 px-3 py-3 w-full text-left rounded-xl hover:bg-white/10 text-white transition-colors cursor-pointer group disabled:opacity-50`}
+                        >
+                          {isTransferring ? (
+                            <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin shrink-0" />
+                          ) : (
+                            <Beaker className="w-4 h-4 shrink-0 opacity-70 group-hover:opacity-100 group-hover:text-amber-400 transition-colors" />
+                          )}
+                          <span className="text-xs font-bold leading-none">{dir === 'rtl' ? 'الفتح بالمختبر' : 'Open in Lab'}</span>
+                        </button>
+                        
+                        <div className="h-[1px] w-full bg-white/5 my-0.5" />
+
+                        <button
+                          onClick={() => {
+                            setIsExternalMenuOpen(false);
+                            handleOpenSaveModal();
+                          }}
+                          className={`flex items-center gap-3 px-3 py-3 w-full text-left rounded-xl hover:bg-cyan-500/10 hover:text-cyan-400 text-white transition-colors cursor-pointer group`}
+                        >
+                          <Copy className="w-4 h-4 shrink-0 opacity-70 group-hover:opacity-100 transition-colors" />
+                          <span className="text-xs font-bold leading-none shrink-0">{dir === 'rtl' ? 'الحفظ بمساحتي' : 'Save to Workspace'}</span>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </header>
 
@@ -2043,7 +2231,7 @@ export const GroupDetails = ({
                 </div>
 
                 {/* 2. SPEC SHEET & METADATA info */}
-                <div className={`${activeTheme.cardBg} rounded-3xl p-5 border ${activeTheme.borderColor} flex flex-col gap-3.5`}>
+                <div className={`${activeTheme.cardBg} rounded-3xl p-5 border ${activeTheme.borderColor} flex flex-col gap-3.5 relative z-30`}>
                   <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest text-[#cbd5e1]/30 pb-1.5 border-b border-white/[0.03] font-display">
                     <span>{dir === 'rtl' ? 'المواصفات الفنية للخط' : 'Technical Font Specifications'}</span>
                   </div>
@@ -2055,38 +2243,66 @@ export const GroupDetails = ({
                         {getFontFormat(selectedFontDetail.download_url)}
                       </span>
                     </div>
-                    <div className="flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center relative group/weights">
+                    <div className={`flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center relative group/weights weights-menu-container ${isWeightsMenuOpen ? 'z-50' : 'z-10'}`}>
                       <span className={activeTheme.textSecondary}>{dir === 'rtl' ? 'الأوزان' : 'Weights'}</span>
                       
                       {selectedFontWeights.length > 0 ? (
-                        <select 
-                          className={`mt-1 bg-transparent border border-white/10 ${activeTheme.text} font-bold text-[10px] rounded focus:outline-none appearance-none text-center py-0.5 cursor-pointer hover:bg-white/5 transition-colors`}
-                          onChange={(e) => {
-                            const newFontId = e.target.value;
-                            if (activeParentFontId && newFontId === activeParentFontId) {
-                               const parentFont = dbFonts.find(f => f.id === activeParentFontId);
-                               if (parentFont) setSelectedFontDetail(parentFont);
-                            } else if (newFontId && newFontId !== selectedFontDetail?.id) {
-                              const weight = selectedFontWeights.find(w => w.child_font_id === newFontId);
-                              if (weight && weight.child_font) {
-                                setSelectedFontDetail(weight.child_font as Font);
-                              }
-                            }
-                          }}
-                          value={selectedFontDetail?.id || ''}
-                        >
-                          <option value={activeParentFontId || selectedFontDetail?.id} className="bg-[#111]">
-                            {dir === 'rtl' ? 'أساسي' : 'Base'}
-                          </option>
-                          {selectedFontWeights.map(w => (
-                            <option key={w.child_font_id} value={w.child_font_id} className="bg-[#111]">
-                              {formatFontName(w.child_font?.name || '')}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative mt-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsWeightsMenuOpen(!isWeightsMenuOpen);
+                            }}
+                            className={`w-full bg-white/[0.05] border border-white/10 ${activeTheme.text} hover:bg-white/10 font-bold text-[10px] rounded px-2 py-1 transition-colors flex items-center justify-between gap-1`}
+                          >
+                            <span className="flex-1 text-center font-mono">
+                              {selectedFontDetail?.id === activeParentFontId 
+                                ? (dir === 'rtl' ? 'أساسي' : 'Base')
+                                : truncateTwoDots(formatFontName(selectedFontWeights.find(w => w.child_font_id === selectedFontDetail?.id)?.child_font?.name || selectedFontDetail?.name || ''), 10)}
+                            </span>
+                            <ChevronDown className="w-3 h-3 shrink-0" />
+                          </button>
+                          
+                          <AnimatePresence>
+                            {isWeightsMenuOpen && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -5 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute top-full left-1/2 -translate-x-1/2 min-w-[140px] md:min-w-[170px] mt-2 bg-[#1a1d24] border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col z-[100] max-h-[160px] overflow-y-auto custom-scrollbar font-sans"
+                              >
+                                <button
+                                  onClick={() => {
+                                    const parentFont = dbFonts.find(f => f.id === activeParentFontId);
+                                    if (parentFont) setSelectedFontDetail(parentFont);
+                                    setIsWeightsMenuOpen(false);
+                                  }}
+                                  className={`w-full text-center px-3 py-2 text-[10px] font-bold transition-colors ${selectedFontDetail?.id === activeParentFontId ? 'bg-cyan-500/20 text-cyan-400 font-mono' : 'text-white/80 hover:bg-white/10 font-mono'}`}
+                                >
+                                  {dir === 'rtl' ? 'أساسي' : 'Base'}
+                                </button>
+                                {selectedFontWeights.map(w => (
+                                  <button
+                                    key={w.child_font_id}
+                                    onClick={() => {
+                                      if (w.child_font) {
+                                        setSelectedFontDetail(w.child_font as Font);
+                                      }
+                                      setIsWeightsMenuOpen(false);
+                                    }}
+                                    className={`w-full text-center px-3 py-2 text-[10px] font-bold transition-colors ${selectedFontDetail?.id === w.child_font_id ? 'bg-cyan-500/20 text-cyan-400 font-mono' : 'text-white/80 hover:bg-white/10 font-mono'}`}
+                                  >
+                                    {truncateTwoDots(formatFontName(w.child_font?.name || ''), 10)}
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       ) : (
                         <span className={`${activeTheme.text} font-bold mt-1 text-[11px] truncate`}>
-                          {dir === 'rtl' ? 'وزن واحد' : '1 weight'}
+                          -
                         </span>
                       )}
 
@@ -2115,22 +2331,37 @@ export const GroupDetails = ({
 
                   {/* Isolated Tag view within details */}
                   <div className="flex flex-col gap-1.5 mt-1 border-t border-white/[0.03] pt-3">
-                    <span className={`${activeTheme.textSecondary} text-[11px] font-bold`}>{dir === 'rtl' ? 'الهاشتاغات' : 'Tags'}</span>
-                    {(!selectedFontDetail.tags || selectedFontDetail.tags.length === 0) ? (
+                    <div className="flex items-center justify-between">
+                      <span className={`${activeTheme.textSecondary} text-[11px] font-bold`}>{dir === 'rtl' ? 'الهاشتاغات' : 'Tags'}</span>
+                      {isOwner && baseFontForMetadata && (
+                        <button 
+                          onClick={() => setTagEditModal({ isOpen: true, fontId: baseFontForMetadata.id, tagsText: baseFontForMetadata.tags?.join(', ') || '' })}
+                          className="hover:bg-white/10 p-1 rounded transition-colors text-white/50 hover:text-white"
+                          title={dir === 'rtl' ? 'تعديل الهاشتاغات' : 'Edit Tags'}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    {(!baseFontForMetadata?.tags || baseFontForMetadata.tags.length === 0) ? (
                       <span className={`font-light ${activeTheme.textSecondary} opacity-40 text-xs`}>{dir === 'rtl' ? 'لا يوجد هاشتاغات' : 'No tags found'}</span>
                     ) : (
                       <div className="flex flex-wrap gap-1.5 mt-1">
-                        {selectedFontDetail.tags.map(tag => (
+                        {baseFontForMetadata.tags.map(tag => (
                           <button 
                             key={tag} 
-                            onClick={() => {
-                              if (isOwner) {
-                                setTagEditModal({ isOpen: true, fontId: selectedFontDetail.id, tagsText: selectedFontDetail.tags?.join(', ') || '' });
-                              }
+                            onClick={(e) => {
+                               e.stopPropagation();
+                               navigate(isPublicAllFonts ? '/fonts' : `/my-fonts${id ? `?group=${id}` : ''}`);
+                               setSelectedFontDetail(null);
+                               setSelectedGlyphZoom(null);
+                               setIsDetailScrolled(false);
+                               onTagClick?.(tag);
                             }}
-                            className={`text-[11px] px-2.5 py-1 rounded-lg border ${activeTheme.accentBg} hover:bg-white/10 transition-colors select-none font-medium cursor-pointer`}
+                            className={`text-[11px] px-2.5 py-1 rounded-lg border ${activeTheme.accentBg} hover:bg-white/10 transition-colors select-none font-medium cursor-pointer flex items-center gap-1`}
                           >
-                            #{tag}
+                            <span className="opacity-50 font-mono text-cyan-400">#</span>
+                            <span>{tag}</span>
                           </button>
                         ))}
                       </div>
@@ -2145,12 +2376,18 @@ export const GroupDetails = ({
                 className={`min-h-[420px] flex flex-col rounded-3xl border ${activeTheme.borderColor} ${activeTheme.cardBg} transition-all duration-300 relative overflow-hidden shadow-2xl p-6 md:p-8 shrink-0`}
               >
                 {/* Absolute subtle background decorative seal */}
-                <div 
-                  className={`absolute right-12 bottom-4 select-none pointer-events-none opacity-[0.035] transform rotate-12 text-[260px] font-extrabold leading-none ${activeTheme.text}`}
-                  style={{ fontFamily: `"${selectedFontDetail.name}", sans-serif` }}
-                >
-                  {randomBackdropChar}
-                </div>
+                {backdropChars.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className={item.className}
+                    style={{ 
+                      fontFamily: `"${selectedFontDetail.name}", sans-serif`,
+                      fontSize: item.fontSize
+                    }}
+                  >
+                    {item.char}
+                  </div>
+                ))}
 
                 {/* RENDERING MODE: CLASSICAL POEM (أبيات الشعر) */}
                 {detailLayoutMode === 'poem' && (
@@ -2265,15 +2502,16 @@ export const GroupDetails = ({
                           {dir === 'rtl' ? 'لم يتم العثور على محارف تطابق البحث' : 'No matching glyphs found'}
                         </div>
                       ) : (
-                        <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center pb-8 p-1">
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(45px,1fr))] gap-1.5 sm:gap-2 pb-8 p-1">
                           {filteredGlyphs.map((glyph, idx) => (
                             <button
                               key={`${glyph.unicode || idx}-${glyph.index}`}
                               onClick={() => setSelectedGlyphZoom(glyph.char)}
-                              className="h-[40px] md:h-[45px] min-w-[40px] md:min-w-[45px] max-w-full px-2 rounded-xl bg-white/[0.02] border border-white/5 text-white/90 hover:border-white hover:text-white hover:bg-white/5 hover:scale-[1.12] flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 shadow-lg shadow-black/30 flex-shrink-0 relative flex-grow-0"
+                              className="h-[40px] md:h-[45px] rounded-xl bg-white/[0.02] border border-white/5 text-white/90 hover:border-white hover:text-white hover:bg-white/5 hover:scale-[1.12] flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 shadow-lg shadow-black/30"
                               style={{
                                 fontFamily: `"${selectedFontDetail.name}", sans-serif`,
-                                fontSize: '18px'
+                                fontSize: '18px',
+                                gridColumn: `span ${Math.min(glyph.colSpan || 1, 6)}`
                               }}
                               title={glyph.unicode ? `U+${glyph.unicode}` : undefined}
                             >
@@ -2446,6 +2684,112 @@ export const GroupDetails = ({
               )}
             </AnimatePresence>
 
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Save Font Modal */}
+      <AnimatePresence>
+        {isSaveModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans"
+            dir={dir}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#0f1115] border border-white/10 p-6 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col gap-5"
+            >
+              <div className="flex justify-between items-center">
+                <h3 className="text-white font-bold text-lg">
+                  {dir === 'rtl' ? 'حفظ الخط في حسابي' : 'Save to my account'}
+                </h3>
+                <button
+                  onClick={() => setIsSaveModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4 text-white/60" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <label className="text-white/60 text-xs font-semibold px-1">
+                    {dir === 'rtl' ? 'أين تريد حفظ هذا الخط؟' : 'Where to save this font?'}
+                  </label>
+                  <select
+                    className="w-full bg-[#16191f] border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400/40 appearance-none cursor-pointer"
+                    value={saveToGroupId}
+                    onChange={(e) => setSaveToGroupId(e.target.value)}
+                  >
+                    <option value="new" className="bg-[#16191f] font-bold text-cyan-400">
+                      {dir === 'rtl' ? ' إنشاء مجموعة جديدة...' : ' Create new group...'}
+                    </option>
+                    {userGroups.map(g => (
+                      <option key={g.id} value={g.id} className="bg-[#16191f]">
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {saveToGroupId === 'new' && (
+                  <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="text-white/60 text-xs font-semibold px-1">
+                      {dir === 'rtl' ? 'اسم المجموعة الجديدة' : 'New group name'}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full bg-[#16191f] border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400/40"
+                      placeholder={dir === 'rtl' ? 'مثال: خطوطي المفضلة' : 'e.g. My Favorites'}
+                      value={newSaveGroupName}
+                      onChange={(e) => setNewSaveGroupName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') executeFontSave();
+                      }}
+                      autoFocus
+                    />
+                  </div>
+                )}
+                
+                {selectedFontWeights.length > 0 && (
+                   <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-3 text-xs text-cyan-400/80 flex flex-col gap-1">
+                     <div className="flex items-center gap-2 font-bold mb-1">
+                       <Check className="w-3.5 h-3.5" />
+                       {dir === 'rtl' ? 'حفظ الأوزان' : 'Weights Inclusion'}
+                     </div>
+                     <p>
+                        {dir === 'rtl' 
+                          ? `هذا الخط يحتوي على ${selectedFontWeights.length} وزن، سيتم حفظها وربطها بالخط الأساسي تلقائياً.` 
+                          : `This font has ${selectedFontWeights.length} weights, they will be saved and linked automatically.`}
+                     </p>
+                   </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setIsSaveModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all cursor-pointer"
+                >
+                  {dir === 'rtl' ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  onClick={executeFontSave}
+                  disabled={isSavingFont}
+                  className="px-6 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black text-xs font-black tracking-wide transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSavingFont ? (
+                    <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  ) : <Copy className="w-4 h-4" />}
+                  {dir === 'rtl' ? 'تأكيد الحفظ' : 'Confirm Save'}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
