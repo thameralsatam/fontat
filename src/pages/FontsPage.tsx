@@ -23,7 +23,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
-  const [publicTagFilter, setPublicTagFilter] = useState<string | null>(null);
+  const [publicTagFilters, setPublicTagFilters] = useState<string[]>([]);
   const [highlightedFont, setHighlightedFont] = useState<{id: string, ts: number} | undefined>();
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
@@ -60,7 +60,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   // Clear viewing group when mode changes
   useEffect(() => {
     setViewingGroupId(null);
-    setPublicTagFilter(null);
+    setPublicTagFilters([]);
   }, [mode]);
 
   useEffect(() => {
@@ -269,7 +269,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             if ('type' in rawRes && rawRes.type === 'tag') {
               // User selected a tag
               setViewingGroupId(null);
-              setPublicTagFilter(rawRes.tag);
+              setPublicTagFilters([rawRes.tag]);
               return;
             }
 
@@ -444,9 +444,11 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
         {mode === 'public' ? (
           <GroupDetails 
             isPublicAllFonts={true}
-            publicTagFilter={publicTagFilter}
-            onClearTagFilter={() => setPublicTagFilter(null)}
-            onTagClick={tag => setPublicTagFilter(tag)}
+            publicTagFilters={publicTagFilters}
+            onClearTagFilter={() => setPublicTagFilters([])}
+            onTagClick={tag => setPublicTagFilters(prev => 
+              prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+            )}
             highlightedFont={highlightedFont}
           />
         ) : viewingGroupId ? (

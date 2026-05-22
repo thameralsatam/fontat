@@ -30,7 +30,7 @@ export const GroupDetails = ({
   groupData,
   highlightedFont,
   isPublicAllFonts = false,
-  publicTagFilter = null,
+  publicTagFilters = [],
   onClearTagFilter,
   onTagClick
 }: { 
@@ -38,7 +38,7 @@ export const GroupDetails = ({
   groupData?: Group,
   highlightedFont?: { id: string, ts: number },
   isPublicAllFonts?: boolean,
-  publicTagFilter?: string | null,
+  publicTagFilters?: string[],
   onClearTagFilter?: () => void,
   onTagClick?: (tag: string) => void
 }) => {
@@ -53,6 +53,7 @@ export const GroupDetails = ({
   const [group, setGroup] = useState<Group | null>(groupData || null);
 
   const [selectedFontDetail, setSelectedFontDetail] = useState<Font | null>(null);
+  const [activeParentFontId, setActiveParentFontId] = useState<string | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
   const [customPoemTexts, setCustomPoemTexts] = useState<Record<string, string>>({});
 
@@ -320,10 +321,11 @@ export const GroupDetails = ({
     };
   }, [selectedFontDetail]);
 
-  // Fetch weights when font selected
+  // Fetch weights when font selected (based on active parent)
   useEffect(() => {
-    if (selectedFontDetail) {
-      getFontWeights(selectedFontDetail.id)
+    const parentId = activeParentFontId || selectedFontDetail?.id;
+    if (parentId) {
+      getFontWeights(parentId)
         .then(weights => {
           setSelectedFontWeights(weights || []);
         })
@@ -334,7 +336,7 @@ export const GroupDetails = ({
     } else {
       setSelectedFontWeights([]);
     }
-  }, [selectedFontDetail]);
+  }, [activeParentFontId, selectedFontDetail?.id]);
 
   // Search filtered glyph list
   const filteredGlyphs = useMemo(() => {
@@ -441,7 +443,7 @@ export const GroupDetails = ({
   useEffect(() => {
     // Reset visible count when switching contexts
     setVisibleCount(20);
-  }, [id, isPublicAllFonts, publicTagFilter]);
+  }, [id, isPublicAllFonts, publicTagFilters.join(',')]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -488,7 +490,7 @@ export const GroupDetails = ({
     if (id || isPublicAllFonts) {
       fetchData();
     }
-  }, [id, user?.id, isPublicAllFonts, publicTagFilter]);
+  }, [id, user?.id, isPublicAllFonts, publicTagFilters.join(',')]);
 
   const fetchData = async () => {
     if (isPublicAllFonts) {
@@ -639,12 +641,25 @@ export const GroupDetails = ({
     // ترتيب الخطوط بحيث الأقدم يظهر أولاً (أو في الأعلى)
     allFonts.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
 
-    if (isPublicAllFonts && publicTagFilter) {
-      return allFonts.filter(f => f.tags && f.tags.includes(publicTagFilter));
+    if (isPublicAllFonts && publicTagFilters.length > 0) {
+      let filtered = allFonts.filter(f => f.tags && publicTagFilters.some(tag => f.tags!.includes(tag)));
+      
+      // Sort fonts: those missing fewer of the selected tags (i.e. having more matching tags) come first
+      filtered.sort((a, b) => {
+        const aMatches = a.tags!.filter(t => publicTagFilters.includes(t)).length;
+        const bMatches = b.tags!.filter(t => publicTagFilters.includes(t)).length;
+        
+        if (aMatches !== bMatches) {
+          return bMatches - aMatches; // Highest matches first
+        }
+        return 0; // Fallback to existing date order
+      });
+
+      return filtered;
     }
 
     return allFonts;
-  }, [dbFonts, uploadQueue, id, user, childFontIds, isPublicAllFonts, publicTagFilter]);
+  }, [dbFonts, uploadQueue, id, user, childFontIds, isPublicAllFonts, publicTagFilters.join(',')]);
 
 
 
@@ -692,9 +707,11 @@ export const GroupDetails = ({
         
       if (targetFont) {
         setSelectedFontDetail(targetFont);
+        setActiveParentFontId(targetFont.id);
       }
     } else if (!fontParam && selectedFontDetail) {
       setSelectedFontDetail(null);
+      setActiveParentFontId(null);
     }
   }, [fontParam, displayFonts, loading]);
 
@@ -772,7 +789,7 @@ export const GroupDetails = ({
     adjust();
     const frameId = requestAnimationFrame(adjust);
     return () => cancelAnimationFrame(frameId);
-  }, [globalPreviewText, publicTagFilter, isPublicAllFonts]);
+  }, [globalPreviewText, publicTagFilters.join(','), isPublicAllFonts]);
 
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -969,8 +986,9 @@ export const GroupDetails = ({
       addNotification('success', dir === 'rtl' ? `تم تعديل الهاشتاغ من #${oldTag} إلى #${formattedNewTag} في جميع الخطوط!` : `Tag renamed from #${oldTag} to #${formattedNewTag} in all fonts!`);
       
       // Update public filter state in the parent if it matches oldTag
-      if (publicTagFilter === oldTag && onTagClick) {
+      if (publicTagFilters.includes(oldTag) && onTagClick) {
         onTagClick(formattedNewTag);
+        onTagClick(oldTag); // Toggle old one out
       }
       
       setTagRenameModal({ isOpen: false, oldTag: '', newTag: '' });
@@ -1022,7 +1040,7 @@ export const GroupDetails = ({
 
   return (
     <div className="relative pb-32 max-lg:landscape:pb-16 pt-0" dir={dir}>
-      {isPublicAllFonts && publicTagFilter ? (
+      {isPublicAllFonts && publicTagFilters.length > 0 ? (
         /* ======================== DETACHED DEDICATED HASHTAG VIEW ======================== */
         <div className="pb-8 pt-4 px-4 md:px-8 w-full xl:max-w-[1600px] mx-auto font-sans" key="hashtag-isolate">
           <div className="flex flex-col gap-6">
@@ -1041,7 +1059,7 @@ export const GroupDetails = ({
               </button>
               
               <span className="text-[10px] tracking-wider uppercase font-bold text-cyan-400 bg-cyan-400/5 px-2.5 py-1 rounded-md border border-cyan-400/10">
-                {dir === 'rtl' ? 'صفحة التصنيف' : 'Filter Page'}
+                {dir === 'rtl' ? 'التصفية المتعددة' : 'Multiple Filter'}
               </span>
             </div>
 
@@ -1050,37 +1068,40 @@ export const GroupDetails = ({
               {/* Dynamic decorative backdrop blur anchor */}
               <div className="absolute right-0 top-0 w-[400px] h-[400px] bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none group-hover:bg-cyan-500/10 transition-all duration-700" />
               
-              <div className="flex items-center gap-5 relative z-10">
-                <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.15)] shrink-0">
-                  <span className="font-mono text-3xl font-bold leading-none">#</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-none font-display">
-                      {publicTagFilter}
-                    </h1>
-                    
-                    {/* Controls placed RIGHT BY the Hashtag as requested */}
-                    {isAdmin && (
-                      <div className="flex items-center gap-1 shrink-0 select-none">
-                        <button
-                          onClick={() => setTagRenameModal({ isOpen: true, oldTag: publicTagFilter, newTag: publicTagFilter })}
-                          className="w-8 h-8 rounded-lg bg-white/5 border border-white/15 flex items-center justify-center hover:bg-cyan-500/10 hover:border-cyan-500/35 text-white/60 hover:text-cyan-400 transition-all cursor-pointer active:scale-90"
-                          title={dir === 'rtl' ? 'تعديل هذا الهاشتاغ عالمياً' : 'Edit this globally'}
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setTagDeleteGlobalModal({ isOpen: true, tag: publicTagFilter })}
-                          className="w-8 h-8 rounded-lg bg-white/5 border border-white/15 flex items-center justify-center hover:bg-red-500/10 hover:border-red-500/35 text-white/60 hover:text-red-400 transition-all cursor-pointer active:scale-90"
-                          title={dir === 'rtl' ? 'حذف هذا الهاشتاغ عالمياً' : 'Delete this globally'}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+              <div className="flex flex-col gap-5 relative z-10 w-full">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {publicTagFilters.map(filterTag => (
+                      <div key={filterTag} className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
+                        <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                          <span className="font-mono text-xl font-bold leading-none">#</span>
+                        </div>
+                        <h2 className="text-xl md:text-2xl font-black text-white tracking-tight leading-none font-display">
+                          {filterTag}
+                        </h2>
+                        {/* Controls placed RIGHT BY the Hashtag as requested */}
+                        {isAdmin && (
+                          <div className="flex items-center gap-1 shrink-0 select-none mr-2">
+                            <button
+                              onClick={() => setTagRenameModal({ isOpen: true, oldTag: filterTag, newTag: filterTag })}
+                              className="w-7 h-7 rounded-lg bg-white/5 border border-white/15 flex items-center justify-center hover:bg-cyan-500/10 hover:border-cyan-500/35 text-white/60 hover:text-cyan-400 transition-all cursor-pointer"
+                              title={dir === 'rtl' ? 'تعديل هذا الهاشتاغ عالمياً' : 'Edit this globally'}
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setTagDeleteGlobalModal({ isOpen: true, tag: filterTag })}
+                              className="w-7 h-7 rounded-lg bg-white/5 border border-white/15 flex items-center justify-center hover:bg-red-500/10 hover:border-red-500/35 text-white/60 hover:text-red-400 transition-all cursor-pointer"
+                              title={dir === 'rtl' ? 'حذف هذا الهاشتاغ عالمياً' : 'Delete this globally'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
-                  <p className="text-xs text-white/40 mt-2 font-light">
+                  <p className="text-xs text-white/40 mt-1 font-light">
                     {dir === 'rtl' ? (
                       <>تم العثور على <span className="text-cyan-400 font-bold font-mono">{displayFonts.length}</span> خطوط مرتبطة بهذا التصنيف</>
                     ) : (
@@ -1184,13 +1205,15 @@ export const GroupDetails = ({
                   <button 
                     onClick={() => setIsTagModalOpen(true)}
                     className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 backdrop-blur-md relative cursor-pointer
-                      ${publicTagFilter ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] scale-105' : 'bg-white/5 text-white/70 border-white/10 hover:border-white/30 hover:text-white'}
+                      ${publicTagFilters.length > 0 ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] scale-105' : 'bg-white/5 text-white/70 border-white/10 hover:border-white/30 hover:text-white'}
                     `}
-                    title={publicTagFilter ? (dir === 'rtl' ? `مصنف حسب: #${publicTagFilter}` : `Filtered by: #${publicTagFilter}`) : (dir === 'rtl' ? 'تصنيف بالهاشتاغات' : 'Filter by Tags')}
+                    title={publicTagFilters.length > 0 ? (dir === 'rtl' ? `مصنف حسب: #${publicTagFilters.join(', #')}` : `Filtered by: #${publicTagFilters.join(', #')}`) : (dir === 'rtl' ? 'تصنيف بالهاشتاغات' : 'Filter by Tags')}
                   >
                     <Filter className="w-4 h-4" />
-                    {publicTagFilter && (
-                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 border border-[#0a0a0a]" />
+                    {publicTagFilters.length > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-cyan-400 border border-[#0a0a0a] text-[10px] text-black font-bold flex items-center justify-center -translate-y-0.5">
+                        {publicTagFilters.length}
+                      </span>
                     )}
                   </button>
                 )}
@@ -1220,27 +1243,37 @@ export const GroupDetails = ({
             </div>
 
             {/* Sub-header descriptions & Tag filters */}
-            {((!isPublicAllFonts && group?.description) || (isPublicAllFonts && publicTagFilter)) && (
+            {((!isPublicAllFonts && group?.description) || (isPublicAllFonts && publicTagFilters.length > 0)) && (
               <div className="space-y-2 -mt-4">
                 {!isPublicAllFonts && group?.description && (
                   <p className="text-sm text-white opacity-50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">
                     {group.description}
                   </p>
                 )}
-                {isPublicAllFonts && publicTagFilter && (
+                {isPublicAllFonts && publicTagFilters.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-xs text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
-                      <span className="opacity-50 font-mono">#</span>
-                      <span className="font-medium">{publicTagFilter}</span>
-                      {onClearTagFilter && (
-                        <button 
-                          onClick={onClearTagFilter}
-                          className="ml-1.5 p-0.5 rounded-full hover:bg-cyan-500/25 transition-colors opacity-70 hover:opacity-100 cursor-pointer"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
+                    {publicTagFilters.map(filterTag => (
+                      <div key={filterTag} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-xs text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                        <span className="opacity-50 font-mono">#</span>
+                        <span className="font-medium">{filterTag}</span>
+                        {onTagClick && (
+                          <button 
+                            onClick={() => onTagClick(filterTag)}
+                            className="ml-1.5 p-0.5 rounded-full hover:bg-cyan-500/25 transition-colors opacity-70 hover:opacity-100 cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {onClearTagFilter && publicTagFilters.length > 1 && (
+                      <button 
+                        onClick={onClearTagFilter}
+                        className="text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 px-3 py-1.5 rounded-full transition-colors font-medium border border-red-500/20 cursor-pointer"
+                      >
+                        {dir === 'rtl' ? 'مسح الكل' : 'Clear All'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1339,6 +1372,7 @@ export const GroupDetails = ({
               onClick={() => {
                 navigate(isPublicAllFonts ? `/fonts/${item.name}` : `/my-fonts/${item.id}${id ? `?group=${id}` : ''}`);
                 setSelectedFontDetail(item);
+                setActiveParentFontId(item.id);
               }}
             >
               <div className="flex items-center justify-between w-full gap-4">
@@ -1652,10 +1686,9 @@ export const GroupDetails = ({
                           key={tag}
                           onClick={() => {
                             onTagClick?.(tag);
-                            setIsTagModalOpen(false);
                           }}
                           className={`px-3.5 py-2 rounded-xl text-xs transition-all duration-300 flex items-center gap-2 border font-light cursor-pointer
-                            ${publicTagFilter === tag 
+                            ${publicTagFilters.includes(tag) 
                               ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] scale-105' 
                               : 'bg-white/[0.03] text-white/70 border-white/5 hover:border-white/20 hover:text-white'
                             }
@@ -1669,7 +1702,7 @@ export const GroupDetails = ({
                   )}
                 </div>
 
-                {publicTagFilter && (
+                {publicTagFilters.length > 0 && (
                   <button
                     onClick={() => {
                       onClearTagFilter?.();
@@ -2022,11 +2055,55 @@ export const GroupDetails = ({
                         {getFontFormat(selectedFontDetail.download_url)}
                       </span>
                     </div>
-                    <div className="flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center">
+                    <div className="flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center relative group/weights">
                       <span className={activeTheme.textSecondary}>{dir === 'rtl' ? 'الأوزان' : 'Weights'}</span>
-                      <span className={`${activeTheme.text} font-bold mt-1`}>
-                        {getWeightsDisplay()}
-                      </span>
+                      
+                      {selectedFontWeights.length > 0 ? (
+                        <select 
+                          className={`mt-1 bg-transparent border border-white/10 ${activeTheme.text} font-bold text-[10px] rounded focus:outline-none appearance-none text-center py-0.5 cursor-pointer hover:bg-white/5 transition-colors`}
+                          onChange={(e) => {
+                            const newFontId = e.target.value;
+                            if (activeParentFontId && newFontId === activeParentFontId) {
+                               const parentFont = dbFonts.find(f => f.id === activeParentFontId);
+                               if (parentFont) setSelectedFontDetail(parentFont);
+                            } else if (newFontId && newFontId !== selectedFontDetail?.id) {
+                              const weight = selectedFontWeights.find(w => w.child_font_id === newFontId);
+                              if (weight && weight.child_font) {
+                                setSelectedFontDetail(weight.child_font as Font);
+                              }
+                            }
+                          }}
+                          value={selectedFontDetail?.id || ''}
+                        >
+                          <option value={activeParentFontId || selectedFontDetail?.id} className="bg-[#111]">
+                            {dir === 'rtl' ? 'أساسي' : 'Base'}
+                          </option>
+                          {selectedFontWeights.map(w => (
+                            <option key={w.child_font_id} value={w.child_font_id} className="bg-[#111]">
+                              {formatFontName(w.child_font?.name || '')}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`${activeTheme.text} font-bold mt-1 text-[11px] truncate`}>
+                          {dir === 'rtl' ? 'وزن واحد' : '1 weight'}
+                        </span>
+                      )}
+
+                      {isOwner && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (activeParentFontId) {
+                              setUploadingWeightFor(activeParentFontId);
+                              weightInputRef.current?.click();
+                            }
+                          }}
+                          className="absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover/weights:opacity-100 bg-cyan-500/90 text-black text-[9px] font-bold px-2 py-0.5 rounded-full border border-cyan-400 transition-all hover:bg-cyan-400 whitespace-nowrap shadow-[0_0_10px_rgba(34,211,238,0.4)]"
+                        >
+                          + {dir === 'rtl' ? 'إضافة وزن' : 'Add weight'}
+                        </button>
+                      )}
                     </div>
                     <div className="flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center">
                       <span className={activeTheme.textSecondary}>{dir === 'rtl' ? 'اللغات' : 'Languages'}</span>
