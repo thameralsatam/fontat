@@ -2265,19 +2265,19 @@ export const GroupDetails = ({
                           {dir === 'rtl' ? 'لم يتم العثور على محارف تطابق البحث' : 'No matching glyphs found'}
                         </div>
                       ) : (
-                        <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5">
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center pb-8 p-1">
                           {filteredGlyphs.map((glyph, idx) => (
                             <button
                               key={`${glyph.unicode || idx}-${glyph.index}`}
                               onClick={() => setSelectedGlyphZoom(glyph.char)}
-                              className="aspect-square rounded-xl bg-white/[0.02] border border-white/5 text-white/90 hover:border-white hover:text-white hover:bg-white/5 hover:scale-[1.12] flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 shadow-lg shadow-black/30"
+                              className="h-[40px] md:h-[45px] min-w-[40px] md:min-w-[45px] max-w-full px-2 rounded-xl bg-white/[0.02] border border-white/5 text-white/90 hover:border-white hover:text-white hover:bg-white/5 hover:scale-[1.12] flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 shadow-lg shadow-black/30 flex-shrink-0 relative flex-grow-0"
                               style={{
                                 fontFamily: `"${selectedFontDetail.name}", sans-serif`,
                                 fontSize: '18px'
                               }}
                               title={glyph.unicode ? `U+${glyph.unicode}` : undefined}
                             >
-                              <span>{glyph.char}</span>
+                              <span className="text-center overflow-visible whitespace-nowrap leading-none">{glyph.char}</span>
                             </button>
                           ))}
                         </div>
