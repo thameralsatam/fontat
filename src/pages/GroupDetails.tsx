@@ -61,7 +61,7 @@ export const GroupDetails = ({
   const [detailLayoutMode, setDetailLayoutMode] = useState<'poem' | 'paragraph' | 'glyphs' | 'poster'>('poem');
   const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<string | null>(null);
 
-  const [backdropChars, setBackdropChars] = useState<{ char: string; className: string; fontSize: string }[]>([]);
+  const [backdropChars, setBackdropChars] = useState<{ char: string; className: string; fontSize?: string }[]>([]);
   const [selectedFontWeights, setSelectedFontWeights] = useState<any[]>([]);
   const [isDetailScrolled, setIsDetailScrolled] = useState(false);
   const [parsedGlyphs, setParsedGlyphs] = useState<{ char: string; index: number; unicode?: string; colSpan?: number }[]>([]);
@@ -294,18 +294,8 @@ export const GroupDetails = ({
   // Set random backdrop chars when selectedFontDetail opens
   useEffect(() => {
     if (selectedFontDetail) {
-      const RANDOM_LETTERS = ['ع', 'ك', 'ل', 'م', 'هـ', 'ض', 'ق', 'ش', 'أ', 'ي', 'ج', 'خ', 'ط', 'ظ', 'ص', 'س'];
-      const shuffled = [...RANDOM_LETTERS].sort(() => 0.5 - Math.random());
-      const picked = shuffled.slice(0, 4);
-      while (picked.length < 4) {
-        picked.push(RANDOM_LETTERS[0]);
-      }
-      
       const CONFIG = [
-        { char: picked[0], className: 'absolute right-[4%] bottom-[5%] pointer-events-none select-none opacity-[0.018] transform rotate-[15deg] leading-none text-white', fontSize: '170px' },
-        { char: picked[1], className: 'absolute left-[5%] top-[8%] pointer-events-none select-none opacity-[0.015] transform -rotate-[15deg] leading-none text-white', fontSize: '120px' },
-        { char: picked[2], className: 'absolute left-[4%] bottom-[12%] pointer-events-none select-none opacity-[0.012] transform rotate-[25deg] leading-none text-white', fontSize: '135px' },
-        { char: picked[3], className: 'absolute right-[8%] top-[10%] pointer-events-none select-none opacity-[0.01] transform -rotate-12 leading-none text-white', fontSize: '105px' }
+        { char: '„', className: 'absolute right-[10%] top-[20%] pointer-events-none select-none opacity-[0.03] transform rotate-12 leading-none text-white', fontSize: '280px' }
       ];
       setBackdropChars(CONFIG);
     }
@@ -420,17 +410,8 @@ export const GroupDetails = ({
         
         if (!isCancelled) {
           if (bestCandidates.length > 0) {
-            const shuffledCandidates = [...bestCandidates].sort(() => 0.5 - Math.random());
-            const picked = shuffledCandidates.slice(0, 4);
-            while (picked.length < 4) {
-              picked.push(bestCandidates[0] || 'ع');
-            }
-            
             setBackdropChars([
-              { char: picked[0], className: 'absolute right-[4%] bottom-[5%] pointer-events-none select-none opacity-[0.018] transform rotate-[15deg] leading-none text-white', fontSize: '170px' },
-              { char: picked[1], className: 'absolute left-[5%] top-[8%] pointer-events-none select-none opacity-[0.015] transform -rotate-[15deg] leading-none text-white', fontSize: '120px' },
-              { char: picked[2], className: 'absolute left-[4%] bottom-[12%] pointer-events-none select-none opacity-[0.012] transform rotate-[25deg] leading-none text-white', fontSize: '135px' },
-              { char: picked[3], className: 'absolute right-[8%] top-[10%] pointer-events-none select-none opacity-[0.01] transform -rotate-12 leading-none text-white', fontSize: '105px' }
+              { char: '„', className: 'absolute right-[10%] top-[20%] pointer-events-none select-none opacity-[0.03] transform rotate-12 leading-none text-white', fontSize: '280px' }
             ]);
           }
           setDetectedLangs(langs);
@@ -1610,37 +1591,36 @@ export const GroupDetails = ({
                         )}
                       </div>
                       
-                      {/* Elegant Fade Mask to conceal tags smoothly */}
-                      <div className={`absolute top-0 bottom-0 w-8 pointer-events-none z-10 ${
+                      {/* Elegant Fade Mask to conceal tags smoothly under the button */}
+                      <div className={`absolute top-0 bottom-0 pointer-events-none z-10 ${
+                        (((parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading)) ? 'w-16' : 'w-8'
+                      } ${
                         dir === 'rtl' 
-                          ? 'left-0 bg-gradient-to-r from-black/80 to-transparent' 
-                          : 'right-0 bg-gradient-to-l from-black/80 to-transparent'
+                          ? 'left-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent' 
+                          : 'right-0 bg-gradient-to-l from-black/80 via-black/50 to-transparent'
                       }`} />
+
+                      {/* Weights action overlayed above gradient */}
+                      {((parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading) && (
+                        <div className={`absolute z-20 top-1/2 -translate-y-1/2 px-1.5 ${
+                          dir === 'rtl' ? 'left-0' : 'right-0'
+                        }`}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openWeightsModal(item);
+                            }}
+                            className={`w-6 h-6 cursor-pointer transition-all duration-300 flex items-center justify-center rounded-lg shrink-0 
+                              ${parentFontIds.has(item.id) 
+                                ? 'bg-cyan-500/11 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/25 shadow-[0_0_10px_rgba(6,182,212,0.15)]' 
+                                : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white'}`}
+                            title={dir === 'rtl' ? 'أوزان الخط' : 'Font Weights'}
+                          >
+                            <Layers className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Isolated Layer with the separator line and weights action */}
-                    {((parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading) && (
-                      <div className={`flex items-center shrink-0 z-20 self-stretch bg-[#0c0f14]/95 backdrop-blur-md px-1.5 ${
-                        dir === 'rtl' 
-                          ? 'border-r border-white/10 rounded-l-xl' 
-                          : 'border-l border-white/10 rounded-r-xl'
-                      }`}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openWeightsModal(item);
-                          }}
-                          className={`w-6 h-6 cursor-pointer transition-all duration-300 flex items-center justify-center rounded-lg shrink-0 
-                            ${parentFontIds.has(item.id) 
-                              ? 'bg-cyan-500/11 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/25 shadow-[0_0_10px_rgba(6,182,212,0.15)]' 
-                              : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white'}`}
-                          title={dir === 'rtl' ? 'أوزان الخط' : 'Font Weights'}
-                        >
-                          <Layers className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-
                   </div>
                 </div>
               )}
@@ -2382,7 +2362,7 @@ export const GroupDetails = ({
                     className={item.className}
                     style={{ 
                       fontFamily: `"${selectedFontDetail.name}", sans-serif`,
-                      fontSize: item.fontSize
+                      fontSize: item.fontSize || '280px'
                     }}
                   >
                     {item.char}

@@ -1,12 +1,194 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LogOut, Settings, Loader2, Mail, Eye, EyeOff, Bell, ChevronDown, ChevronUp, Shield, Key, Trash2, UserCircle2 } from 'lucide-react';
+import { LogOut, Settings, Loader2, Mail, Eye, EyeOff, Bell, ChevronDown, ChevronUp, Shield, Key, Trash2, UserCircle2, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { getUserNotificationPreferences, updateUserNotificationPreferences } from '../services/notificationService';
 
 const PREFS_KEY = 'fontat_notification_prefs';
+
+const CRYSTAL_CSS = `
+  @keyframes shimmer-sweep {
+    0%   { left: -55%; }
+    100% { left: 155%; }
+  }
+  @keyframes float-lock {
+    0%, 100% { transform: translateY(0px);  }
+    50%       { transform: translateY(-4px); }
+  }
+  @keyframes soon-shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0);    }
+    18%      { transform: translateX(-7px); }
+    36%      { transform: translateX( 7px); }
+    54%      { transform: translateX(-5px); }
+    72%      { transform: translateX( 4px); }
+    90%      { transform: translateX(-2px); }
+  }
+  @keyframes aurora {
+    0%   { transform: translate(-50%,-50%) rotate(0deg)   scale(1);   }
+    50%  { transform: translate(-50%,-50%) rotate(180deg) scale(1.4); }
+    100% { transform: translate(-50%,-50%) rotate(360deg) scale(1);   }
+  }
+`;
+
+const CustomLockIcon = () => (
+  <svg width="22" height="24" viewBox="0 0 22 24" fill="none">
+    <rect x="2" y="11" width="18" height="12" rx="4" stroke="#ffffff" strokeWidth="1.5" fill="rgba(255,255,255,0.2)" />
+    <path d="M6 11V8a5 5 0 0 1 10 0v3" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="11" cy="16.5" r="1.8" fill="#ffffff" />
+    <rect x="10.2" y="16.5" width="1.6" height="2.8" rx="0.8" fill="#ffffff" />
+  </svg>
+);
+
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18">
+    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.251 17.64 11.945 17.64 9.2z"/>
+    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+    <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/>
+  </svg>
+);
+
+const CrystalLockedGoogleButton = ({ language }: { language: string }) => {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [shaking, setShaking] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<number | null>(null);
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    frameRef.current = requestAnimationFrame(() => {
+      const r = containerRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+      const dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+      setTilt({ x: -dy * 15, y: dx * 15 });
+    });
+  }, []);
+
+  const onMouseLeave = useCallback(() => setTilt({ x: 0, y: 0 }), []);
+
+  const onClick = useCallback(() => {
+    if (shaking) return;
+    setShaking(true);
+    setTimeout(() => setShaking(false), 560);
+  }, [shaking]);
+
+  const hue = 210 + tilt.y * 5;
+  const iridescent = `radial-gradient(ellipse at ${50 + tilt.y * 9}% ${50 + tilt.x * 9}%, hsla(${hue},65%,68%,0.08) 0%, transparent 65%)`;
+
+  return (
+    <>
+      <style>{CRYSTAL_CSS}</style>
+      <div
+        ref={containerRef}
+        onMouseMove={onMouseMove}
+        onMouseLeave={onMouseLeave}
+        onClick={onClick}
+        style={{ position: "relative", cursor: "not-allowed", width: "100%", height: "54px" }}
+      >
+        <div style={{
+          position: "absolute", inset: 0,
+          borderRadius: "24px",
+          zIndex: 10
+        }}>
+          <div style={{
+            width: "100%", height: "100%",
+            ...(shaking && { animation: "shake 0.56s ease" }),
+          }}>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              gap: "12px", padding: "14px 24px", width: "100%", height: "100%",
+              background: "rgba(255, 255, 255, 0.7)",
+              borderRadius: "24px",
+              color: "#111111",
+              fontSize: "15px", fontWeight: "700",
+              userSelect: "none", pointerEvents: "none",
+            }}>
+              <GoogleIcon />
+              {language === 'ar' ? 'المتابعة باستخدام جوجل' : 'Continue with Google'}
+            </div>
+
+            <div style={{
+              position: "absolute", inset: 0,
+              borderRadius: "24px",
+              overflow: "hidden",
+              background: "rgba(8,9,14,0.15)",
+              backdropFilter: "blur(1.5px) saturate(1.2)",
+              WebkitBackdropFilter: "blur(1.5px) saturate(1.2)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.35), 0 14px 48px rgba(0,0,0,0.75), 0 2px 10px rgba(0,0,0,0.5)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "4px",
+            }}>
+              <div style={{
+                position: "absolute", inset: 0,
+                background: iridescent,
+                transition: "background 0.18s ease",
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                position: "absolute",
+                width: "220px", height: "220px",
+                top: "50%", left: "50%",
+                background: "radial-gradient(circle, rgba(100,118,210,0.07) 0%, transparent 65%)",
+                animation: "aurora 12s linear infinite",
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                position: "absolute", top: 0,
+                left: "22%", right: "22%", height: "1px",
+                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.42), transparent)",
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                position: "absolute", top: 0, bottom: 0,
+                width: "32%",
+                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0.05) 60%, transparent)",
+                transform: "skewX(-9deg)",
+                animation: "shimmer-sweep 4.8s cubic-bezier(0.4,0,0.6,1) infinite",
+                animationDelay: "1.8s",
+                pointerEvents: "none",
+              }} />
+              
+              <div style={{
+                animation: "float-lock 3.6s ease-in-out infinite",
+                position: "relative", zIndex: 2,
+                filter: "drop-shadow(0 0 7px rgba(255,255,255,0.25))",
+                transform: "scale(0.85)"
+              }}>
+                <CustomLockIcon />
+              </div>
+              <div style={{
+                position: "relative", zIndex: 2,
+                fontSize: "9px", fontWeight: 700,
+                letterSpacing: "0.32em",
+                background: "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,1) 35%, rgba(255,255,255,1) 50%, rgba(255,255,255,1) 65%, rgba(255,255,255,0.5) 100%)",
+                backgroundSize: "200% auto",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                animation: "soon-shimmer 2.6s linear infinite",
+                marginTop: "2px"
+              }}>
+                 {language === 'ar' ? 'قريباً' : 'S O O N'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
 
 export const Account = () => {
   const { user } = useAuth();
@@ -94,19 +276,6 @@ export const Account = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
 
   return (
     <div className="pt-4 pb-20 relative overflow-hidden">
@@ -294,31 +463,8 @@ export const Account = () => {
               )}
 
               <div className="space-y-4">
-                {/* Google Login */}
-                <button
-                  onClick={handleGoogleLogin}
-                  className="w-full bg-white text-black py-3.5 rounded-2xl font-bold text-base hover:bg-gray-200 transition-all active:scale-95 flex items-center justify-center gap-3"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      fill="#4285F4"
-                    />
-                    <path
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      fill="#34A853"
-                    />
-                    <path
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      fill="#FBBC05"
-                    />
-                    <path
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      fill="#EA4335"
-                    />
-                  </svg>
-                  {language === 'ar' ? 'المتابعة باستخدام جوجل' : 'Continue with Google'}
-                </button>
+                {/* Google Login - Crystal Locked */}
+                <CrystalLockedGoogleButton language={language} />
 
                 <div className="relative flex items-center py-4">
                   <div className="flex-grow border-t border-white/10"></div>
