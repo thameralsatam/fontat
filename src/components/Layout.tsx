@@ -118,35 +118,37 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     {
       id: '/',
       label: t('nav.home'),
-      icon: (c: string) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/>
-          <polyline points="9,21 9,14 15,14 15,21"/>
+      icon: (isActive: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 11.2L12 3.5l9 7.7V21a1 1 0 0 1-1 1h-5v-5.5h-6V22H4a1 1 0 0 1-1-1V11.2z"/>
         </svg>
       )
     },
     {
       id: '/fonts',
       label: t('nav.public_fonts'),
-      icon: (c: string) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="4" y1="6" x2="20" y2="6"/>
-          <line x1="4" y1="10" x2="20" y2="10"/>
-          <line x1="4" y1="14" x2="14" y2="14"/>
-          <line x1="4" y1="18" x2="10" y2="18"/>
+      icon: (isActive: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="7" x2="20" y2="7"/>
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <line x1="4" y1="17" x2="14" y2="17"/>
         </svg>
       )
     },
     {
       id: '/lab',
       label: t('nav.lab'),
-      icon: (c: string) => <Beaker size={22} stroke={c} strokeWidth="1.6" />
+      icon: (isActive: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4.5 3h15M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3M6 14h12"/>
+        </svg>
+      )
     },
     {
       id: '/my-fonts',
       label: t('nav.my_fonts'),
-      icon: (c: string) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      icon: (isActive: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/>
           <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/>
           <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/>
@@ -157,8 +159,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     {
       id: '/account',
       label: t('nav.account'),
-      icon: (c: string) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      icon: (isActive: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="7" r="4"/>
           <path d="M5 21c0-3.87 3.13-7 7-7s7 3.13 7 7"/>
         </svg>
@@ -414,7 +416,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                         ? "bn-icon-enter 0.46s cubic-bezier(0.34,1.4,0.64,1)"
                         : undefined,
                     }}>
-                      {icon(isActive ? WHITE : DIM)}
+                      {icon(isActive)}
                     </div>
                   </div>
 
