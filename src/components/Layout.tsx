@@ -103,6 +103,68 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [selectedAppNotification, setSelectedAppNotification] = useState<Notification | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const isAdmin = user?.user_metadata?.role === 'admin';
+
+  const [tappingTab, setTappingTab] = useState<string | null>(null);
+
+  const handleTabClick = (path: string) => {
+    setTappingTab(path);
+    setTimeout(() => setTappingTab(null), 420);
+  };
+
+  const WHITE = "#ffffff";
+  const DIM = "rgba(255,255,255,0.28)";
+
+  const navItems = [
+    {
+      id: '/',
+      label: t('nav.home'),
+      icon: (c: string) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/>
+          <polyline points="9,21 9,14 15,14 15,21"/>
+        </svg>
+      )
+    },
+    {
+      id: '/fonts',
+      label: t('nav.public_fonts'),
+      icon: (c: string) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="6" x2="20" y2="6"/>
+          <line x1="4" y1="10" x2="20" y2="10"/>
+          <line x1="4" y1="14" x2="14" y2="14"/>
+          <line x1="4" y1="18" x2="10" y2="18"/>
+        </svg>
+      )
+    },
+    {
+      id: '/lab',
+      label: t('nav.lab'),
+      icon: (c: string) => <Beaker size={22} stroke={c} strokeWidth="1.6" />
+    },
+    {
+      id: '/my-fonts',
+      label: t('nav.my_fonts'),
+      icon: (c: string) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/>
+          <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/>
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/>
+          <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>
+        </svg>
+      )
+    },
+    {
+      id: '/account',
+      label: t('nav.account'),
+      icon: (c: string) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="7" r="4"/>
+          <path d="M5 21c0-3.87 3.13-7 7-7s7 3.13 7 7"/>
+        </svg>
+      )
+    }
+  ];
   
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -236,79 +298,150 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </footer>
 
-      {/* شريط التنقل السفلي الجديد */}
-      <div className="fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#080808]/90 to-transparent z-[999] pointer-events-none lg:hidden landscape:hidden"></div>
-      <nav 
-        className={`fixed z-[1000] bg-[#0d0d0d] border border-white/15 p-[12px_18px] flex justify-around items-center gap-1 transition-all duration-300 lg:hidden
-        bottom-[max(2.5rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[420px] rounded-[30px]
-        landscape:bottom-auto landscape:top-[55%] landscape:-translate-y-1/2 landscape:flex-col landscape:w-auto landscape:h-fit landscape:rounded-[30px] landscape:p-1.5 landscape:gap-1.5
-        ${dir === 'rtl' ? 'landscape:right-4 landscape:translate-x-0 landscape:left-auto' : 'landscape:left-4 landscape:translate-x-0'}
-        `}
+      {/* CSS Animations for New Bottom Nav */}
+      <style>{`
+        @keyframes bn-icon-enter {
+          0%   { transform: scale(0.65); opacity: 0; }
+          65%  { transform: scale(1.18); }
+          100% { transform: scale(1);    opacity: 1; }
+        }
+        @keyframes bn-ring-breathe {
+          0%,100% { box-shadow: 0 0 0 3px rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.5); }
+          50%      { box-shadow: 0 0 0 8px rgba(255,255,255,0.03), 0 4px 16px rgba(0,0,0,0.5); }
+        }
+        @keyframes bn-dot-expand {
+          0%   { width: 4px;  opacity: 0; }
+          60%  { width: 14px; opacity: 1; }
+          100% { width: 10px; opacity: 1; }
+        }
+        @keyframes bn-icon-tap {
+          0%   { transform: scale(1);    }
+          35%  { transform: scale(0.88); }
+          70%  { transform: scale(1.12); }
+          100% { transform: scale(1);    }
+        }
+      `}</style>
+      
+      {/* ── NAV WRAPPER ──────────────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#080808]/90 to-transparent z-[999] pointer-events-none lg:hidden landscape:hidden"></div>
+      <div 
+        className="fixed z-[1000] lg:hidden left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[420px] landscape:hidden transition-all duration-300"
+        style={{ bottom: "max(12px, env(safe-area-inset-bottom))" }}
         dir={dir}
       >
-        
-        {/* الرئيسية */}
-        <Link 
-          to="/" 
-          className={`flex flex-row items-center gap-0 p-[9px_12px] rounded-[20px] bg-transparent border-none cursor-pointer whitespace-nowrap transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:w-9 landscape:h-9 landscape:!p-0 landscape:justify-center ${location.pathname === '/' ? 'bg-white gap-[6px] p-[9px_16px] landscape:!gap-0' : ''}`}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={location.pathname === '/' ? '#0d0d0d' : '#ffffff'} className="opacity-70" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/>
-            <polyline points="9,21 9,14 15,14 15,21"/>
-          </svg>
-          <span className={`text-[11px] font-normal transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:hidden ${location.pathname === '/' ? 'text-[#0d0d0d] max-w-[80px]' : 'text-transparent max-w-0 overflow-hidden'}`}>{t('nav.home')}</span>
-        </Link>
+        <div style={{ position: "relative", overflow: "visible" }}>
 
-        {/* خطوط عامة */}
-        <Link 
-          to="/fonts" 
-          className={`flex flex-row items-center gap-0 p-[9px_12px] rounded-[20px] bg-transparent border-none cursor-pointer whitespace-nowrap transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:w-9 landscape:h-9 landscape:!p-0 landscape:justify-center ${location.pathname === '/fonts' ? 'bg-white gap-[6px] p-[9px_16px] landscape:!gap-0' : ''}`}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={location.pathname === '/fonts' ? '#0d0d0d' : '#ffffff'} className="opacity-70" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="4" y1="6" x2="20" y2="6"/>
-            <line x1="4" y1="10" x2="20" y2="10"/>
-            <line x1="4" y1="14" x2="14" y2="14"/>
-            <line x1="4" y1="18" x2="10" y2="18"/>
-          </svg>
-          <span className={`text-[11px] font-normal transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:hidden ${location.pathname === '/fonts' ? 'text-[#0d0d0d] max-w-[80px]' : 'text-transparent max-w-0 overflow-hidden'}`}>{t('nav.public_fonts')}</span>
-        </Link>
+          {/* ── Bar glass background ── */}
+          <div style={{
+            position:     "absolute",
+            top:          0,
+            left:         0,
+            right:        0,
+            bottom:       0,
+            borderRadius: "24px",
+            background:   "rgba(0, 0, 0, 0.05)",
+            backdropFilter:       "blur(20px) saturate(1.8) brightness(0.8)",
+            WebkitBackdropFilter: "blur(20px) saturate(1.8) brightness(0.8)",
+            border:       "1px solid rgba(255,255,255,0.07)",
+            boxShadow: [
+              "inset 0 1px 0 rgba(255,255,255,0.07)",
+              "inset 0 -1px 0 rgba(0,0,0,0.4)",
+              "0 24px 60px rgba(0,0,0,0.95)",
+              "0 2px 30px rgba(255,255,255,0.04)",
+            ].join(", "),
+          }}>
+            {/* Subtle white accent line at top of bar */}
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: "30%", right: "30%",
+              height: "1px",
+              background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)`,
+              borderRadius: "1px",
+            }} />
+          </div>
 
-        {/* المختبر */}
-        <Link 
-          to="/lab" 
-          className={`flex flex-row items-center gap-0 p-[9px_12px] rounded-[20px] bg-transparent border-none cursor-pointer whitespace-nowrap transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:w-9 landscape:h-9 landscape:!p-0 landscape:justify-center ${location.pathname === '/lab' ? 'bg-white gap-[6px] p-[9px_16px] landscape:!gap-0' : ''}`}
-        >
-          <Beaker size={16} className={`opacity-70 ${location.pathname === '/lab' ? 'text-[#0d0d0d]' : 'text-white'}`} strokeWidth="1.6" />
-          <span className={`text-[11px] font-normal transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:hidden ${location.pathname === '/lab' ? 'text-[#0d0d0d] max-w-[80px]' : 'text-transparent max-w-0 overflow-hidden'}`}>{t('nav.lab')}</span>
-        </Link>
+          {/* ── Tabs row ── */}
+          <div style={{
+            position: "relative",
+            display:  "flex",
+            padding:  "6px 2px",
+          }}>
+            {navItems.map(({ id, icon, label }) => {
+              const isActive  = location.pathname === id;
+              const isTapping = tappingTab === id;
 
-        {/* خطوطي */}
-        <Link 
-          to="/my-fonts" 
-          className={`flex flex-row items-center gap-0 p-[9px_12px] rounded-[20px] bg-transparent border-none cursor-pointer whitespace-nowrap transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:w-9 landscape:h-9 landscape:!p-0 landscape:justify-center ${location.pathname === '/my-fonts' ? 'bg-white gap-[6px] p-[9px_16px] landscape:!gap-0' : ''}`}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={location.pathname === '/my-fonts' ? '#0d0d0d' : '#ffffff'} className="opacity-70" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/>
-            <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/>
-            <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/>
-            <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>
-          </svg>
-          <span className={`text-[11px] font-normal transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:hidden ${location.pathname === '/my-fonts' ? 'text-[#0d0d0d] max-w-[80px]' : 'text-transparent max-w-0 overflow-hidden'}`}>{t('nav.my_fonts')}</span>
-        </Link>
+              return (
+                <Link
+                  to={id}
+                  key={id}
+                  onClick={() => handleTabClick(id)}
+                  style={{
+                    flex: 1,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "2px 0 2px",
+                  }}
+                  className="group outline-none"
+                >
+                  {/* Glow ring + icon */}
+                  <div style={{
+                    width: "42px",
+                    height: "42px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    // Active: frosted white circle
+                    background: isActive
+                      ? `radial-gradient(circle at 40% 35%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 55%, transparent 100%)`
+                      : "transparent",
+                    border: isActive
+                      ? "1px solid rgba(255,255,255,0.22)"
+                      : "1px solid transparent",
+                    transition: "background 0.35s ease, border 0.35s ease, box-shadow 0.35s ease",
+                    animation: isActive ? "bn-ring-breathe 3s ease-in-out infinite" : undefined,
+                  }}>
+                    <div style={{
+                      animation: isTapping
+                        ? "bn-icon-tap 0.42s cubic-bezier(0.34,1.5,0.64,1)"
+                        : isActive
+                        ? "bn-icon-enter 0.46s cubic-bezier(0.34,1.4,0.64,1)"
+                        : undefined,
+                    }}>
+                      {icon(isActive ? WHITE : DIM)}
+                    </div>
+                  </div>
 
-        {/* حسابي */}
-        <Link 
-          to="/account" 
-          className={`flex flex-row items-center gap-0 p-[9px_12px] rounded-[20px] bg-transparent border-none cursor-pointer whitespace-nowrap transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:w-9 landscape:h-9 landscape:!p-0 landscape:justify-center ${location.pathname === '/account' ? 'bg-white gap-[6px] p-[9px_16px] landscape:!gap-0' : ''}`}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={location.pathname === '/account' ? '#0d0d0d' : '#ffffff'} className="opacity-70" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="7" r="4"/>
-            <path d="M5 21c0-3.87 3.13-7 7-7s7 3.13 7 7"/>
-          </svg>
-          <span className={`text-[11px] font-normal transition-all duration-200 ease-[cubic-bezier(.4,0,.2,1)] landscape:hidden ${location.pathname === '/account' ? 'text-[#0d0d0d] max-w-[80px]' : 'text-transparent max-w-0 overflow-hidden'}`}>{t('nav.account')}</span>
-        </Link>
+                  {/* White indicator dot */}
+                  <div style={{
+                    height: "3px",
+                    borderRadius: "2px",
+                    background: isActive ? WHITE : "transparent",
+                    boxShadow: isActive
+                      ? `0 0 8px ${WHITE}, 0 0 16px rgba(255,255,255,0.3)`
+                      : "none",
+                    transition: "background 0.3s ease, box-shadow 0.3s ease",
+                    // Width animated via key-change
+                    animation: isActive ? "bn-dot-expand 0.45s cubic-bezier(0.34,1.4,0.64,1) forwards" : undefined,
+                    width: isActive ? "10px" : "0px",
+                  }} />
+                  
+                  {/* Hidden label for accessibility / semantics */}
+                  <span className="sr-only">{label}</span>
+                </Link>
+              );
+            })}
+          </div>
 
-      </nav>
+        </div>
+      </div>
+      {/* ─────────────────────────────────────────────────────── */}
 
       {/* App Notification view modal */}
       <AppNotificationModal 

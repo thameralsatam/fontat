@@ -483,7 +483,7 @@ export const Account = () => {
                     <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showEmailLogin ? 'rotate-180' : ''}`} />
                   </button>
 
-                  <div className={`transition-all duration-300 ease-in-out ${showEmailLogin ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showEmailLogin ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
                     <div className="p-5 pt-2">
                       <form onSubmit={handleEmailAuth} className="space-y-4">
                         <div>
