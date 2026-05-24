@@ -104,13 +104,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const isAdmin = user?.user_metadata?.role === 'admin';
 
-  const [tappingTab, setTappingTab] = useState<string | null>(null);
-
-  const handleTabClick = (path: string) => {
-    setTappingTab(path);
-    setTimeout(() => setTappingTab(null), 420);
-  };
-
   const WHITE = "#ffffff";
   const DIM = "rgba(255,255,255,0.28)";
 
@@ -119,8 +112,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       id: '/',
       label: t('nav.home'),
       icon: (isActive: boolean) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 11.2L12 3.5l9 7.7V21a1 1 0 0 1-1 1h-5v-5.5h-6V22H4a1 1 0 0 1-1-1V11.2z"/>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isActive ? WHITE : DIM} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 11L12 3l9 8v10a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>
         </svg>
       )
     },
@@ -128,7 +121,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       id: '/fonts',
       label: t('nav.public_fonts'),
       icon: (isActive: boolean) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isActive ? WHITE : DIM} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <line x1="4" y1="7" x2="20" y2="7"/>
           <line x1="4" y1="12" x2="20" y2="12"/>
           <line x1="4" y1="17" x2="14" y2="17"/>
@@ -139,7 +132,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       id: '/lab',
       label: t('nav.lab'),
       icon: (isActive: boolean) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isActive ? WHITE : DIM} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4.5 3h15M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3M6 14h12"/>
         </svg>
       )
@@ -148,7 +141,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       id: '/my-fonts',
       label: t('nav.my_fonts'),
       icon: (isActive: boolean) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isActive ? WHITE : DIM} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/>
           <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/>
           <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/>
@@ -160,7 +153,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       id: '/account',
       label: t('nav.account'),
       icon: (isActive: boolean) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" opacity={isActive ? 1 : 0.28} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isActive ? WHITE : DIM} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="7" r="4"/>
           <path d="M5 21c0-3.87 3.13-7 7-7s7 3.13 7 7"/>
         </svg>
@@ -303,81 +296,89 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       {/* CSS Animations for New Bottom Nav */}
       <style>{`
         @keyframes bn-icon-enter {
-          0%   { transform: scale(0.65); opacity: 0; }
-          65%  { transform: scale(1.18); }
+          0%   { transform: scale(0.7); opacity: 0; }
+          60%  { transform: scale(1.15); opacity: 1; }
           100% { transform: scale(1);    opacity: 1; }
         }
-        @keyframes bn-ring-breathe {
-          0%,100% { box-shadow: 0 0 0 3px rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.5); }
-          50%      { box-shadow: 0 0 0 8px rgba(255,255,255,0.03), 0 4px 16px rgba(0,0,0,0.5); }
+        @keyframes bn-active-bg-in {
+          0% { opacity: 0; transform: scale(0.8) translateY(4px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
         }
         @keyframes bn-dot-expand {
-          0%   { width: 4px;  opacity: 0; }
-          60%  { width: 14px; opacity: 1; }
-          100% { width: 10px; opacity: 1; }
+          0%   { width: 3px;  opacity: 0; }
+          60%  { width: 20px; opacity: 1; }
+          100% { width: 16px; opacity: 1; }
         }
-        @keyframes bn-icon-tap {
-          0%   { transform: scale(1);    }
-          35%  { transform: scale(0.88); }
-          70%  { transform: scale(1.12); }
-          100% { transform: scale(1);    }
+        @keyframes liquid-sweep {
+          0% { transform: translateX(-150%) skewX(-15deg); }
+          100% { transform: translateX(300%) skewX(-15deg); }
+        }
+        .bn-liquid-glass {
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          border-radius: 9999px;
+          overflow: hidden;
+
+          /* البلور الأساسي */
+          backdrop-filter: blur(25px) saturate(180%);
+          -webkit-backdrop-filter: blur(25px) saturate(180%);
+
+          /* لون الزجاج */
+          background: linear-gradient(135deg, rgba(30, 30, 30, 0.3), rgba(0, 0, 0, 0.15));
+
+          /* الحواف الأساسية */
+          border: 1px solid rgba(255, 255, 255, 0.08);
+
+          /* الإضاءة */
+          box-shadow:
+            inset 0 1px 1px rgba(255, 255, 255, 0.2),
+            inset 0 -8px 20px rgba(255, 255, 255, 0.04),
+            0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* طبقة التشويه */
+        .bn-liquid-glass::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+
+          background:
+            radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.08), transparent 35%),
+            radial-gradient(circle at 80% 70%, rgba(0, 223, 208, 0.06), transparent 35%);
+
+          mix-blend-mode: screen;
+          filter: blur(20px);
+          opacity: 0.9;
+          pointer-events: none;
         }
       `}</style>
       
       {/* ── NAV WRAPPER ──────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#080808]/90 to-transparent z-[999] pointer-events-none lg:hidden landscape:hidden"></div>
+      <div className="fixed bottom-0 left-0 right-0 h-[60px] bg-gradient-to-t from-[#080808] to-transparent z-[999] pointer-events-none lg:hidden landscape:hidden"></div>
       <div 
-        className="fixed z-[1000] lg:hidden left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[420px] landscape:hidden transition-all duration-300"
-        style={{ bottom: "max(12px, env(safe-area-inset-bottom))" }}
+        className="fixed z-[1000] lg:hidden left-1/2 -translate-x-1/2 w-full max-w-[420px] landscape:hidden transition-all duration-300 outline-none"
+        style={{ bottom: "env(safe-area-inset-bottom)", padding: "0 16px 26px" }}
         dir={dir}
       >
         <div style={{ position: "relative", overflow: "visible" }}>
 
-          {/* ── Bar glass background ── */}
-          <div style={{
-            position:     "absolute",
-            top:          0,
-            left:         0,
-            right:        0,
-            bottom:       0,
-            borderRadius: "24px",
-            background:   "linear-gradient(180deg, rgba(240,245,255,0.06) 0%, rgba(200,205,215,0.01) 100%)",
-            backdropFilter:       "blur(20px) saturate(1.8) brightness(0.9)",
-            WebkitBackdropFilter: "blur(20px) saturate(1.8) brightness(0.9)",
-            border:       "1px solid rgba(255,255,255,0.16)",
-            boxShadow: [
-              "inset 0 1px 0 rgba(255,255,255,0.1)",
-              "inset 0 -1px 0 rgba(0,0,0,0.4)",
-              "0 24px 60px rgba(0,0,0,0.95)",
-              "0 2px 30px rgba(255,255,255,0.05)",
-            ].join(", "),
-          }}>
-            {/* Subtle white accent line at top of bar */}
-            <div style={{
-              position: "absolute",
-              top: 0,
-              left: "25%", right: "25%",
-              height: "1px",
-              background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)`,
-              borderRadius: "1px",
-            }} />
-          </div>
+          {/* ── Bar liquid glass background ── */}
+          <div className="bn-liquid-glass" />
 
           {/* ── Tabs row ── */}
           <div style={{
             position: "relative",
             display:  "flex",
-            padding:  "6px 2px",
+            padding:  "8px 6px",
           }}>
             {navItems.map(({ id, icon, label }) => {
               const isActive  = location.pathname === id;
-              const isTapping = tappingTab === id;
 
               return (
                 <Link
                   to={id}
                   key={id}
-                  onClick={() => handleTabClick(id)}
                   style={{
                     flex: 1,
                     background: "none",
@@ -386,38 +387,37 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: "4px",
-                    padding: "2px 0 2px",
+                    justifyContent: "center",
+                    gap: "6px",
+                    padding: "8px 4px 6px",
+                    borderRadius: "9999px",
+                    position: "relative",
                   }}
                   className="group outline-none"
                 >
-                  {/* Glow ring + icon */}
-                  <div style={{
-                    width: "42px",
-                    height: "42px",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    // Active: frosted white circle
-                    background: isActive
-                      ? `radial-gradient(circle at 40% 35%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 55%, transparent 100%)`
-                      : "transparent",
-                    border: isActive
-                      ? "1px solid rgba(255,255,255,0.22)"
-                      : "1px solid transparent",
-                    transition: "background 0.35s ease, border 0.35s ease, box-shadow 0.35s ease",
-                    animation: isActive ? "bn-ring-breathe 3s ease-in-out infinite" : undefined,
-                  }}>
+                  {/* Active bg glow */}
+                  {isActive && (
                     <div style={{
-                      animation: isTapping
-                        ? "bn-icon-tap 0.42s cubic-bezier(0.34,1.5,0.64,1)"
-                        : isActive
-                        ? "bn-icon-enter 0.46s cubic-bezier(0.34,1.4,0.64,1)"
-                        : undefined,
-                    }}>
-                      {icon(isActive)}
-                    </div>
+                      position: "absolute",
+                      inset: "2px",
+                      borderRadius: "9999px",
+                      background: "rgba(255, 255, 255, 0.08)",
+                      animation: "bn-active-bg-in 0.4s cubic-bezier(0.34,1.4,0.64,1) forwards",
+                    }} />
+                  )}
+
+                  {/* Icon */}
+                  <div style={{
+                    position: "relative", zIndex: 1,
+                    filter: isActive
+                      ? `drop-shadow(0 0 7px rgba(255,255,255,0.35))`
+                      : "none",
+                    transition: "filter 0.3s ease",
+                    animation: isActive
+                      ? "bn-icon-enter 0.42s cubic-bezier(0.34,1.4,0.64,1)"
+                      : undefined,
+                  }}>
+                    {icon(isActive)}
                   </div>
 
                   {/* White indicator dot */}
@@ -426,12 +426,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     borderRadius: "2px",
                     background: isActive ? WHITE : "transparent",
                     boxShadow: isActive
-                      ? `0 0 8px ${WHITE}, 0 0 16px rgba(255,255,255,0.3)`
+                      ? `0 0 6px ${WHITE}, 0 0 14px rgba(255,255,255,0.35)`
                       : "none",
                     transition: "background 0.3s ease, box-shadow 0.3s ease",
-                    // Width animated via key-change
-                    animation: isActive ? "bn-dot-expand 0.45s cubic-bezier(0.34,1.4,0.64,1) forwards" : undefined,
-                    width: isActive ? "10px" : "0px",
+                    animation: isActive ? "bn-dot-expand 0.42s cubic-bezier(0.34,1.4,0.64,1) forwards" : undefined,
+                    width: isActive ? "16px" : "0px",
                   }} />
                   
                   {/* Hidden label for accessibility / semantics */}
