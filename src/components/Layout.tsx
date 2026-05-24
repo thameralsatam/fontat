@@ -341,24 +341,24 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             right:        0,
             bottom:       0,
             borderRadius: "24px",
-            background:   "rgba(0, 0, 0, 0.05)",
-            backdropFilter:       "blur(20px) saturate(1.8) brightness(0.8)",
-            WebkitBackdropFilter: "blur(20px) saturate(1.8) brightness(0.8)",
-            border:       "1px solid rgba(255,255,255,0.07)",
+            background:   "linear-gradient(180deg, rgba(240,245,255,0.06) 0%, rgba(200,205,215,0.01) 100%)",
+            backdropFilter:       "blur(20px) saturate(1.8) brightness(0.9)",
+            WebkitBackdropFilter: "blur(20px) saturate(1.8) brightness(0.9)",
+            border:       "1px solid rgba(255,255,255,0.16)",
             boxShadow: [
-              "inset 0 1px 0 rgba(255,255,255,0.07)",
+              "inset 0 1px 0 rgba(255,255,255,0.1)",
               "inset 0 -1px 0 rgba(0,0,0,0.4)",
               "0 24px 60px rgba(0,0,0,0.95)",
-              "0 2px 30px rgba(255,255,255,0.04)",
+              "0 2px 30px rgba(255,255,255,0.05)",
             ].join(", "),
           }}>
             {/* Subtle white accent line at top of bar */}
             <div style={{
               position: "absolute",
               top: 0,
-              left: "30%", right: "30%",
+              left: "25%", right: "25%",
               height: "1px",
-              background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)`,
+              background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)`,
               borderRadius: "1px",
             }} />
           </div>
