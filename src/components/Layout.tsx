@@ -293,6 +293,17 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </footer>
 
+      {/* SVG Filters for Liquid Glass Refraction */}
+      <svg style={{ display: "none" }}>
+        <defs>
+          <filter id="container-glass" x="0%" y="0%" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.008 0.008" numOctaves="2" seed="92" result="noise" />
+            <feGaussianBlur in="noise" stdDeviation="0.02" result="blur" />
+            <feDisplacementMap in="SourceGraphic" in2="blur" scale="77" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+
       {/* CSS Animations for New Bottom Nav */}
       <style>{`
         @keyframes bn-icon-enter {
@@ -317,40 +328,29 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           position: absolute;
           top: 0; left: 0; right: 0; bottom: 0;
           border-radius: 9999px;
-          overflow: hidden;
-
-          /* البلور الأساسي */
-          backdrop-filter: blur(25px) saturate(180%);
-          -webkit-backdrop-filter: blur(25px) saturate(180%);
-
-          /* لون الزجاج */
-          background: linear-gradient(135deg, rgba(30, 30, 30, 0.3), rgba(0, 0, 0, 0.15));
-
-          /* الحواف الأساسية */
-          border: 1px solid rgba(255, 255, 255, 0.08);
-
-          /* الإضاءة */
-          box-shadow:
-            inset 0 1px 1px rgba(255, 255, 255, 0.2),
-            inset 0 -8px 20px rgba(255, 255, 255, 0.04),
-            0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
-        /* طبقة التشويه */
         .bn-liquid-glass::before {
-          content: "";
+          content: '';
           position: absolute;
           inset: 0;
-          border-radius: inherit;
+          z-index: 0;
+          overflow: hidden;
+          border-radius: 9999px;
+          box-shadow: inset 2px 2px 0px -2px rgba(255, 255, 255, 0.7), inset 0 0 3px 1px rgba(255, 255, 255, 0.7);
+        }
 
-          background:
-            radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.08), transparent 35%),
-            radial-gradient(circle at 80% 70%, rgba(0, 223, 208, 0.06), transparent 35%);
-
-          mix-blend-mode: screen;
-          filter: blur(20px);
-          opacity: 0.9;
-          pointer-events: none;
+        .bn-liquid-glass::after {
+          content: '';
+          position: absolute;
+          z-index: -1;
+          inset: 0;
+          border-radius: 9999px;
+          backdrop-filter: blur(0px);
+          -webkit-backdrop-filter: blur(0px);
+          filter: url(#container-glass);
+          overflow: hidden;
+          isolation: isolate;
         }
       `}</style>
       
