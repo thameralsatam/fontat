@@ -299,7 +299,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <filter id="container-glass" x="0%" y="0%" width="100%" height="100%">
             <feTurbulence type="fractalNoise" baseFrequency="0.008 0.008" numOctaves="2" seed="92" result="noise" />
             <feGaussianBlur in="noise" stdDeviation="0.02" result="blur" />
-            <feDisplacementMap in="SourceGraphic" in2="blur" scale="77" xChannelSelector="R" yChannelSelector="G" />
+            <feDisplacementMap in="SourceGraphic" in2="blur" scale="60" xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
@@ -346,8 +346,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           z-index: -1;
           inset: 0;
           border-radius: 9999px;
-          backdrop-filter: blur(0px);
-          -webkit-backdrop-filter: blur(0px);
+          backdrop-filter: blur(8px) saturate(120%);
+          -webkit-backdrop-filter: blur(8px) saturate(120%);
           filter: url(#container-glass);
           overflow: hidden;
           isolation: isolate;
