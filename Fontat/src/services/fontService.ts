@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Font, FontWeight } from '../types';
 
-export const calculateFileHash = async (file: File): Promise<string> => {
+const calculateFileHash = async (file: File): Promise<string> => {
   const buffer = await file.arrayBuffer();
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -119,16 +119,6 @@ export const deleteFontPermanently = async (fontId: string) => {
 
   if (error) throw error;
   return data;
-};
-
-export const updateFontName = async (fontId: string, newName: string) => {
-  const { error } = await supabase.rpc('manage_font_smart', {
-    p_action: 'update',
-    p_font_id: fontId,
-    p_name: newName
-  });
-
-  if (error) throw error;
 };
 
 export const updateFontTags = async (fontId: string, tags: string[]) => {

@@ -1,10 +1,10 @@
-import React from 'react';
+import { type FC } from 'react';
 
 interface LogoProps {
   className?: string;
 }
 
-export const Logo: React.FC<LogoProps> = ({ className = "w-40 h-auto" }) => {
+export const Logo: FC<LogoProps> = ({ className = "w-40 h-auto" }) => {
   return (
     <div className="flex flex-col items-center">
       <svg xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" x="0" y="0" viewBox="0 0 1920 1920" style={{ display: 'block', marginLeft: 'auto', marginRight: 'auto' }} className={className} version="1.1">

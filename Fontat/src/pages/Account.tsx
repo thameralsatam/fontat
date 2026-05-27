@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LogOut, Settings, Loader2, Mail, Eye, EyeOff, Bell, ChevronDown, ChevronUp, Shield, Key, Trash2, UserCircle2, Lock } from 'lucide-react';
+import { LogOut, Settings, Loader2, Mail, Eye, EyeOff, Bell, ChevronDown, ChevronUp, Shield, Key, Trash2, UserCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { getUserNotificationPreferences, updateUserNotificationPreferences } from '../services/notificationService';
@@ -249,10 +249,6 @@ export const Account = () => {
        localStorage.setItem(PREFS_KEY, JSON.stringify(newPrefs));
     }
   };
-
-  useEffect(() => {
-    // profile fetch removed
-  }, [user]);
 
   const handleLogout = () => supabase.auth.signOut();
 

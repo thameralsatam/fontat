@@ -75,7 +75,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       .channel('groups_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, () => {
          // Silently fetch groups to keep UI in sync without user interruption
-         fetchGroups(true);
+         fetchGroups();
       })
       .subscribe();
 
@@ -84,9 +84,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     };
   }, [mode]);
 
-  // Search implementation removed because we now use the SmartSearch component directly.
-  
-  const fetchGroups = async (_hideLoader = false) => {
+  const fetchGroups = async () => {
     if (mode === 'public') {
       setGroups([]);
       return;
@@ -197,7 +195,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           is_public: isPublic
         });
 
-        fetchGroups(true);
+        fetchGroups();
         if (data) {
           setGroups(prev => prev.map(g => g.id === data.id ? data : g));
           if ((mode === 'public' && !data.is_public) || (mode === 'private' && data.is_public)) {
@@ -217,7 +215,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       try {
         const data = await createGroupSmart(groupName, groupDesc, isPublic);
 
-        fetchGroups(true);
+        fetchGroups();
         if (data) {
           if ((mode === 'public' && data.is_public) || (mode === 'private' && !data.is_public)) {
             setGroups(prev => {

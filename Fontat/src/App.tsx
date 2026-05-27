@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -110,12 +110,12 @@ function AppContent() {
     <LanguageProvider>
       <NotificationProvider>
         <GlobalProvider>
-          <BrowserRouter>
+          <HashRouter>
             <AppRoutes />
             <AnimatePresence>
               {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
             </AnimatePresence>
-          </BrowserRouter>
+          </HashRouter>
         </GlobalProvider>
       </NotificationProvider>
     </LanguageProvider>
