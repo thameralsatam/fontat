@@ -1,4 +1,4 @@
-import { type FC, useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -20,7 +20,7 @@ interface SmartSearchProps {
   onSelect: (result: SearchResult | { type: 'tag', tag: string }) => void;
 }
 
-export const SmartSearch: FC<SmartSearchProps> = ({ mode, onSelect }) => {
+export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
   const { t, dir } = useLanguage();
 
   const [query, setQuery] = useState('');
@@ -143,11 +143,13 @@ export const SmartSearch: FC<SmartSearchProps> = ({ mode, onSelect }) => {
         result.tags.forEach(tag => {
           if (tag && typeof tag === 'string') {
             const cleanedTag = tag.trim();
-              if (isHashtagSearch) {
-                if (!hashtagSearchTerm || cleanedTag.toLowerCase().includes(hashtagSearchTerm)) {
-                  uniqueTags.add(cleanedTag);
-                }
+            if (isHashtagSearch) {
+              if (!hashtagSearchTerm || cleanedTag.toLowerCase().includes(hashtagSearchTerm)) {
+                uniqueTags.add(cleanedTag);
               }
+            } else {
+              // Normally we do not mix hashtags
+            }
           }
         });
       }

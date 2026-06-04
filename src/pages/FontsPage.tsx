@@ -75,7 +75,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       .channel('groups_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, () => {
          // Silently fetch groups to keep UI in sync without user interruption
-         fetchGroups();
+         fetchGroups(true);
       })
       .subscribe();
 
@@ -84,7 +84,9 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     };
   }, [mode]);
 
-  const fetchGroups = async () => {
+  // Search implementation removed because we now use the SmartSearch component directly.
+  
+  const fetchGroups = async (_hideLoader = false) => {
     if (mode === 'public') {
       setGroups([]);
       return;
@@ -195,7 +197,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           is_public: isPublic
         });
 
-        fetchGroups();
+        fetchGroups(true);
         if (data) {
           setGroups(prev => prev.map(g => g.id === data.id ? data : g));
           if ((mode === 'public' && !data.is_public) || (mode === 'private' && data.is_public)) {
@@ -215,7 +217,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       try {
         const data = await createGroupSmart(groupName, groupDesc, isPublic);
 
-        fetchGroups();
+        fetchGroups(true);
         if (data) {
           if ((mode === 'public' && data.is_public) || (mode === 'private' && !data.is_public)) {
             setGroups(prev => {
@@ -503,23 +505,6 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
               placeholder={t('group.desc_placeholder')}
             />
           </div>
-
-          {isAdmin && (
-            <div className="flex items-center gap-3 px-1">
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={isPublic} 
-                  onChange={(e) => setIsPublic(e.target.checked)}
-                  className="sr-only peer" 
-                />
-                <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-              <span className="text-sm font-medium text-gray-300">
-                {dir === 'rtl' ? 'مجموعة عامة' : 'Public Group'}
-              </span>
-            </div>
-          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <button

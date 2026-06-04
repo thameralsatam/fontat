@@ -250,6 +250,10 @@ export const Account = () => {
     }
   };
 
+  useEffect(() => {
+    // profile fetch removed
+  }, [user]);
+
   const handleLogout = () => supabase.auth.signOut();
 
   const handleEmailAuth = async (e: React.FormEvent) => {

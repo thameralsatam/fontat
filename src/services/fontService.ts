@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Font, FontWeight } from '../types';
 
-const calculateFileHash = async (file: File): Promise<string> => {
+export const calculateFileHash = async (file: File): Promise<string> => {
   const buffer = await file.arrayBuffer();
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -119,6 +119,16 @@ export const deleteFontPermanently = async (fontId: string) => {
 
   if (error) throw error;
   return data;
+};
+
+export const updateFontName = async (fontId: string, newName: string) => {
+  const { error } = await supabase.rpc('manage_font_smart', {
+    p_action: 'update',
+    p_font_id: fontId,
+    p_name: newName
+  });
+
+  if (error) throw error;
 };
 
 export const updateFontTags = async (fontId: string, tags: string[]) => {
@@ -261,5 +271,29 @@ export const getFontWeights = async (parentFontId: string): Promise<FontWeight[]
   }));
 
   return Array.from(new Map(mappedWeights.map((w: FontWeight) => [w.id, w])).values());
+};
+
+export const getAllWeightRelationships = async (): Promise<{ parent_font_id: string, child_font_id: string }[]> => {
+  const { data, error } = await supabase
+    .from('font_weights')
+    .select('parent_font_id, child_font_id');
+  if (error) {
+    console.error('Error fetching all weights relationships:', error);
+    return [];
+  }
+  return data || [];
+};
+
+export const getWeightRelationshipsForFonts = async (fontIds: string[]): Promise<{ parent_font_id: string, child_font_id: string }[]> => {
+  if (!fontIds || fontIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('font_weights')
+    .select('parent_font_id, child_font_id')
+    .in('parent_font_id', fontIds);
+  if (error) {
+    console.error('Error fetching weights relationships for subset:', error);
+    return [];
+  }
+  return data || [];
 };
 

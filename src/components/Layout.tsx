@@ -12,81 +12,58 @@ import { AppNotificationModal } from './ui/AppNotificationModal';
 import { NotificationsDropdown } from './ui/NotificationsDropdown';
 import { Notification } from '../types';
 
-const NotificationItem = ({ notification, onToggle, onRemove }: { notification: any, onToggle: () => void, onRemove: () => void }) => {
-  const isExpanded = notification.isExpanded;
-  
+const NotificationItem = ({ notification, onRemove }: { notification: any, onRemove: () => void }) => {
+  const { dir } = useLanguage();
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.8, x: 20 }}
-      animate={{ opacity: 1, scale: 1, x: 0 }}
-      exit={{ opacity: 0, scale: 0.8, x: 20 }}
+      initial={{ opacity: 0, scale: 0.9, y: -20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: -20 }}
+      transition={{ type: "spring", damping: 25, stiffness: 350 }}
       className={`
-        relative overflow-hidden backdrop-blur-xl border transition-all duration-300 cursor-pointer shadow-2xl
-        ${isExpanded ? 'w-64 p-4 rounded-2xl' : 'w-10 h-10 rounded-full flex items-center justify-center'}
-        ${notification.type === 'upload' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' : 
-          notification.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 
-          notification.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
-          notification.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
-          'bg-white/10 border-white/20 text-white'}
+        relative overflow-hidden backdrop-blur-2xl border border-white/[0.08] rounded-2xl p-3 shadow-2xl w-64 sm:w-72 flex flex-col gap-2 transition-all duration-300
+        ${notification.type === 'upload' ? 'bg-[#0d0d10]/95 text-blue-400' : 
+          notification.type === 'warning' ? 'bg-[#0d0d10]/95 text-amber-400' : 
+          notification.type === 'success' ? 'bg-[#0d0d10]/95 text-green-400' :
+          notification.type === 'error' ? 'bg-[#0d0d10]/95 text-red-400' :
+          'bg-[#0d0d10]/95 text-white'}
       `}
-      onClick={onToggle}
     >
-      {/* Icon View (Collapsed) */}
-      {!isExpanded && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          {notification.type === 'upload' && <Upload className="w-4 h-4 animate-pulse" />}
-          {notification.type === 'warning' && <AlertTriangle className="w-4 h-4" />}
-          {notification.type === 'info' && <Info className="w-4 h-4" />}
-          {notification.type === 'success' && <Check className="w-4 h-4" />}
-          {notification.type === 'error' && <X className="w-4 h-4" />}
+      <div className="flex items-start justify-between gap-2 w-full">
+        <div className="flex items-center gap-2 font-bold text-xs tracking-wider">
+          <div className="p-1 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+            {notification.type === 'upload' && <Upload className="w-3.5 h-3.5 animate-bounce" />}
+            {notification.type === 'warning' && <AlertTriangle className="w-3.5 h-3.5" />}
+            {notification.type === 'info' && <Info className="w-3.5 h-3.5" />}
+            {notification.type === 'success' && <Check className="w-3.5 h-3.5" />}
+            {notification.type === 'error' && <X className="w-3.5 h-3.5" />}
+          </div>
+          <span className="capitalize font-heading">
+            {notification.type === 'upload' ? (dir === 'rtl' ? 'جاري الرفع' : 'Uploading') : 
+             notification.type === 'warning' ? (dir === 'rtl' ? 'تنبيه' : 'Warning') : 
+             notification.type === 'success' ? (dir === 'rtl' ? 'تم بنجاح' : 'Success') :
+             notification.type === 'error' ? (dir === 'rtl' ? 'خطأ' : 'Error') : (dir === 'rtl' ? 'معلومة' : 'Info')}
+          </span>
         </div>
+        <button 
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="opacity-40 hover:opacity-100 p-1 hover:bg-white/5 rounded-full transition-all cursor-pointer shrink-0"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+      
+      {notification.message && notification.message !== 'Error' && notification.message !== 'خطأ' && (
+        <p className="text-[11px] opacity-90 leading-relaxed font-sans font-medium px-0.5">
+          {notification.message}
+        </p>
       )}
-
-      {/* Expanded View */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="flex flex-col gap-2"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2 font-medium text-sm">
-                {notification.type === 'upload' && <Upload className="w-4 h-4" />}
-                {notification.type === 'warning' && <AlertTriangle className="w-4 h-4" />}
-                {notification.type === 'info' && <Info className="w-4 h-4" />}
-                {notification.type === 'success' && <Check className="w-4 h-4" />}
-                {notification.type === 'error' && <X className="w-4 h-4" />}
-                <span>
-                  {notification.type === 'upload' ? 'Uploading' : 
-                   notification.type === 'warning' ? 'Warning' : 
-                   notification.type === 'success' ? 'Success' :
-                   notification.type === 'error' ? 'Error' : 'Info'}
-                </span>
-              </div>
-              <button 
-                onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                className="opacity-50 hover:opacity-100 p-1"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-            
-            {notification.message && notification.message !== 'Error' && notification.message !== 'خطأ' && (
-              <p className="text-xs opacity-80 leading-relaxed">
-                {notification.message}
-              </p>
-            )}
-            {notification.details && notification.message !== 'Error' && notification.message !== 'خطأ' && (
-              <p className="text-[10px] opacity-50 mt-1 font-mono">
-                {notification.details}
-              </p>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {notification.details && notification.message !== 'Error' && notification.message !== 'خطأ' && (
+        <p className="text-[9px] opacity-60 mt-0.5 font-mono px-0.5 border-t border-white/5 pt-1 whitespace-pre-wrap">
+          {notification.details}
+        </p>
+      )}
     </motion.div>
   );
 };
@@ -95,7 +72,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { dir, t } = useLanguage();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
-  const { notifications, toggleNotification, removeNotification } = useGlobal();
+  const { notifications, removeNotification } = useGlobal();
   const { reloadNotifications } = useAppNotifications();
   const { user } = useAuth();
   
@@ -180,19 +157,18 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       dir={dir}
     >
       
-      {/* Persistent Notifications - Top Corner */}
-      <div className={`fixed top-4 z-[999] flex flex-col gap-2 pointer-events-auto ${dir === 'rtl' ? 'left-4' : 'right-4'}`}>
-        <AnimatePresence>
-          {notifications.map(notification => (
-            <NotificationItem 
-              key={notification.id} 
-              notification={notification} 
-              onToggle={() => toggleNotification(notification.id)}
-              onRemove={() => removeNotification(notification.id)}
-            />
-          ))}
-        </AnimatePresence>
-      </div>
+       {/* Persistent Notifications - Top Corner */}
+       <div className={`fixed top-4 z-[999] flex flex-col gap-2 pointer-events-auto ${dir === 'rtl' ? 'left-4' : 'right-4'}`}>
+         <AnimatePresence>
+           {notifications.map(notification => (
+             <NotificationItem 
+               key={notification.id} 
+               notification={notification} 
+               onRemove={() => removeNotification(notification.id)}
+             />
+           ))}
+         </AnimatePresence>
+       </div>
 
       {/* Header - Minimal & Centered */}
       {!location.pathname.startsWith('/account') && (
@@ -293,66 +269,56 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </footer>
 
-      {/* SVG Filters for Liquid Glass Refraction */}
-      <svg style={{ display: "none" }}>
-        <defs>
-          <filter id="container-glass" x="0%" y="0%" width="100%" height="100%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.008 0.008" numOctaves="2" seed="92" result="noise" />
-            <feGaussianBlur in="noise" stdDeviation="0.02" result="blur" />
-            <feDisplacementMap in="SourceGraphic" in2="blur" scale="60" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </defs>
-      </svg>
-
-      {/* CSS Animations for New Bottom Nav */}
-      <style>{`
-        @keyframes bn-icon-enter {
-          0%   { transform: scale(0.7); opacity: 0; }
-          60%  { transform: scale(1.15); opacity: 1; }
-          100% { transform: scale(1);    opacity: 1; }
-        }
-        @keyframes bn-active-bg-in {
-          0% { opacity: 0; transform: scale(0.8) translateY(4px); }
-          100% { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        @keyframes bn-dot-expand {
-          0%   { width: 3px;  opacity: 0; }
-          60%  { width: 20px; opacity: 1; }
-          100% { width: 16px; opacity: 1; }
-        }
-        @keyframes liquid-sweep {
-          0% { transform: translateX(-150%) skewX(-15deg); }
-          100% { transform: translateX(300%) skewX(-15deg); }
-        }
-        .bn-liquid-glass {
-          position: absolute;
-          top: 0; left: 0; right: 0; bottom: 0;
-          border-radius: 9999px;
-        }
-
-        .bn-liquid-glass::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          overflow: hidden;
-          border-radius: 9999px;
-          box-shadow: inset 2px 2px 0px -2px rgba(255, 255, 255, 0.7), inset 0 0 3px 1px rgba(255, 255, 255, 0.7);
-        }
-
-        .bn-liquid-glass::after {
-          content: '';
-          position: absolute;
-          z-index: -1;
-          inset: 0;
-          border-radius: 9999px;
-          backdrop-filter: blur(8px) saturate(120%);
-          -webkit-backdrop-filter: blur(8px) saturate(120%);
-          filter: url(#container-glass);
-          overflow: hidden;
-          isolation: isolate;
-        }
-      `}</style>
+       {/* CSS Animations for New Bottom Nav - Sleek elegant Frosted Glass */}
+       <style>{`
+         @keyframes bn-icon-enter {
+           0%   { transform: scale(0.7); opacity: 0; }
+           60%  { transform: scale(1.15); opacity: 1; }
+           100% { transform: scale(1);    opacity: 1; }
+         }
+         @keyframes bn-active-bg-in {
+           0% { opacity: 0; transform: scale(0.8) translateY(4px); }
+           100% { opacity: 1; transform: scale(1) translateY(0); }
+         }
+         @keyframes bn-dot-expand {
+           0%   { width: 3px;  opacity: 0; }
+           60%  { width: 20px; opacity: 1; }
+           100% { width: 16px; opacity: 1; }
+         }
+         @keyframes liquid-sweep {
+           0% { transform: translateX(-150%) skewX(-15deg); }
+           100% { transform: translateX(300%) skewX(-15deg); }
+         }
+         .bn-liquid-glass {
+           position: absolute;
+           top: 0; left: 0; right: 0; bottom: 0;
+           border-radius: 24px;
+         }
+ 
+         .bn-liquid-glass::before {
+           content: '';
+           position: absolute;
+           inset: 0;
+           z-index: 0;
+           overflow: hidden;
+           border-radius: 24px;
+           border: 1px solid rgba(255, 255, 255, 0.08);
+           box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+         }
+ 
+         .bn-liquid-glass::after {
+           content: '';
+           position: absolute;
+           z-index: -1;
+           inset: 0;
+           border-radius: 24px;
+           backdrop-filter: blur(28px) saturate(180%);
+           -webkit-backdrop-filter: blur(28px) saturate(180%);
+           background-color: rgba(12, 12, 14, 0.15);
+           overflow: hidden;
+           isolation: isolate;
+         }
+       `}</style>
       
       {/* ── NAV WRAPPER ──────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 h-[60px] bg-gradient-to-t from-[#080808] to-transparent z-[999] pointer-events-none lg:hidden landscape:hidden"></div>

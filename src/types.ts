@@ -49,6 +49,13 @@ export type FontWeight = {
 
 export type Language = 'ar' | 'en';
 
+export interface RPCFontResult {
+  result_font_id?: string;
+  status?: string;
+  message?: string;
+  upload_required?: boolean;
+}
+
 export type NotificationType = 'update' | 'alert' | 'info' | 'promotion';
 
 export type NotificationSlide = {

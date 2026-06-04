@@ -6,7 +6,7 @@ import { Group, FontWeight, Font } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts } from '../services/fontService';
+import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts, getWeightRelationshipsForFonts } from '../services/fontService';
 import { getGroups } from '../services/groupService';
 import { Trash2, Download, X, Layers, Upload, Plus, Check, Dices, Filter, Edit3, ArrowRight, ArrowLeft, Sliders, Layout, Copy, Sparkles, BookOpen, Beaker, ExternalLink, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,12 +59,13 @@ export const GroupDetails = ({
 
   const [selectedPoemIndex, setSelectedPoemIndex] = useState(0);
   const [detailLayoutMode, setDetailLayoutMode] = useState<'poem' | 'paragraph' | 'glyphs' | 'poster'>('poem');
-  const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<string | null>(null);
+  const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<{char?: string, name?: string, svgPath?: string, svgViewBox?: string} | null>(null);
 
   const [backdropChars, setBackdropChars] = useState<{ char: string; className: string; fontSize?: string }[]>([]);
   const [selectedFontWeights, setSelectedFontWeights] = useState<any[]>([]);
   const [isDetailScrolled, setIsDetailScrolled] = useState(false);
   const [parsedGlyphs, setParsedGlyphs] = useState<{ char: string; index: number; unicode?: string; colSpan?: number }[]>([]);
+  const [renderedGlyphCount, setRenderedGlyphCount] = useState(100);
   const [detectedLangs, setDetectedLangs] = useState<string[]>([]);
   const [loadingGlyphs, setLoadingGlyphs] = useState(false);
   const [glyphSearch, setGlyphSearch] = useState('');
@@ -319,28 +320,37 @@ export const GroupDetails = ({
         
         const numGlyphs = parsedFont.numGlyphs || 0;
         const unitsPerEm = parsedFont.unitsPerEm || 1000;
-        const glyphsList: { char: string; index: number; unicode?: string; colSpan?: number }[] = [];
+        const glyphsList: { char: string; index: number; unicode?: string; colSpan?: number; name?: string; svgPath?: string; svgViewBox?: string }[] = [];
         
         for (let i = 0; i < numGlyphs; i++) {
           const glyph = parsedFont.glyphs.get(i);
-          if (glyph && glyph.unicode) {
-            const char = String.fromCharCode(glyph.unicode);
-            const advanceWidth = glyph.advanceWidth || unitsPerEm;
-            const widthRatio = advanceWidth / unitsPerEm;
-            
-            let colSpan = 1;
-            if (widthRatio > 1.2) colSpan = 2;
-            if (widthRatio > 2.2) colSpan = 3;
-            if (widthRatio > 3.2) colSpan = 4;
-            if (widthRatio > 4.2) colSpan = 5;
+          if (!glyph || (!glyph.unicode && (!glyph.unicodes || glyph.unicodes.length === 0) && glyph.name === '.notdef')) continue;
+          
+          const activeUnicode = glyph.unicode || (glyph.unicodes?.length ? glyph.unicodes[0] : null);
+          const advanceWidth = glyph.advanceWidth || unitsPerEm;
+          const widthRatio = advanceWidth / unitsPerEm;
+          
+          let colSpan = 1;
+          if (widthRatio > 1.2) colSpan = 2;
+          if (widthRatio > 2.2) colSpan = 3;
+          if (widthRatio > 3.2) colSpan = 4;
+          if (widthRatio > 4.2) colSpan = 5;
 
-            glyphsList.push({
-              char,
-              index: glyph.index,
-              unicode: glyph.unicode.toString(16).toUpperCase().padStart(4, '0'),
-              colSpan
-            });
-          }
+          const char = activeUnicode ? String.fromCodePoint(activeUnicode) : '';
+          
+          // Generate an SVG path to render properly un-encoded text and others
+          const pathD = glyph.getPath(0, Math.round(unitsPerEm * 0.8), unitsPerEm).toPathData(2);
+          const svgViewBox = `0 0 ${Math.max(advanceWidth, unitsPerEm * 0.5)} ${unitsPerEm}`;
+          
+          glyphsList.push({
+            char,
+            index: glyph.index || i,
+            unicode: activeUnicode ? activeUnicode.toString(16).toUpperCase().padStart(4, '0') : undefined,
+            name: glyph.name,
+            colSpan,
+            svgPath: pathD,
+            svgViewBox
+          });
         }
         
         let hasArabic = false;
@@ -415,7 +425,8 @@ export const GroupDetails = ({
             ]);
           }
           setDetectedLangs(langs);
-          setParsedGlyphs(glyphsList.slice(0, 450));
+          setParsedGlyphs(glyphsList);
+          setRenderedGlyphCount(100);
         }
       } catch (err) {
         console.error('Error parsing font in GroupDetails:', err);
@@ -464,6 +475,10 @@ export const GroupDetails = ({
       String(g.index).includes(query)
     );
   }, [parsedGlyphs, glyphSearch]);
+
+  useEffect(() => {
+    setRenderedGlyphCount(100);
+  }, [glyphSearch, parsedGlyphs]);
 
   // Dynamic font format extractor
   const getFontFormat = (url?: string) => {
@@ -554,19 +569,27 @@ export const GroupDetails = ({
     return Array.from(tagsSet).sort();
   }, [dbFonts]);
   
-  // Pagination / Infinite scroll state
-  const [visibleCount, setVisibleCount] = useState(20);
+  // Pagination State (15 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [renderedCountInPage, setRenderedCountInPage] = useState(7);
 
   useEffect(() => {
-    // Reset visible count when switching contexts
-    setVisibleCount(20);
+    // Reset page of fonts and rendered count when switching contexts or tags
+    setCurrentPage(1);
+    setRenderedCountInPage(7);
   }, [id, isPublicAllFonts, publicTagFilters.join(',')]);
 
   useEffect(() => {
+    // Reset renderedCountInPage when manually turning pages
+    setRenderedCountInPage(7);
+  }, [currentPage]);
+
+  useEffect(() => {
     const handleScroll = () => {
-      // Increase visibleCount when nearing the bottom of the page
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 800) {
-        setVisibleCount(prev => prev + 20);
+      // If we scroll near the bottom of the visible document window
+      const scrolledToBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 450;
+      if (scrolledToBottom) {
+        setRenderedCountInPage(prev => prev + 5);
       }
     };
     window.addEventListener('scroll', handleScroll);
@@ -617,18 +640,7 @@ export const GroupDetails = ({
       
       setDbFonts(fontsData || []);
       
-      if (fontsData && fontsData.length > 0) {
-        const allRels: FontWeight[] = [];
-        for (const font of fontsData) {
-          try {
-            const fontRels = await getFontWeights(font.id);
-            allRels.push(...fontRels);
-          } catch (err) {
-            console.error(`Failed to fetch weights for ${font.id}`, err);
-          }
-        }
-        setWeightRelationships(allRels);
-      }
+      setWeightRelationships([]);
       setLoading(false);
       return;
     }
@@ -661,19 +673,7 @@ export const GroupDetails = ({
     const fontsData = await getGroupFonts(id);
     setDbFonts(fontsData || []);
     
-    // Fetch weights relationships per font since getAllWeightsRelationships is deprecated
-    if (fontsData && fontsData.length > 0) {
-      const allRels: FontWeight[] = [];
-      for (const font of fontsData) {
-        try {
-          const fontRels = await getFontWeights(font.id);
-          allRels.push(...fontRels);
-        } catch (err) {
-          console.error(`Failed to fetch weights for ${font.id}`, err);
-        }
-      }
-      setWeightRelationships(allRels);
-    }
+    setWeightRelationships([]);
     setLoading(false);
   };
 
@@ -778,6 +778,57 @@ export const GroupDetails = ({
     return allFonts;
   }, [dbFonts, uploadQueue, id, user, childFontIds, isPublicAllFonts, publicTagFilters.join(',')]);
 
+  const paginatedFonts = useMemo(() => {
+    return displayFonts;
+  }, [displayFonts]);
+
+  // Dynamic weights loading for active visible/rendered fonts in the current page via secure RPC
+  useEffect(() => {
+    if (loading) return;
+    const visibleFonts = paginatedFonts.slice(0, renderedCountInPage);
+    if (visibleFonts.length === 0) return;
+
+    let isSubscribed = true;
+
+    const fetchWeightsForVisible = async () => {
+      const currentParentIds = new Set(weightRelationships.map(r => r.parent_font_id));
+      const fontsToFetch = visibleFonts.filter(f => !currentParentIds.has(f.id));
+
+      if (fontsToFetch.length === 0) return;
+
+      try {
+        const fetchIds = fontsToFetch.map(f => f.id);
+        const rels = await getWeightRelationshipsForFonts(fetchIds);
+        
+        if (!rels || rels.length === 0) return;
+        
+        const newRels: FontWeight[] = rels.map(r => ({
+           id: `${r.parent_font_id}-${r.child_font_id}`,
+           parent_font_id: r.parent_font_id,
+           child_font_id: r.child_font_id,
+        }) as FontWeight);
+
+        if (isSubscribed && newRels.length > 0) {
+          setWeightRelationships(prev => {
+            const combined = [...prev, ...newRels];
+            const unique = Array.from(new Map(combined.map(r => [`${r.parent_font_id}-${r.child_font_id}`, r])).values());
+            return unique;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch weight rels', err);
+      }
+    };
+
+    fetchWeightsForVisible();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [paginatedFonts, renderedCountInPage, loading]);
+
+
+
 
 
   useEffect(() => {
@@ -835,7 +886,7 @@ export const GroupDetails = ({
   useEffect(() => {
     const loadFonts = async () => {
       const fontsToLoad: Font[] = [];
-      displayFonts.forEach(item => {
+      paginatedFonts.slice(0, renderedCountInPage).forEach(item => {
         fontsToLoad.push(item);
       });
 
@@ -894,7 +945,18 @@ export const GroupDetails = ({
       }
     };
     loadFonts();
-  }, [displayFonts, weightsModal.isOpen, weightsModal.weights, weightsModal.parentFont]);
+  }, [paginatedFonts, renderedCountInPage, weightsModal.isOpen, weightsModal.weights, weightsModal.parentFont]);
+
+  useEffect(() => {
+    // Cleanup DOM style nodes and preloads when context, page, tag filter, or mode changes
+    return () => {
+      const dynamicStyles = document.querySelectorAll('style[id^="style-"]');
+      dynamicStyles.forEach(el => el.remove());
+      
+      const dynamicLinks = document.querySelectorAll('link[rel="preload"][as="font"]');
+      dynamicLinks.forEach(el => el.remove());
+    };
+  }, [id, currentPage, publicTagFilters.join(','), isPublicAllFonts]);
 
   useEffect(() => {
     const adjust = () => {
@@ -1477,7 +1539,7 @@ export const GroupDetails = ({
       <div className="w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <AnimatePresence>
-            {displayFonts.slice(0, visibleCount).map((item, i) => (
+            {paginatedFonts.slice(0, renderedCountInPage).map((item, i) => (
             <motion.div
               key={item.metadata?.taskId || item.id}
               id={`font-card-${item.id}`}
@@ -1545,16 +1607,20 @@ export const GroupDetails = ({
                     e.stopPropagation();
                   }}
                   onClick={(e) => { e.stopPropagation(); }} 
-                  className="w-full bg-transparent border-none outline-none text-white font-light resize-none -ml-3 p-3 overflow-hidden" 
+                  className="w-full bg-transparent border-none outline-none text-white font-light resize-none -ml-3 p-3 overflow-hidden whitespace-nowrap" 
                   style={{ 
                     fontFamily: `"${item.name}", sans-serif`, 
                     fontSize: `${fontSize}px`, 
                     lineHeight: '1.6',
-                    height: `${fontSize * 1.6 * 2 + 24}px`,
-                    minHeight: `${fontSize * 1.6 * 2 + 24}px`,
-                    maxHeight: `${fontSize * 1.6 * 2 + 24}px`,
+                    height: `${fontSize * 1.6 * 1 + 24}px`,
+                    minHeight: `${fontSize * 1.6 * 1 + 24}px`,
+                    maxHeight: `${fontSize * 1.6 * 1 + 24}px`,
                     fontFeatureSettings: 'normal',
-                    fontVariantLigatures: 'normal'
+                    fontVariantLigatures: 'normal',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 1,
+                    WebkitBoxOrient: 'vertical',
+                    whiteSpace: 'nowrap'
                   }} 
                 />
               </div>
@@ -1612,7 +1678,7 @@ export const GroupDetails = ({
                             }}
                             className={`w-6 h-6 cursor-pointer transition-all duration-300 flex items-center justify-center rounded-lg shrink-0 
                               ${parentFontIds.has(item.id) 
-                                ? 'bg-cyan-500/11 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/25 shadow-[0_0_10px_rgba(6,182,212,0.15)]' 
+                                ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/40 text-cyan-300 hover:scale-110 shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-[pulse_1.8s_infinite]' 
                                 : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white'}`}
                             title={dir === 'rtl' ? 'أوزان الخط' : 'Font Weights'}
                           >
@@ -2166,7 +2232,12 @@ export const GroupDetails = ({
             {/* Main Content Workspace - Vertical Stack, single-column */}
             <main 
               onScroll={(e) => {
-                setIsDetailScrolled(e.currentTarget.scrollTop > 10);
+                const target = e.currentTarget;
+                setIsDetailScrolled(target.scrollTop > 10);
+                
+                if (detailLayoutMode === 'glyphs' && target.scrollHeight - target.scrollTop <= target.clientHeight + 800) {
+                  setRenderedGlyphCount(prev => prev + 200);
+                }
               }}
               className="flex-1 overflow-y-auto w-full max-w-[1240px] mx-auto flex flex-col gap-6 p-4 md:p-6 pb-24 relative z-10 custom-scrollbar"
             >
@@ -2471,7 +2542,9 @@ export const GroupDetails = ({
                     </div>
 
                     {/* Characters Explorer Grid */}
-                    <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-4 custom-scrollbar select-none min-h-[250px]">
+                    <div 
+                      className="flex-1 pr-1 flex flex-col gap-4 select-none min-h-[250px]"
+                    >
                       {loadingGlyphs ? (
                         <div className="flex-1 flex flex-col items-center justify-center py-12 gap-3 font-sans">
                           <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
@@ -2483,19 +2556,25 @@ export const GroupDetails = ({
                         </div>
                       ) : (
                         <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(45px,1fr))] gap-1.5 sm:gap-2 pb-8 p-1">
-                          {filteredGlyphs.map((glyph, idx) => (
+                          {filteredGlyphs.slice(0, renderedGlyphCount).map((glyph, idx) => (
                             <button
                               key={`${glyph.unicode || idx}-${glyph.index}`}
-                              onClick={() => setSelectedGlyphZoom(glyph.char)}
-                              className="h-[40px] md:h-[45px] rounded-xl bg-white/[0.02] border border-white/5 text-white/90 hover:border-white hover:text-white hover:bg-white/5 hover:scale-[1.12] flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 shadow-lg shadow-black/30"
+                              onClick={() => setSelectedGlyphZoom({ char: glyph.char, name: glyph.name, svgPath: glyph.svgPath, svgViewBox: glyph.svgViewBox })}
+                              className="h-[40px] md:h-[45px] p-2 rounded-xl bg-white/[0.02] border border-white/5 text-white/90 hover:border-white hover:text-white hover:bg-white/5 hover:scale-[1.12] flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 shadow-lg shadow-black/30"
                               style={{
-                                fontFamily: `"${selectedFontDetail.name}", sans-serif`,
-                                fontSize: '18px',
                                 gridColumn: `span ${Math.min(glyph.colSpan || 1, 6)}`
                               }}
-                              title={glyph.unicode ? `U+${glyph.unicode}` : undefined}
+                              title={(glyph.unicode ? `U+${glyph.unicode}` : '') + (glyph.name ? ` (${glyph.name})` : '')}
                             >
-                              <span className="text-center overflow-visible whitespace-nowrap leading-none">{glyph.char}</span>
+                              {glyph.svgPath ? (
+                                <svg viewBox={glyph.svgViewBox} className="w-full h-full fill-current">
+                                  <path d={glyph.svgPath} />
+                                </svg>
+                              ) : (
+                                <span className="text-center overflow-visible whitespace-nowrap leading-none" style={{ fontFamily: `"${selectedFontDetail.name}", sans-serif`, fontSize: '18px' }}>
+                                  {glyph.char}
+                                </span>
+                              )}
                             </button>
                           ))}
                         </div>
@@ -2600,21 +2679,35 @@ export const GroupDetails = ({
                       }}
                       title="اسحب أو انسخ الحرف"
                     >
-                      {selectedGlyphZoom}
+                      {selectedGlyphZoom?.svgPath ? (
+                        <svg viewBox={selectedGlyphZoom.svgViewBox} className="w-[120px] h-[120px] fill-current">
+                          <path d={selectedGlyphZoom.svgPath} />
+                        </svg>
+                      ) : (
+                        selectedGlyphZoom?.char
+                      )}
                     </div>
 
                     {/* Metadata detail & Copy Action */}
                     <div className="w-full flex flex-col gap-3 pb-2 mt-4">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(selectedGlyphZoom);
-                          addNotification('success', dir === 'rtl' ? 'تم نسخ المحرف للحافظة!' : 'Copied to clipboard!');
-                        }}
-                        className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
-                      >
-                        <Copy className="w-4 h-4" />
-                        <span>{dir === 'rtl' ? 'نسخ هذا المحرف كـ نص' : 'Copy Character Text'}</span>
-                      </button>
+                      {selectedGlyphZoom?.name && (
+                        <div className="text-white/40 text-xs font-mono">{selectedGlyphZoom.name}</div>
+                      )}
+                      
+                      {selectedGlyphZoom?.char && (
+                        <button
+                          onClick={() => {
+                            if (selectedGlyphZoom?.char) {
+                              navigator.clipboard.writeText(selectedGlyphZoom.char);
+                              addNotification('success', dir === 'rtl' ? 'تم نسخ المحرف للحافظة!' : 'Copied to clipboard!');
+                            }
+                          }}
+                          className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
+                        >
+                          <Copy className="w-4 h-4" />
+                          <span>{dir === 'rtl' ? 'نسخ هذا المحرف كـ نص' : 'Copy Character Text'}</span>
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 </div>

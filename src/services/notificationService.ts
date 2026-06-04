@@ -47,6 +47,12 @@ export const uploadNotificationImage = async (file: File): Promise<string> => {
   return data.publicUrl;
 };
 
+// Delete notification
+export const deleteNotification = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('notifications').delete().eq('id', id);
+  if (error) throw error;
+};
+
 // Get User Preferences (Local Storage Only)
 export const getUserNotificationPreferences = async (_userId: string): Promise<NotificationPreferences> => {
   const local = localStorage.getItem('fontat_notification_prefs');

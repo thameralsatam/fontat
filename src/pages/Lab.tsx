@@ -27,7 +27,9 @@ export const Lab = () => {
   const [history, setHistory] = useState<Omit<FontHistoryItem, 'blob'>[]>([]);
   const [currentFontId, setCurrentFontId] = useState<string | null>(null);
   const [isClearHistoryModalOpen, setIsClearHistoryModalOpen] = useState(false);
-  const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<string | null>(null);
+  const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<{char?: string, name?: string, svgPath?: string, svgViewBox?: string} | null>(null);
+  const [parsedGlyphs, setParsedGlyphs] = useState<any[]>([]);
+  const [renderedGlyphCount, setRenderedGlyphCount] = useState(100);
   const glyphsContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,9 +45,7 @@ export const Lab = () => {
   }, []);
 
   useEffect(() => {
-    (window as any).onLabGlyphClick = (char: string) => {
-      setSelectedGlyphZoom(char);
-    };
+    // Legacy cleanup
     return () => {
       try {
         delete (window as any).onLabGlyphClick;
@@ -65,31 +65,18 @@ export const Lab = () => {
   };
 
   useEffect(() => {
-    if (!glyphsContainerRef.current) return;
-    const canvases = glyphsContainerRef.current.children;
-    const query = glyphSearch.toLowerCase();
-    for (let i = 0; i < canvases.length; i++) {
-      const card = canvases[i] as HTMLElement;
-      const name = card.dataset.name || '';
-      const unicode = card.dataset.unicode || '';
-      const index = card.dataset.index || '';
-      const char = card.dataset.char || '';
-      
-      const fullUnicode = unicode ? `u+${unicode.padStart(4, '0')}` : '';
-
-      if (
-        name.includes(query) || 
-        unicode.includes(query) || 
-        fullUnicode.includes(query) ||
-        index.includes(query) || 
-        char.includes(query)
-      ) {
-        card.style.display = '';
-      } else {
-        card.style.display = 'none';
-      }
-    }
-  }, [glyphSearch]);
+    // Reset search when font changes
+    setGlyphSearch('');
+  }, [font]);
+  
+  const filteredGlyphs = parsedGlyphs.filter(g => {
+    if (!glyphSearch.trim()) return true;
+    const q = glyphSearch.toLowerCase();
+    return (g.name && g.name.toLowerCase().includes(q)) || 
+           (g.unicode && g.unicode.toLowerCase().includes(q)) || 
+           (g.char && g.char.toLowerCase().includes(q)) ||
+           String(g.index).includes(q);
+  });
 
   const loadFontIntoUI = async (
     fileOrBlob: Blob, 
@@ -241,9 +228,7 @@ export const Lab = () => {
       return;
     }
     
-    container.innerHTML = ''; // تنظيف الحاوية
-    
-    // استخراج المحارف بطريقة آمنة باستخدام font.glyphs.get(index)
+    // استخراج المحارف بطريقة آمنة
     const numGlyphs = font.numGlyphs || 0;
     console.log("Number of glyphs found:", numGlyphs);
 
@@ -252,50 +237,14 @@ export const Lab = () => {
       return;
     }
 
-    // حد أقصى 500 حرف للأداء
-    const maxGlyphs = Math.min(numGlyphs, 500);
+    const unitsPerEm = font.unitsPerEm || 1000;
+    const glyphsList: any[] = [];
 
-    for (let i = 0; i < maxGlyphs; i++) {
+    for (let i = 0; i < numGlyphs; i++) {
       try {
         const glyph = font.glyphs.get(i);
-        if (!glyph) continue;
+        if (!glyph || (!glyph.unicode && (!glyph.unicodes || glyph.unicodes.length === 0) && glyph.name === '.notdef')) continue;
 
-        const card = document.createElement('div');
-        card.className = 'gl-cell flex flex-col items-center justify-between p-2 cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors h-full';
-        card.dataset.name = (glyph.name || '').toLowerCase();
-        card.dataset.unicode = glyph.unicode ? glyph.unicode.toString(16).toLowerCase() : '';
-        card.dataset.index = glyph.index !== undefined ? glyph.index.toString() : '';
-        card.dataset.char = glyph.unicode ? String.fromCharCode(glyph.unicode).toLowerCase() : '';
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 80;
-        canvas.height = 80;
-        canvas.className = 'w-full h-auto object-contain flex-1 min-h-0';
-        
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          try {
-            // Adjust coordinates for 80x80 canvas
-            const path = glyph.getPath(15, 60, 40);
-            path.fill = '#cbd5e1';
-            path.draw(ctx);
-          } catch (e) {
-            console.error("Error drawing glyph", i, e);
-          }
-        }
-
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'w-full flex flex-col items-center text-center mt-2 overflow-hidden space-y-[2px]';
-
-        const unicodeText = document.createElement('span');
-        unicodeText.className = 'text-[9px] text-white opacity-60 font-mono leading-tight';
-        unicodeText.textContent = glyph.unicode ? `U+${glyph.unicode.toString(16).toUpperCase().padStart(4, '0')}` : 'No Unicode';
-
-        const indexText = document.createElement('span');
-        indexText.className = 'text-[9px] text-white opacity-40 leading-tight';
-        indexText.textContent = `Index: ${glyph.index}`;
-
-        // Ensure name is a string, some fonts might return objects for bilingual glyph names (rare but possible)
         let glyphNameDisplay = 'Unnamed';
         if (glyph.name) {
           if (typeof glyph.name === 'object') {
@@ -305,35 +254,29 @@ export const Lab = () => {
           }
         }
 
-        const nameText = document.createElement('span');
-        nameText.className = 'text-[9px] text-white opacity-80 truncate w-full px-1 leading-tight';
-        nameText.textContent = glyphNameDisplay;
-        nameText.title = glyphNameDisplay;
+        const activeUnicode = glyph.unicode || (glyph.unicodes?.length ? glyph.unicodes[0] : null);
+        const char = activeUnicode ? String.fromCodePoint(activeUnicode) : '';
+        const advanceWidth = glyph.advanceWidth || unitsPerEm;
 
-        infoDiv.appendChild(unicodeText);
-        infoDiv.appendChild(indexText);
-        infoDiv.appendChild(nameText);
+        const pathD = glyph.getPath(0, Math.round(unitsPerEm * 0.8), unitsPerEm).toPathData(2);
+        const svgViewBox = `0 0 ${Math.max(advanceWidth, unitsPerEm * 0.5)} ${unitsPerEm}`;
 
-        card.appendChild(canvas);
-        card.appendChild(infoDiv);
-        
-        card.onclick = () => {
-          if (glyph.unicode) {
-            const char = String.fromCharCode(glyph.unicode);
-            if (typeof (window as any).onLabGlyphClick === 'function') {
-              (window as any).onLabGlyphClick(char);
-            } else {
-              setPreviewText(prev => prev + char);
-            }
-          }
-        };
-        
-        container.appendChild(card);
+        glyphsList.push({
+          char,
+          index: glyph.index || i,
+          unicode: activeUnicode ? activeUnicode.toString(16).toUpperCase().padStart(4, '0') : undefined,
+          name: glyphNameDisplay,
+          svgPath: pathD,
+          svgViewBox
+        });
+
       } catch (err) {
          console.warn(`Skipping glyph at index ${i} due to parsing error`, err);
       }
     }
-    console.log("Glyphs rendered successfully.");
+    setParsedGlyphs(glyphsList);
+    setRenderedGlyphCount(100);
+    console.log("Glyphs parsed successfully.", glyphsList.length);
   };
 
   const getVariationSettings = () => {
@@ -658,9 +601,50 @@ export const Lab = () => {
               <div 
                 id="glV" 
                 ref={glyphsContainerRef} 
-                className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4 max-h-[350px] overflow-y-auto p-4 bg-black/40 rounded-2xl border border-white/5"
+                onScroll={(e) => {
+                  const target = e.currentTarget;
+                  if (target.scrollHeight - target.scrollTop <= target.clientHeight + 600) {
+                    setRenderedGlyphCount(prev => prev + 200);
+                  }
+                }}
+                className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4 max-h-[350px] overflow-y-auto p-4 bg-black/40 rounded-2xl border border-white/5 custom-scrollbar"
               >
-                {/* Glyphs will be rendered here by opentype.js */}
+                {filteredGlyphs.slice(0, renderedGlyphCount).map((glyph, idx) => (
+                  <div
+                    key={`${glyph.unicode || idx}-${glyph.index}`}
+                    onClick={() => {
+                      if (glyph.char) {
+                        setPreviewText(prev => prev + glyph.char);
+                      }
+                      setSelectedGlyphZoom({ char: glyph.char, name: glyph.name, svgPath: glyph.svgPath, svgViewBox: glyph.svgViewBox });
+                    }}
+                    className="gl-cell flex flex-col items-center justify-between p-2 cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors h-full"
+                    title={(glyph.unicode ? `U+${glyph.unicode}` : '') + (glyph.name ? ` (${glyph.name})` : '')}
+                  >
+                    <div className="w-full h-auto flex flex-col items-center justify-center flex-1 min-h-[60px] max-h-[80px]">
+                      {glyph.svgPath ? (
+                        <svg viewBox={glyph.svgViewBox} className="w-full h-full fill-[#cbd5e1]">
+                          <path d={glyph.svgPath} />
+                        </svg>
+                      ) : (
+                        <span className="text-center overflow-visible whitespace-nowrap leading-none text-[#cbd5e1]" style={font ? { fontFamily: `"${font.names?.postScriptName?.en || 'custom'}"`, fontSize: '40px' } : {}}>
+                          {glyph.char}
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-full flex flex-col items-center text-center mt-2 space-y-[2px] overflow-hidden">
+                      <span className="text-[9px] text-white opacity-60 font-mono leading-tight truncate px-1">
+                        {glyph.unicode ? `U+${glyph.unicode}` : 'No Unicode'}
+                      </span>
+                      <span className="text-[9px] text-white opacity-40 leading-tight">
+                        Index: {glyph.index}
+                      </span>
+                      <span className="text-[9px] text-white opacity-80 truncate w-full px-1 leading-tight">
+                        {glyph.name || 'Unnamed'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -698,7 +682,16 @@ export const Lab = () => {
               </div>
 
               {/* Character display styling with loaded dynamic font if present */}
-              {font ? (
+              {selectedGlyphZoom.svgPath ? (
+                <div 
+                  className="min-h-[140px] flex justify-center items-center py-6 w-full max-w-[200px] mx-auto"
+                  title="اسحب أو انسخ الحرف"
+                >
+                  <svg viewBox={selectedGlyphZoom.svgViewBox} className="w-full h-auto fill-current text-white max-h-[180px]">
+                    <path d={selectedGlyphZoom.svgPath} />
+                  </svg>
+                </div>
+              ) : font ? (
                 <div 
                   className="text-[110px] select-all leading-none py-10 text-white select-text font-serif min-h-[140px] flex items-center justify-center"
                   style={{
@@ -706,47 +699,57 @@ export const Lab = () => {
                   }}
                   title="اسحب أو انسخ الحرف"
                 >
-                  {selectedGlyphZoom}
+                  {selectedGlyphZoom.char}
                 </div>
               ) : (
                 <div 
                   className="text-[110px] select-all leading-none py-10 text-white select-text font-serif font-extrabold min-h-[140px] flex items-center justify-center"
                   title="اسحب أو انسخ الحرف"
                 >
-                  {selectedGlyphZoom}
+                  {selectedGlyphZoom.char}
                 </div>
               )}
 
               {/* Action Buttons */}
               <div className="w-full flex flex-col gap-2.5 pb-2 mt-4 font-sans">
+                {selectedGlyphZoom.name && (
+                   <div className="text-white/40 text-[10px] font-mono text-center pb-2">
+                     {selectedGlyphZoom.name}
+                   </div>
+                )}
+                
                 {/* 1. Copy character string */}
-                <button
-                  onClick={() => {
-                    if (selectedGlyphZoom) {
-                      navigator.clipboard.writeText(selectedGlyphZoom);
-                      addNotification('success', t('dir') === 'rtl' ? 'تم نسخ المحرف للحافظة!' : 'Copied to clipboard!');
-                    }
-                  }}
-                  className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
-                >
-                  <Copy className="w-4 h-4" />
-                  <span>{t('dir') === 'rtl' ? 'نسخ هذا المحرف كـ نص' : 'Copy Character Text'}</span>
-                </button>
+                {selectedGlyphZoom.char && (
+                  <button
+                    onClick={() => {
+                      if (selectedGlyphZoom.char) {
+                        navigator.clipboard.writeText(selectedGlyphZoom.char);
+                        addNotification('success', t('dir') === 'rtl' ? 'تم نسخ المحرف للحافظة!' : 'Copied to clipboard!');
+                      }
+                    }}
+                    className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>{t('dir') === 'rtl' ? 'نسخ هذا المحرف كـ نص' : 'Copy Character Text'}</span>
+                  </button>
+                )}
 
                 {/* 2. Insert into typing preview text editor */}
-                <button
-                  onClick={() => {
-                    if (selectedGlyphZoom) {
-                      setPreviewText(prev => prev + selectedGlyphZoom);
-                      addNotification('success', t('dir') === 'rtl' ? 'تمت إضافة المحرف للمحرر!' : 'Added character to editor!');
-                      setSelectedGlyphZoom(null);
-                    }
-                  }}
-                  className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/5"
-                >
-                  <ArrowRight className={`w-4 h-4 ${t('dir') === 'rtl' ? 'rotate-180' : ''}`} />
-                  <span>{t('dir') === 'rtl' ? 'إدراج في مساحة التجربة' : 'Insert into Sandbox editor'}</span>
-                </button>
+                {selectedGlyphZoom.char && (
+                  <button
+                    onClick={() => {
+                      if (selectedGlyphZoom.char) {
+                        setPreviewText(prev => prev + selectedGlyphZoom.char);
+                        addNotification('success', t('dir') === 'rtl' ? 'تمت إضافة المحرف للمحرر!' : 'Added character to editor!');
+                        setSelectedGlyphZoom(null);
+                      }
+                    }}
+                    className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/5"
+                  >
+                    <ArrowRight className={`w-4 h-4 ${t('dir') === 'rtl' ? 'rotate-180' : ''}`} />
+                    <span>{t('dir') === 'rtl' ? 'إدراج في مساحة التجربة' : 'Insert into Sandbox editor'}</span>
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
