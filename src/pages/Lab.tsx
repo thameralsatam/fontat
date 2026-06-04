@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Upload, Beaker, Download, Settings, Type, Search, Clock, ArrowRight, X, Copy, Sliders, ChevronDown, Palette, Layers } from 'lucide-react';
+import { Upload, Beaker, Download, Settings, Type, Search, Clock, ArrowRight, X, Copy, Sliders, ChevronDown, Palette, Layers, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HexColorPicker } from "react-colorful";
 // @ts-ignore
@@ -10,6 +10,51 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { saveFontHistory, getFontHistoryList, getFontHistoryItem, FontHistoryItem, clearFontHistory } from '../lib/db';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { formatFontName } from '../utils/text';
+
+const getFeatureDescription = (tag: string, parsedFont: any): string => {
+  if (parsedFont && parsedFont.names) {
+    // 1. Try to find if this is a custom feature with a NameID in featureParams
+    if (parsedFont.tables?.gsub?.features) {
+      const list = parsedFont.tables.gsub.features;
+      for (const f of list) {
+        if (f.tag === tag && f.feature && typeof f.feature.featureParams === 'number' && f.feature.featureParams > 0) {
+          const nameID = f.feature.featureParams;
+          if (parsedFont.names[nameID]) {
+            const val = parsedFont.names[nameID];
+            const nameStr = val.en || val.ar || Object.values(val)[0];
+            if (nameStr && typeof nameStr === 'string' && nameStr.trim()) {
+              return nameStr.trim();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const officialSpecs: Record<string, string> = {
+    liga: 'Standard Ligatures',
+    calt: 'Contextual Alternates',
+    case: 'Case-Sensitive Forms',
+    ccmp: 'Glyph Composition/Decomposition',
+    dlig: 'Discretionary Ligatures',
+    frac: 'Fractions',
+    locl: 'Localized Forms',
+    rlig: 'Required Ligatures',
+    salt: 'Stylistic Alternates',
+    swsh: 'Swash',
+    aalt: 'Access All Alternates',
+    init: 'Initial Forms',
+    medi: 'Medial Forms',
+    fina: 'Terminal Forms'
+  };
+
+  if (officialSpecs[tag]) {
+    return officialSpecs[tag];
+  }
+
+  return 'لا يوجد وصف مرفق';
+};
+
 
 const PopoverColorPicker = ({ color, onChange }: { color: string, onChange: (c: string) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -142,6 +187,7 @@ export const Lab = () => {
   const [textColor, setTextColor] = useState('#ffffff');
   const [bgColor, setBgColor] = useState('#080808');
   const [openTypeFeatures, setOpenTypeFeatures] = useState<Record<string, boolean>>({});
+  const [activeFeatureTooltip, setActiveFeatureTooltip] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [glyphSearch, setGlyphSearch] = useState('');
   const [history, setHistory] = useState<Omit<FontHistoryItem, 'blob'>[]>([]);
@@ -1054,19 +1100,76 @@ export const Lab = () => {
                                    exit={{ height: 0, opacity: 0 }}
                                    className="overflow-hidden"
                                  >
-                                   <div className="p-4 border-t border-white/5 bg-white/[0.02]">
-                                      <div className="flex flex-wrap gap-2">
-                                        {Object.entries(openTypeFeatures).map(([tag, enabled]) => (
-                                          <button
+                                    <div className="p-4 border-t border-white/5 bg-white/[0.02] space-y-2.5">
+                                      {Object.entries(openTypeFeatures).map(([tag, enabled]) => {
+                                        const desc = getFeatureDescription(tag, font);
+                                        const isInfoOpen = activeFeatureTooltip === tag;
+                                        return (
+                                          <div
                                             key={tag}
-                                            onClick={() => handleFeatureToggle(tag)}
-                                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${enabled ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'}`}
+                                            className="flex flex-col rounded-xl border border-white/5 bg-white/[0.01] overflow-hidden hover:bg-white/[0.02] transition-all"
                                           >
-                                            {tag}
-                                          </button>
-                                        ))}
-                                      </div>
-                                   </div>
+                                            {/* Row Header */}
+                                            <div
+                                              onClick={() => handleFeatureToggle(tag)}
+                                              className="flex items-center justify-between p-2.5 cursor-pointer select-none"
+                                            >
+                                              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                                <span className="font-mono text-[10px] font-extrabold text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 uppercase tracking-widest shrink-0">
+                                                  {tag}
+                                                </span>
+                                                
+                                                {/* Silver circle Info button */}
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setActiveFeatureTooltip(isInfoOpen ? null : tag);
+                                                  }}
+                                                  className={`w-5 h-5 flex items-center justify-center rounded-full border transition-all shrink-0 cursor-pointer ${
+                                                    isInfoOpen
+                                                      ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.15)]'
+                                                      : 'bg-white/5 border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 hover:border-white/20'
+                                                  }`}
+                                                  title="الشرح والتفاصيل"
+                                                >
+                                                  <Info className="w-2.5 h-2.5" />
+                                                </button>
+                                              </div>
+                                              
+                                              {/* Visual switch toggler */}
+                                              <div
+                                                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                  enabled ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]' : 'bg-white/10'
+                                                }`}
+                                              >
+                                                <span
+                                                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                                    enabled ? 'translate-x-[16px]' : 'translate-x-0'
+                                                  }`}
+                                                />
+                                              </div>
+                                            </div>
+
+                                            {/* Collapsible Info Card */}
+                                            <AnimatePresence initial={false}>
+                                              {isInfoOpen && (
+                                                <motion.div
+                                                  initial={{ height: 0, opacity: 0 }}
+                                                  animate={{ height: 'auto', opacity: 1 }}
+                                                  exit={{ height: 0, opacity: 0 }}
+                                                  transition={{ duration: 0.2 }}
+                                                  className="overflow-hidden bg-white/[0.02] border-t border-white/5"
+                                                >
+                                                  <div className="p-3 text-xs text-white/75 bg-gradient-to-b from-cyan-950/10 to-transparent leading-relaxed text-right font-sans border-l-2 border-cyan-500/30 font-medium">
+                                                    {desc}
+                                                  </div>
+                                                </motion.div>
+                                              )}
+                                            </AnimatePresence>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                  </motion.div>
                                )}
                              </AnimatePresence>
