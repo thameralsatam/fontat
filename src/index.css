@@ -175,3 +175,31 @@ input[type=range]::-webkit-slider-thumb {
   /* 5. ضبط اتجاه النص */
   direction: rtl;
 }
+
+/* react-colorful overrides */
+.react-colorful {
+  width: 210px !important;
+  height: 120px !important;
+}
+
+.react-colorful__pointer {
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  border: 2px solid white !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0,0,0,0.4) !important;
+}
+
+.react-colorful__saturation {
+  border-radius: 8px 8px 0 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.react-colorful__hue {
+  height: 12px !important;
+  border-radius: 0 0 8px 8px !important;
+}
+
+.react-colorful__alpha {
+  display: none !important;
+}

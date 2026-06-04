@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Beaker, Download, Settings, Type, Search, Clock, ArrowRight, X, Copy } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Upload, Beaker, Download, Settings, Type, Search, Clock, ArrowRight, X, Copy, Sliders, ChevronDown, Palette, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { HexColorPicker } from "react-colorful";
 // @ts-ignore
 import opentype from 'opentype.js';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -8,6 +10,124 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { saveFontHistory, getFontHistoryList, getFontHistoryItem, FontHistoryItem, clearFontHistory } from '../lib/db';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { formatFontName } from '../utils/text';
+
+const PopoverColorPicker = ({ color, onChange }: { color: string, onChange: (c: string) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const popover = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+
+  const updateCoords = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const popoverHeight = 185; 
+      const popoverWidth = 234;  
+      
+      let top = rect.top - popoverHeight - 10;
+      let left = rect.left;
+
+      // Check top boundary
+      if (top < 10) {
+        top = rect.bottom + 10;
+      }
+
+      // Check right boundary
+      if (left + popoverWidth > window.innerWidth) {
+        left = window.innerWidth - popoverWidth - 10;
+      }
+      // Check left boundary
+      if (left < 10) {
+        left = 10;
+      }
+
+      // Check bottom boundary for absolute fallback placement
+      if (top + popoverHeight > window.innerHeight) {
+        top = window.innerHeight - popoverHeight - 10;
+      }
+
+      setCoords({ top, left });
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      updateCoords();
+      // capture scroll event inside scrollable parents
+      window.addEventListener('scroll', updateCoords, true);
+      window.addEventListener('resize', updateCoords);
+    }
+    return () => {
+      window.removeEventListener('scroll', updateCoords, true);
+      window.removeEventListener('resize', updateCoords);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        popover.current && !popover.current.contains(event.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="relative inline-block flex-shrink-0">
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-8 h-8 rounded-lg cursor-pointer border border-white/20 transition-transform active:scale-95 flex-shrink-0"
+        style={{ backgroundColor: color }}
+        aria-label="Choose color"
+      />
+      
+      {isOpen && coords && createPortal(
+        <div 
+          className="fixed z-[999999] pointer-events-auto" 
+          style={{ 
+            top: `${coords.top}px`, 
+            left: `${coords.left}px` 
+          }}
+        >
+          <motion.div
+            ref={popover}
+            initial={{ opacity: 0, scale: 0.95, y: 5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 5 }}
+            transition={{ duration: 0.12 }}
+            className="p-3 bg-[#111111] border border-white/10 rounded-2xl shadow-2xl flex flex-col gap-3 w-[234px]"
+          >
+            <HexColorPicker color={color} onChange={onChange} />
+            <div className="flex bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-cyan-400/50 transition-colors">
+              <span className="text-white/40 font-mono text-xs mr-1 mt-[2px]">#</span>
+              <input
+                type="text"
+                value={color.replace('#', '')}
+                onChange={(e) => {
+                   let val = e.target.value.replace(/[^0-9A-Fa-f]/g, '');
+                   if (val.length <= 6) {
+                     onChange('#' + val);
+                   }
+                }}
+                className="w-full bg-transparent text-xs font-mono text-white uppercase focus:outline-none"
+                spellCheck={false}
+              />
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
 
 export const Lab = () => {
   const { t, language } = useLanguage();
@@ -17,7 +137,7 @@ export const Lab = () => {
   const [axes, setAxes] = useState<any[]>([]);
   const [axisValues, setAxisValues] = useState<Record<string, number>>({});
   const [previewText, setPreviewText] = useState(t('lab.preview_placeholder'));
-  const [fontSize, setFontSize] = useState<number | ''>('');
+  const [fontSize, setFontSize] = useState<number | ''>(80);
   const [lineHeight, setLineHeight] = useState<number | ''>('');
   const [textColor, setTextColor] = useState('#ffffff');
   const [bgColor, setBgColor] = useState('#080808');
@@ -30,7 +150,52 @@ export const Lab = () => {
   const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<{char?: string, name?: string, svgPath?: string, svgViewBox?: string} | null>(null);
   const [parsedGlyphs, setParsedGlyphs] = useState<any[]>([]);
   const [renderedGlyphCount, setRenderedGlyphCount] = useState(100);
+  const [isFullscreenPreview, setIsFullscreenPreview] = useState(false);
+  const [showFullscreenTools, setShowFullscreenTools] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<string>('size');
   const glyphsContainerRef = useRef<HTMLDivElement>(null);
+  const fullscreenTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const fullscreenToolsRef = useRef<HTMLDivElement>(null);
+  const fullscreenToggleBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isFullscreenPreview && fullscreenTextareaRef.current) {
+      fullscreenTextareaRef.current.style.height = '0px';
+      // Provide a generous buffer to prevent clipping of extreme typography metrics
+      const buffer = Math.max(120, typeof fontSize === 'number' ? fontSize : 80);
+      fullscreenTextareaRef.current.style.height = (fullscreenTextareaRef.current.scrollHeight + buffer) + 'px';
+    }
+  }, [previewText, fontSize, lineHeight, isFullscreenPreview]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!isFullscreenPreview || !showFullscreenTools) return;
+
+      const target = event.target as HTMLElement;
+
+      // Don't close if they clicked the tools container or the toggle button
+      if (
+        (fullscreenToolsRef.current && fullscreenToolsRef.current.contains(target)) ||
+        (fullscreenToggleBtnRef.current && fullscreenToggleBtnRef.current.contains(target))
+      ) {
+        return;
+      }
+
+      // Don't close if they clicked any active color picker portal or dropdowns
+      if (
+        target.closest('.react-colorful') || 
+        target.closest('.popover') || 
+        target.closest('[class*="fixed z-[999999]"]') ||
+        target.closest('button[aria-label="Choose color"]')
+      ) {
+        return;
+      }
+
+      setShowFullscreenTools(false);
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isFullscreenPreview, showFullscreenTools]);
 
   useEffect(() => {
     const handleAutoload = async () => {
@@ -409,119 +574,34 @@ export const Lab = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-12 gap-4">
               {/* Controls */}
-              <div className="col-span-12 lg:col-span-3 space-y-3 bg-[#141414] p-3 rounded-2xl border border-white/5 text-xs">
+              <div className="col-span-12 lg:col-span-3 space-y-4 bg-[#141414] p-4 rounded-2xl border border-white/5 text-xs">
                 <h2 className="text-[10px] font-bold text-white opacity-60 uppercase tracking-wider flex items-center gap-2">
                   <Settings size={12} />
                   {t('lab.font_control')}
                 </h2>
                 
-                {/* Axes Sliders */}
-                {axes.map((axis: any) => (
-                  <div key={axis.tag}>
-                    <div className="flex justify-between text-[10px] mb-1">
-                      <span className="font-mono text-white opacity-80">{axis.tag}</span>
-                      <span className="text-cyan-400">{axisValues[axis.tag]}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={axis.minValue}
-                      max={axis.maxValue}
-                      value={axisValues[axis.tag]}
-                      onChange={(e) => handleAxisChange(axis.tag, parseFloat(e.target.value))}
-                      className="w-full h-0.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-400"
-                    />
+                {/* Simplified Controls: Font Size */}
+                <div className="space-y-4 pt-1">
+                  <div className="flex justify-between text-[11px] text-white opacity-85">
+                    <span className="font-medium">{t('lab.font_size')}</span>
+                    <span className="text-cyan-400 font-mono font-bold text-xs">{fontSize || 80}px</span>
                   </div>
-                ))}
-
-                <hr className="border-white/5" />
-
-                {/* General Controls */}
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="number" value={fontSize} onChange={(e) => setFontSize(e.target.value === '' ? '' : parseInt(e.target.value))} className="bg-white/5 rounded-md p-1.5 text-[10px] text-center" placeholder={t('lab.font_size')} />
-                    <input type="number" step="0.1" value={lineHeight} onChange={(e) => setLineHeight(e.target.value === '' ? '' : parseFloat(e.target.value))} className="bg-white/5 rounded-md p-1.5 text-[10px] text-center" placeholder={t('lab.line_height')} />
-                  </div>
-                </div>
-                
-                {/* Elegant Color Pickers */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[9px] text-white opacity-40 uppercase">{t('lab.text_color')}</label>
-                    <button
-                      onClick={() => document.getElementById('textColorPicker')?.click()}
-                      className="w-full h-8 rounded-full border border-white/10 flex items-center justify-between px-2 bg-white/5 hover:bg-white/10 transition-all"
-                    >
-                      <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: textColor }} />
-                        <span className="text-[10px] text-white opacity-60">{textColor.toUpperCase()}</span>
-                      </div>
-                      <input id="textColorPicker" type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="hidden" />
-                    </button>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] text-white opacity-40 uppercase">{t('lab.bg_color')}</label>
-                    <button
-                      onClick={() => document.getElementById('bgColorPicker')?.click()}
-                      className="w-full h-8 rounded-full border border-white/10 flex items-center justify-between px-2 bg-white/5 hover:bg-white/10 transition-all"
-                    >
-                      <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: bgColor }} />
-                        <span className="text-[10px] text-white opacity-60">{bgColor.toUpperCase()}</span>
-                      </div>
-                      <input id="bgColorPicker" type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="hidden" />
-                    </button>
-                  </div>
+                  <input
+                    type="range"
+                    min="8"
+                    max="400"
+                    value={fontSize || 80}
+                    onChange={(e) => setFontSize(Number(e.target.value))}
+                    className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-400 hover:accent-cyan-300 transition-colors"
+                  />
                 </div>
 
-                {/* OpenType Features */}
-                <div className="space-y-1">
-                  <label className="text-[9px] text-white opacity-40 uppercase">{t('lab.opentype_features')}</label>
-                  <div className="flex flex-wrap gap-1">
-                    {Object.entries(openTypeFeatures).map(([feature, enabled]) => (
-                      <button
-                        key={feature}
-                        onClick={() => handleFeatureToggle(feature)}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${enabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-white opacity-40'}`}
-                      >
-                        {feature}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                  <button
-                    onClick={async () => {
-                      if (!font || isDownloading) return;
-                      
-                      if (!originalFontBlob) {
-                          alert(t('lab.error_reupload'));
-                          return;
-                      }
-
-                      setIsDownloading(true);
-                      
-                      try {
-                          await handleDownloadStatic(originalFontBlob, axisValues, openTypeFeatures);
-                      } catch (err) {
-                          console.error("Error downloading static font:", err);
-                      } finally {
-                          setIsDownloading(false);
-                      }
-                    }}
-                    className={`w-full bg-white text-black py-1.5 rounded-lg text-[10px] font-bold hover:bg-white/90 transition-all flex items-center justify-center gap-1 ${isDownloading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  >
-                    {isDownloading ? (
-                      <>
-                        <div className="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                        {t('lab.downloading')}
-                      </>
-                    ) : (
-                      <>
-                        <Download size={12} />
-                        {t('lab.download_font')}
-                      </>
-                    )}
-                  </button>
+                {/* Visual helper */}
+                <p className="text-[10px] text-white/30 leading-relaxed text-center mt-1 select-none" dir={t('dir')}>
+                  {t('dir') === 'rtl' 
+                    ? 'الألوان والخصائص المتقدمة والتحميل متوفرة بالكامل داخل شاشة التكبير والتخصيص.' 
+                    : 'Colors, advanced tuning and download are fully available inside customize & zoom screen.'}
+                </p>
               </div>
 
               {/* Preview */}
@@ -538,11 +618,22 @@ export const Lab = () => {
                 />
                 
                 <div 
-                  className="p-4 rounded-2xl border border-white/5 overflow-hidden flex items-center justify-center min-h-[300px]"
+                  className="relative p-8 rounded-2xl border border-white/5 overflow-visible flex items-center justify-center min-h-[460px] py-24"
                   style={{ backgroundColor: bgColor }}
                 >
+                  <button
+                    onClick={() => {
+                      setIsFullscreenPreview(true);
+                      setShowFullscreenTools(true);
+                    }}
+                    className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/75 text-white/60 hover:text-cyan-400 rounded-full border border-white/10 hover:border-cyan-500/25 transition-all text-[11px] font-medium tracking-wide shadow-xl active:scale-95 cursor-pointer backdrop-blur-md group z-20"
+                    title={t('dir') === 'rtl' ? 'فتح لوحة التعديل والتكبير' : 'Open customization and zoom'}
+                  >
+                    <Sliders size={11} className="text-white/40 group-hover:text-cyan-400 transition-colors" />
+                    <span>{t('dir') === 'rtl' ? 'تخصيص وتكبير المعاينة ↗' : 'Customize & Zoom ↗'}</span>
+                  </button>
                   <div
-                    className="preview-text"
+                    className="preview-text text-center max-w-full break-words overflow-visible leading-normal select-text"
                     style={{
                       fontFamily: `'LabFont-${currentFontId}', sans-serif`,
                       fontSize: fontSize === '' ? undefined : `${fontSize}px`,
@@ -765,6 +856,336 @@ export const Lab = () => {
         confirmText={t('common.delete')}
         variant="danger"
       />
+
+      <AnimatePresence>
+        {isFullscreenPreview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] flex flex-col bg-[#020202]"
+            style={{ backgroundColor: bgColor }}
+          >
+            {/* Top Toolbar overlay */}
+            <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
+              {/* Back / Close button */}
+              <button 
+                onClick={() => {
+                  setIsFullscreenPreview(false);
+                  setShowFullscreenTools(false);
+                }}
+                className="p-3 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 hover:bg-black/60 hover:scale-105 transition-all text-white/70 hover:text-white shadow-xl cursor-pointer pointer-events-auto"
+              >
+                <X className="w-5 h-5 cursor-pointer" />
+              </button>
+
+              {/* Tools panel toggle */}
+              <div className="flex flex-col items-end gap-2 pointer-events-none">
+                <button 
+                  ref={fullscreenToggleBtnRef}
+                  onClick={() => setShowFullscreenTools(!showFullscreenTools)}
+                  className={`px-4 py-2.5 backdrop-blur-md rounded-2xl border border-white/10 hover:border-cyan-500/20 hover:scale-105 transition-all shadow-xl pointer-events-auto cursor-pointer flex items-center gap-2 ${showFullscreenTools ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-black/50 hover:bg-black/75 text-white/80 hover:text-cyan-400'}`}
+                >
+                  <Palette className="w-4 h-4 cursor-pointer" />
+                  <span className="text-[11px] font-bold tracking-wide">
+                    {t('dir') === 'rtl' ? 'أدوات التعديل والتخصيص' : 'Advanced Tools'}
+                  </span>
+                </button>
+
+                {/* Collapsible Tools space */}
+                <AnimatePresence>
+                  {showFullscreenTools && (
+                    <motion.div
+                      ref={fullscreenToolsRef}
+                      initial={{ opacity: 0, scale: 0.95, transformOrigin: 'top right' }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="bg-[#141414]/90 backdrop-blur-xl border border-white/10 p-5 rounded-3xl w-[300px] shadow-2xl pointer-events-auto flex flex-col gap-5 mt-2"
+                    >
+                      <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                         <span className="text-sm font-bold text-white">{t('dir') === 'rtl' ? 'أدوات العرض' : 'Preview Tools'}</span>
+                      </div>
+
+                      <div className="space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
+                         {/* Typography Section */}
+                         <div className="bg-black/20 border border-white/5 rounded-2xl overflow-hidden">
+                           <button 
+                             onClick={() => setExpandedSection(prev => prev === 'size' ? '' : 'size')}
+                             className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
+                           >
+                             <div className="flex items-center gap-2">
+                               <Type className="w-4 h-4 text-cyan-400" />
+                               <span className="text-xs font-bold text-white">{t('dir') === 'rtl' ? 'الخط والحجم' : 'Typography'}</span>
+                             </div>
+                             <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${expandedSection === 'size' ? 'rotate-180' : ''}`} />
+                           </button>
+                           
+                           <AnimatePresence>
+                             {expandedSection === 'size' && (
+                               <motion.div
+                                 initial={{ height: 0, opacity: 0 }}
+                                 animate={{ height: 'auto', opacity: 1 }}
+                                 exit={{ height: 0, opacity: 0 }}
+                                 className="overflow-hidden"
+                               >
+                                 <div className="p-4 space-y-4 border-t border-white/5 bg-white/[0.02]">
+                                   <div className="space-y-2">
+                                     <div className="flex justify-between text-xs text-white/60">
+                                       <span>{t('lab.font_size')}</span>
+                                       <span>{fontSize || 'Auto'}</span>
+                                     </div>
+                                     <input
+                                       type="range"
+                                       min="8"
+                                       max="400"
+                                       value={fontSize || 80}
+                                       onChange={(e) => setFontSize(Number(e.target.value))}
+                                       className="w-full accent-cyan-400 cursor-pointer"
+                                     />
+                                   </div>
+
+                                   <div className="space-y-2">
+                                     <div className="flex justify-between text-xs text-white/60">
+                                       <span>{t('lab.line_height')}</span>
+                                       <span>{lineHeight || 'Auto'}</span>
+                                     </div>
+                                     <input
+                                       type="range"
+                                       min="0.5"
+                                       max="3"
+                                       step="0.1"
+                                       value={lineHeight || 1.2}
+                                       onChange={(e) => setLineHeight(Number(e.target.value))}
+                                       className="w-full accent-cyan-400 cursor-pointer"
+                                     />
+                                   </div>
+                                 </div>
+                               </motion.div>
+                             )}
+                           </AnimatePresence>
+                         </div>
+
+                         {/* Colors Section */}
+                         <div className="bg-black/20 border border-white/5 rounded-2xl overflow-visible">
+                           <button 
+                             onClick={() => setExpandedSection(prev => prev === 'colors' ? '' : 'colors')}
+                             className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
+                           >
+                             <div className="flex items-center gap-2">
+                               <Palette className="w-4 h-4 text-red-400" />
+                               <span className="text-xs font-bold text-white">{t('dir') === 'rtl' ? 'الألوان' : 'Colors'}</span>
+                             </div>
+                             <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${expandedSection === 'colors' ? 'rotate-180' : ''}`} />
+                           </button>
+                           
+                           <AnimatePresence>
+                             {expandedSection === 'colors' && (
+                               <motion.div
+                                 initial={{ height: 0, opacity: 0 }}
+                                 animate={{ height: 'auto', opacity: 1 }}
+                                 exit={{ height: 0, opacity: 0 }}
+                                 className="overflow-visible"
+                               >
+                                 <div className="p-4 space-y-4 border-t border-white/5 bg-white/[0.02]">
+                                   <div className="space-y-2">
+                                      <label className="text-xs text-white/60 block">{t('lab.text_color')}</label>
+                                      <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg p-1.5 focus-within:border-cyan-400/50 transition-colors">
+                                        <PopoverColorPicker color={textColor} onChange={setTextColor} />
+                                        <span className="text-white/40 font-mono text-xs mr-1 ml-2">#</span>
+                                        <input
+                                          type="text"
+                                          value={textColor.replace('#', '')}
+                                          onChange={(e) => {
+                                             let val = e.target.value.replace(/[^0-9A-Fa-f]/g, '');
+                                             if (val.length <= 6) {
+                                               setTextColor('#' + val);
+                                             }
+                                          }}
+                                          className="flex-1 bg-transparent text-xs font-mono text-white uppercase focus:outline-none"
+                                          spellCheck={false}
+                                        />
+                                      </div>
+                                   </div>
+                                   
+                                   <div className="space-y-2">
+                                      <label className="text-xs text-white/60 block">{t('lab.bg_color')}</label>
+                                      <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg p-1.5 focus-within:border-cyan-400/50 transition-colors">
+                                        <PopoverColorPicker color={bgColor} onChange={setBgColor} />
+                                        <span className="text-white/40 font-mono text-xs mr-1 ml-2">#</span>
+                                        <input
+                                          type="text"
+                                          value={bgColor.replace('#', '')}
+                                          onChange={(e) => {
+                                             let val = e.target.value.replace(/[^0-9A-Fa-f]/g, '');
+                                             if (val.length <= 6) {
+                                               setBgColor('#' + val);
+                                             }
+                                          }}
+                                          className="flex-1 bg-transparent text-xs font-mono text-white uppercase focus:outline-none"
+                                          spellCheck={false}
+                                        />
+                                      </div>
+                                   </div>
+                                 </div>
+                               </motion.div>
+                             )}
+                           </AnimatePresence>
+                         </div>
+
+                         {/* OpenType Section */}
+                         {Object.keys(openTypeFeatures).length > 0 && (
+                           <div className="bg-black/20 border border-white/5 rounded-2xl overflow-hidden">
+                             <button 
+                               onClick={() => setExpandedSection(prev => prev === 'opentype' ? '' : 'opentype')}
+                               className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
+                             >
+                               <div className="flex items-center gap-2">
+                                 <Layers className="w-4 h-4 text-purple-400" />
+                                 <span className="text-xs font-bold text-white">OpenType</span>
+                               </div>
+                               <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${expandedSection === 'opentype' ? 'rotate-180' : ''}`} />
+                             </button>
+                             
+                             <AnimatePresence>
+                               {expandedSection === 'opentype' && (
+                                 <motion.div
+                                   initial={{ height: 0, opacity: 0 }}
+                                   animate={{ height: 'auto', opacity: 1 }}
+                                   exit={{ height: 0, opacity: 0 }}
+                                   className="overflow-hidden"
+                                 >
+                                   <div className="p-4 border-t border-white/5 bg-white/[0.02]">
+                                      <div className="flex flex-wrap gap-2">
+                                        {Object.entries(openTypeFeatures).map(([tag, enabled]) => (
+                                          <button
+                                            key={tag}
+                                            onClick={() => handleFeatureToggle(tag)}
+                                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${enabled ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'}`}
+                                          >
+                                            {tag}
+                                          </button>
+                                        ))}
+                                      </div>
+                                   </div>
+                                 </motion.div>
+                               )}
+                             </AnimatePresence>
+                           </div>
+                         )}
+
+                         {/* Variable Axes Section */}
+                         {axes.length > 0 && (
+                           <div className="bg-black/20 border border-white/5 rounded-2xl overflow-hidden">
+                             <button 
+                               onClick={() => setExpandedSection(prev => prev === 'axes' ? '' : 'axes')}
+                               className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
+                             >
+                               <div className="flex items-center gap-2">
+                                 <Sliders className="w-4 h-4 text-green-400" />
+                                 <span className="text-xs font-bold text-white">Variable Axes</span>
+                               </div>
+                               <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${expandedSection === 'axes' ? 'rotate-180' : ''}`} />
+                             </button>
+                             
+                             <AnimatePresence>
+                               {expandedSection === 'axes' && (
+                                 <motion.div
+                                   initial={{ height: 0, opacity: 0 }}
+                                   animate={{ height: 'auto', opacity: 1 }}
+                                   exit={{ height: 0, opacity: 0 }}
+                                   className="overflow-hidden"
+                                 >
+                                   <div className="p-4 space-y-4 border-t border-white/5 bg-white/[0.02]">
+                                     {axes.map(axis => (
+                                       <div key={axis.tag} className="space-y-1">
+                                         <div className="flex justify-between text-xs text-white/60">
+                                           <span>{axis.name?.en || axis.tag}</span>
+                                           <span className="font-mono bg-black/40 px-1.5 rounded">{axisValues[axis.tag]?.toFixed(0) || axis.defaultValue}</span>
+                                         </div>
+                                         <input
+                                           type="range"
+                                           min={axis.minValue}
+                                           max={axis.maxValue}
+                                           step={(axis.maxValue - axis.minValue) / 100 || 1}
+                                           value={axisValues[axis.tag] || axis.defaultValue}
+                                           onChange={(e) => handleAxisChange(axis.tag, parseFloat(e.target.value))}
+                                           className="w-full accent-cyan-400 cursor-pointer"
+                                         />
+                                       </div>
+                                     ))}
+                                   </div>
+                                 </motion.div>
+                               )}
+                             </AnimatePresence>
+                           </div>
+                         )}
+
+                          {/* Instant Download Action in Fullscreen */}
+                          <div className="pt-2 border-t border-white/5 font-sans">
+                            <button
+                              onClick={async () => {
+                                if (!font || isDownloading) return;
+                                if (!originalFontBlob) {
+                                    alert(t('lab.error_reupload'));
+                                    return;
+                                }
+                                setIsDownloading(true);
+                                try {
+                                    await handleDownloadStatic(originalFontBlob, axisValues, openTypeFeatures);
+                                } catch (err) {
+                                    console.error("Error downloading static font:", err);
+                                } finally {
+                                    setIsDownloading(false);
+                                }
+                              }}
+                              className={`w-full bg-cyan-400 hover:bg-cyan-300 text-black py-2.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(34,211,238,0.25)] select-none active:scale-95 cursor-pointer ${isDownloading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            >
+                              {isDownloading ? (
+                                <>
+                                  <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                                  <span>{t('lab.downloading')}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Download size={13} />
+                                  <span>{t('lab.download_font')}</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Main content layer */}
+            <div className="flex-1 flex overflow-y-auto custom-scrollbar w-full h-full p-12 md:p-24 pointer-events-auto">
+              <div className="m-auto w-full max-w-7xl flex flex-col items-center justify-center min-h-full py-32">
+                <textarea
+                  ref={fullscreenTextareaRef}
+                  value={previewText}
+                  onChange={(e) => setPreviewText(e.target.value)}
+                  className="w-full outline-none resize-none bg-transparent overflow-visible text-center"
+                  style={{
+                    color: textColor,
+                    fontFamily: `'LabFont-${currentFontId}', sans-serif`,
+                    fontSize: fontSize === '' ? '80px' : `${fontSize}px`,
+                    lineHeight: lineHeight === '' ? '1.5' : lineHeight,
+                    fontVariationSettings: getVariationSettings(),
+                    fontFeatureSettings: getFontFeatures(),
+                    textAlign: 'center',
+                    paddingTop: '80px',
+                    paddingBottom: '80px',
+                  }}
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
