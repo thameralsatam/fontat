@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 // قم بتغيير رقم الإصدار هنا عند كل تحديث لضمان تجاوز الكاش (Cache Busting)
-const APP_VERSION = '1.0.0'; 
+const APP_VERSION = '1.1.0'; 
 
 export default defineConfig({
   plugins: [

@@ -16,6 +16,7 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfUse } from './pages/TermsOfUse';
 import { AboutUs } from './pages/AboutUs';
 import { Home } from './pages/Home';
+import { NotFound } from './pages/NotFound';
 
 const AppRoutes = () => {
   const { user, loading } = useAuth();
@@ -93,6 +94,12 @@ const AppRoutes = () => {
       <Route path="/about" element={
         <Layout>
           <AboutUs />
+        </Layout>
+      } />
+      
+      <Route path="*" element={
+        <Layout>
+          <NotFound />
         </Layout>
       } />
     </Routes>

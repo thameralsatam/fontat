@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /my-fonts
+Disallow: /account
+Disallow: /login
+
+Sitemap: https://fontat.pages.dev/sitemap.xml
