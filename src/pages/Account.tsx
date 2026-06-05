@@ -366,9 +366,14 @@ export const Account = () => {
                                 <button 
                                   onClick={() => togglePref(item.key as keyof typeof prefs)}
                                   disabled={savingPrefs}
-                                  className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${prefs[item.key as keyof typeof prefs] ? 'bg-cyan-500' : 'bg-white/20'} ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${prefs[item.key as keyof typeof prefs] ? 'bg-cyan-500' : 'bg-white/20'} ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
-                                  <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${prefs[item.key as keyof typeof prefs] ? (dir === 'rtl' ? '-translate-x-4' : 'translate-x-4') : 'translate-x-0'}`} />
+                                  <span 
+                                    className="pointer-events-none absolute top-[2px] h-4 w-4 rounded-full bg-white shadow ring-0 transition-all duration-200 ease-in-out" 
+                                    style={{
+                                      [dir === 'rtl' ? 'right' : 'left']: prefs[item.key as keyof typeof prefs] ? '18px' : '2px'
+                                    }}
+                                  />
                                 </button>
                             </div>
                           ))}

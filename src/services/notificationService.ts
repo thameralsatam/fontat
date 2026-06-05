@@ -3,24 +3,14 @@ import { Notification, NotificationPreferences } from '../types';
 
 // Get notifications
 export const getNotifications = async (_userId: string | null): Promise<Notification[]> => {
-  try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return [];
-    }
-    const { data, error } = await supabase.rpc('get_my_notifications');
-    
-    if (error) {
-      console.warn("Error loading notifications:", error.message);
-      return [];
-    }
-    
-    return data || [];
-  } catch (error: any) {
-    console.warn("Network error or configuration issue when fetching notifications:", error.message || error);
-    return [];
+  const { data, error } = await supabase.rpc('get_my_notifications');
+  
+  if (error) {
+    console.error("Error loading notifications:", error.message);
+    throw error;
   }
+  
+  return data || [];
 };
 
 // Create a new general notification (admin only)
