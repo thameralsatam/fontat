@@ -366,7 +366,7 @@ export const Lab = () => {
 
       // Extract all OpenType features
       const features: Record<string, boolean> = {};
-      const defaultEnabledFeatures = ['calt', 'rclt', 'rlig', 'liga', 'clig', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl', 'kern'];
+      const defaultEnabledFeatures = ['calt', 'rclt', 'rlig', 'liga', 'clig', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl', 'kern', 'blwf', 'abvf', 'half', 'pstf', 'vatu', 'cjct'];
       
       const gsub = (parsedFont as any).tables.gsub;
       if (gsub && gsub.features) {
@@ -514,10 +514,24 @@ export const Lab = () => {
   };
 
   const getFontFeatures = () => {
-    const features = Object.entries(openTypeFeatures)
-      .map(([feature, enabled]) => `"${feature}" ${enabled ? 1 : 0}`)
-      .join(', ');
-    return features === '' ? 'normal' : features;
+    const defaultEnabledFeatures = ['calt', 'rclt', 'rlig', 'liga', 'clig', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl', 'kern', 'blwf', 'abvf', 'half', 'pstf', 'vatu', 'cjct'];
+    
+    if (Object.keys(openTypeFeatures).length === 0) return 'normal';
+    
+    const parts: string[] = [];
+    
+    Object.entries(openTypeFeatures).forEach(([tag, enabled]) => {
+      const isDefaultEnabled = defaultEnabledFeatures.includes(tag);
+      if (isDefaultEnabled && !enabled) {
+        // User explicitly disabled a standard feature
+        parts.push(`"${tag}" 0`);
+      } else if (!isDefaultEnabled && enabled) {
+        // User explicitly enabled a stylistic/optional feature
+        parts.push(`"${tag}" 1`);
+      }
+    });
+
+    return parts.length > 0 ? parts.join(', ') : 'normal';
   };
 
   async function handleDownloadStatic(fontBlob: Blob, axes: Record<string, number>, features: Record<string, boolean>) {
