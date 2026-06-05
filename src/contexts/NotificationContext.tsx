@@ -70,7 +70,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       setNotifications(filteredData);
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      console.warn('Error loading notifications:', error);
     } finally {
       setLoading(false);
     }
