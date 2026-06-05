@@ -209,18 +209,14 @@ export const Lab = () => {
   const [isFullscreenPreview, setIsFullscreenPreview] = useState(false);
   const [showFullscreenTools, setShowFullscreenTools] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string>('size');
+  const [showAdvancedFeatures, setShowAdvancedFeatures] = useState(false);
   const glyphsContainerRef = useRef<HTMLDivElement>(null);
   const fullscreenTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fullscreenToolsRef = useRef<HTMLDivElement>(null);
   const fullscreenToggleBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (isFullscreenPreview && fullscreenTextareaRef.current) {
-      fullscreenTextareaRef.current.style.height = '0px';
-      // Provide a generous buffer to prevent clipping of extreme typography metrics
-      const buffer = Math.max(120, typeof fontSize === 'number' ? fontSize : 80);
-      fullscreenTextareaRef.current.style.height = (fullscreenTextareaRef.current.scrollHeight + buffer) + 'px';
-    }
+    // Height resize not needed anymore, contentEditable handles it
   }, [previewText, fontSize, lineHeight, isFullscreenPreview]);
 
   useEffect(() => {
@@ -370,13 +366,11 @@ export const Lab = () => {
 
       // Extract all OpenType features
       const features: Record<string, boolean> = {};
-      const defaultEnabledFeatures = ['calt', 'rclt', 'rlig', 'liga', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl'];
-      const forbidden = ["init", "medi", "fina", "isol", "rlig", "clig", "liga", "calt", "ccmp", "mark", "mkmk", "curs", "kern", "locl", "rclt"];
+      const defaultEnabledFeatures = ['calt', 'rclt', 'rlig', 'liga', 'clig', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl', 'kern'];
       
       const gsub = (parsedFont as any).tables.gsub;
       if (gsub && gsub.features) {
         gsub.features.forEach((f: any) => {
-          if (forbidden.includes(f.tag)) return;
           features[f.tag] = savedFeatures && savedFeatures[f.tag] !== undefined 
             ? savedFeatures[f.tag] 
             : defaultEnabledFeatures.includes(f.tag);
@@ -386,7 +380,6 @@ export const Lab = () => {
       const gpos = (parsedFont as any).tables.gpos;
       if (gpos && gpos.features) {
         gpos.features.forEach((f: any) => {
-          if (forbidden.includes(f.tag)) return;
           features[f.tag] = savedFeatures && savedFeatures[f.tag] !== undefined 
             ? savedFeatures[f.tag] 
             : defaultEnabledFeatures.includes(f.tag);
@@ -521,11 +514,10 @@ export const Lab = () => {
   };
 
   const getFontFeatures = () => {
-    return Object.entries(openTypeFeatures)
-      .map(([feature, enabled]) => {
-        return enabled ? `"${feature}" 1` : `"${feature}" 0`;
-      })
+    const features = Object.entries(openTypeFeatures)
+      .map(([feature, enabled]) => `"${feature}" ${enabled ? 1 : 0}`)
       .join(', ');
+    return features === '' ? 'normal' : features;
   };
 
   async function handleDownloadStatic(fontBlob: Blob, axes: Record<string, number>, features: Record<string, boolean>) {
@@ -689,7 +681,7 @@ export const Lab = () => {
                 />
                 
                 <div 
-                  className="relative p-8 rounded-2xl border border-white/5 overflow-visible flex items-center justify-center min-h-[460px] py-24"
+                  className="relative p-6 md:p-12 rounded-2xl border border-white/5 overflow-visible flex flex-col items-center justify-center min-h-[460px] h-auto"
                   style={{ backgroundColor: bgColor }}
                 >
                   <button
@@ -704,7 +696,7 @@ export const Lab = () => {
                     <span>{t('dir') === 'rtl' ? 'تخصيص وتكبير المعاينة ↗' : 'Customize & Zoom ↗'}</span>
                   </button>
                   <div
-                    className="preview-text text-center max-w-full break-words overflow-visible leading-normal select-text"
+                    className="preview-text text-center w-full whitespace-pre-wrap break-words leading-normal select-text relative z-10"
                     style={{
                       fontFamily: `'LabFont-${currentFontId}', sans-serif`,
                       fontSize: fontSize === '' ? undefined : `${fontSize}px`,
@@ -971,22 +963,22 @@ export const Lab = () => {
                       initial={{ opacity: 0, scale: 0.95, transformOrigin: 'top right' }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-[#141414]/90 backdrop-blur-xl border border-white/10 p-5 rounded-3xl w-[300px] shadow-2xl pointer-events-auto flex flex-col gap-5 mt-2"
+                      className="bg-[#141414]/95 backdrop-blur-xl border border-white/10 p-2.5 rounded-2xl w-[240px] shadow-2xl pointer-events-auto flex flex-col gap-2 mt-2"
                     >
-                      <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                         <span className="text-sm font-bold text-white">{t('dir') === 'rtl' ? 'أدوات العرض' : 'Preview Tools'}</span>
+                      <div className="flex items-center justify-between border-b border-white/5 pb-1.5 px-1">
+                         <span className="text-[10px] tracking-wider font-bold text-white/50 uppercase">{t('dir') === 'rtl' ? 'أدوات العرض' : 'Preview Tools'}</span>
                       </div>
 
-                      <div className="space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
+                      <div className="space-y-2 max-h-[75vh] overflow-y-auto custom-scrollbar pr-1">
                          {/* Typography Section */}
-                         <div className="bg-black/20 border border-white/5 rounded-2xl overflow-hidden">
+                         <div className="bg-black/20 border border-white/5 rounded-xl overflow-hidden">
                            <button 
                              onClick={() => setExpandedSection(prev => prev === 'size' ? '' : 'size')}
-                             className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
+                             className="w-full flex items-center justify-between p-2.5 hover:bg-white/5 transition-colors"
                            >
                              <div className="flex items-center gap-2">
-                               <Type className="w-4 h-4 text-cyan-400" />
-                               <span className="text-xs font-bold text-white">{t('dir') === 'rtl' ? 'الخط والحجم' : 'Typography'}</span>
+                               <Type className="w-3.5 h-3.5 text-cyan-400" />
+                               <span className="text-[11px] font-bold text-white">{t('dir') === 'rtl' ? 'الخط والحجم' : 'Typography'}</span>
                              </div>
                              <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${expandedSection === 'size' ? 'rotate-180' : ''}`} />
                            </button>
@@ -1125,76 +1117,125 @@ export const Lab = () => {
                                    exit={{ height: 0, opacity: 0 }}
                                    className="overflow-hidden"
                                  >
-                                    <div className="p-4 border-t border-white/5 bg-white/[0.02] space-y-2.5">
-                                      {Object.entries(openTypeFeatures).map(([tag, enabled]) => {
-                                        const desc = getFeatureDescription(tag, font);
-                                        const isInfoOpen = activeFeatureTooltip === tag;
-                                        return (
-                                          <div
-                                            key={tag}
-                                            className="flex flex-col rounded-xl border border-white/5 bg-white/[0.01] overflow-hidden hover:bg-white/[0.02] transition-all"
-                                          >
-                                            {/* Row Header */}
-                                            <div
-                                              onClick={() => handleFeatureToggle(tag)}
-                                              className="flex items-center justify-between p-2.5 cursor-pointer select-none"
-                                            >
-                                              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                                                <span className="font-mono text-[10px] font-extrabold text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 uppercase tracking-widest shrink-0">
-                                                  {tag}
-                                                </span>
-                                                
-                                                {/* Silver circle Info button */}
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setActiveFeatureTooltip(isInfoOpen ? null : tag);
-                                                  }}
-                                                  className={`w-5 h-5 flex items-center justify-center rounded-full border transition-all shrink-0 cursor-pointer ${
-                                                    isInfoOpen
-                                                      ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.15)]'
-                                                      : 'bg-white/5 border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 hover:border-white/20'
-                                                  }`}
-                                                  title="الشرح والتفاصيل"
-                                                >
-                                                  <Info className="w-2.5 h-2.5" />
-                                                </button>
-                                              </div>
-                                              
-                                              {/* Visual switch toggler */}
-                                              <div
-                                                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
-                                                  enabled ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]' : 'bg-white/10'
-                                                }`}
-                                              >
-                                                <span
-                                                  className="absolute top-[2px] h-4 w-4 rounded-full bg-white shadow ring-0 transition-all duration-200 ease-in-out"
-                                                  style={{
-                                                    [t('dir') === 'rtl' ? 'right' : 'left']: enabled ? '18px' : '2px'
-                                                  }}
-                                                />
-                                              </div>
-                                            </div>
+                                    <div className="p-4 border-t border-white/5 bg-white/[0.02] flex flex-col gap-4">
+                                      {(() => {
+                                        const advancedFeaturesList = ['kern', 'mark', 'mkmk', 'ccmp', 'rlig', 'clig', 'locl', 'init', 'medi', 'fina', 'isol', 'curs', 'rclt', 'dist', 'blwf', 'abvf', 'half', 'pstf', 'vatu', 'cjct', 'vert', 'vrt2', 'vrtr', 'vpal', 'halt'];
+                                        const isAdvancedFeature = (tag: string) => advancedFeaturesList.includes(tag);
 
-                                            {/* Collapsible Info Card */}
-                                            <AnimatePresence initial={false}>
-                                              {isInfoOpen && (
-                                                <motion.div
-                                                  initial={{ height: 0, opacity: 0 }}
-                                                  animate={{ height: 'auto', opacity: 1 }}
-                                                  exit={{ height: 0, opacity: 0 }}
-                                                  transition={{ duration: 0.2 }}
-                                                  className="overflow-hidden bg-white/[0.02] border-t border-white/5"
+                                        const featuresObj = Object.entries(openTypeFeatures);
+                                        const stylistic = featuresObj.filter(([tag]) => !isAdvancedFeature(tag));
+                                        const advanced = featuresObj.filter(([tag]) => isAdvancedFeature(tag));
+
+                                        const renderFeature = ([tag, enabled]: [string, boolean]) => {
+                                          const desc = getFeatureDescription(tag, font);
+                                          const isInfoOpen = activeFeatureTooltip === tag;
+                                          return (
+                                            <div
+                                              key={tag}
+                                              className="flex flex-col rounded-xl border border-white/5 bg-white/[0.01] overflow-hidden hover:bg-white/[0.02] transition-all"
+                                            >
+                                              {/* Row Header */}
+                                              <div
+                                                onClick={() => handleFeatureToggle(tag)}
+                                                className="flex items-center justify-between p-2.5 cursor-pointer select-none"
+                                              >
+                                                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                                  <span className="font-mono text-[10px] font-extrabold text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 uppercase tracking-widest shrink-0">
+                                                    {tag}
+                                                  </span>
+                                                  
+                                                  {/* Silver circle Info button */}
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setActiveFeatureTooltip(isInfoOpen ? null : tag);
+                                                    }}
+                                                    className={`w-5 h-5 flex items-center justify-center rounded-full border transition-all shrink-0 cursor-pointer ${
+                                                      isInfoOpen
+                                                        ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.15)]'
+                                                        : 'bg-white/5 border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 hover:border-white/20'
+                                                    }`}
+                                                    title="الشرح والتفاصيل"
+                                                  >
+                                                    <Info className="w-2.5 h-2.5" />
+                                                  </button>
+                                                </div>
+                                                
+                                                {/* Visual switch toggler */}
+                                                <div
+                                                  className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
+                                                    enabled ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]' : 'bg-white/10'
+                                                  }`}
                                                 >
-                                                  <div className="p-3 text-xs text-white/75 bg-gradient-to-b from-cyan-950/10 to-transparent leading-relaxed text-right font-sans border-l-2 border-cyan-500/30 font-medium">
-                                                    {desc}
+                                                  <span
+                                                    className="absolute top-[2px] h-4 w-4 rounded-full bg-white shadow ring-0 transition-all duration-200 ease-in-out"
+                                                    style={{
+                                                      [t('dir') === 'rtl' ? 'right' : 'left']: enabled ? '18px' : '2px'
+                                                    }}
+                                                  />
+                                                </div>
+                                              </div>
+
+                                              {/* Collapsible Info Card */}
+                                              <AnimatePresence initial={false}>
+                                                {isInfoOpen && (
+                                                  <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="overflow-hidden bg-white/[0.02] border-t border-white/5"
+                                                  >
+                                                    <div className="p-3 text-xs text-white/75 bg-gradient-to-b from-cyan-950/10 to-transparent leading-relaxed text-right font-sans border-l-2 border-cyan-500/30 font-medium">
+                                                      {desc}
+                                                    </div>
+                                                  </motion.div>
+                                                )}
+                                              </AnimatePresence>
+                                            </div>
+                                          );
+                                        };
+
+                                        return (
+                                          <>
+                                            {stylistic.length > 0 && (
+                                              <div className="space-y-2.5">
+                                                {stylistic.map(renderFeature)}
+                                              </div>
+                                            )}
+
+                                            {advanced.length > 0 && (
+                                              <div className="flex flex-col gap-2.5 mt-2">
+                                                <button
+                                                  onClick={() => setShowAdvancedFeatures(!showAdvancedFeatures)}
+                                                  className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-white/70 text-xs font-bold"
+                                                >
+                                                  <div className="flex items-center gap-2">
+                                                    <Settings size={14} className="text-white/50" />
+                                                    <span>{t('dir') === 'rtl' ? 'الميزات المتقدمة' : 'Advanced Features'}</span>
                                                   </div>
-                                                </motion.div>
-                                              )}
-                                            </AnimatePresence>
-                                          </div>
+                                                  <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedFeatures ? 'rotate-180' : ''}`} />
+                                                </button>
+                                                
+                                                <AnimatePresence>
+                                                  {showAdvancedFeatures && (
+                                                    <motion.div
+                                                      initial={{ height: 0, opacity: 0 }}
+                                                      animate={{ height: 'auto', opacity: 1 }}
+                                                      exit={{ height: 0, opacity: 0 }}
+                                                      className="space-y-2.5 overflow-hidden"
+                                                    >
+                                                      <div className="pt-1 space-y-2.5">
+                                                        {advanced.map(renderFeature)}
+                                                      </div>
+                                                    </motion.div>
+                                                  )}
+                                                </AnimatePresence>
+                                              </div>
+                                            )}
+                                          </>
                                         );
-                                      })}
+                                      })()}
                                     </div>
                                  </motion.div>
                                )}
@@ -1290,13 +1331,16 @@ export const Lab = () => {
             </div>
 
             {/* Main content layer */}
-            <div className="flex-1 flex overflow-y-auto custom-scrollbar w-full h-full p-12 md:p-24 pointer-events-auto">
-              <div className="m-auto w-full max-w-7xl flex flex-col items-center justify-center min-h-full py-32">
-                <textarea
-                  ref={fullscreenTextareaRef}
-                  value={previewText}
-                  onChange={(e) => setPreviewText(e.target.value)}
-                  className="w-full outline-none resize-none bg-transparent overflow-visible text-center"
+            <div className="flex-1 flex overflow-y-auto custom-scrollbar w-full h-full p-6 md:p-12 pointer-events-auto items-start justify-center">
+              <div className="w-full max-w-7xl flex flex-col items-center justify-start min-h-max py-24 md:py-32">
+                <div
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={(e) => setPreviewText(e.currentTarget.innerText)}
+                  onInput={(e) => {
+                    // Update state silently without re-triggering render loop on every keystroke
+                  }}
+                  className="w-full outline-none bg-transparent overflow-visible text-center break-words whitespace-pre-wrap"
                   style={{
                     color: textColor,
                     fontFamily: `'LabFont-${currentFontId}', sans-serif`,
@@ -1304,12 +1348,12 @@ export const Lab = () => {
                     lineHeight: lineHeight === '' ? '1.5' : lineHeight,
                     fontVariationSettings: getVariationSettings(),
                     fontFeatureSettings: getFontFeatures(),
-                    textAlign: 'center',
-                    paddingTop: '80px',
-                    paddingBottom: '80px',
+                    minHeight: '1em',
                   }}
                   spellCheck={false}
-                />
+                >
+                  {previewText}
+                </div>
               </div>
             </div>
           </motion.div>
