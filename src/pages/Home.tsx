@@ -17,18 +17,18 @@ export const Home = () => {
     <div className="min-h-screen flex flex-col items-center pt-12 max-lg:landscape:pt-4 px-4 relative overflow-hidden pb-40 max-lg:landscape:pb-16">
       <div className="text-center z-10 w-full max-w-4xl xl:max-w-6xl mx-auto">
         <motion.h1
-          initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="text-2xl sm:text-3xl md:text-5xl font-semibold text-white tracking-tight leading-snug"
         >
           {t("home.hero_title")}
         </motion.h1>
 
         <motion.div
-          initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ delay: 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-row items-center justify-center gap-4 mt-12"
           dir={dir}
         >
@@ -63,9 +63,9 @@ export const Home = () => {
 
       {/* Font Cards Decoration */}
       <motion.div
-        initial={{ opacity: 0, y: 50, filter: "blur(10px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0, y: 25 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="mt-12 md:mt-20 w-full max-w-2xl lg:max-w-4xl mx-auto flex flex-col gap-3 relative pointer-events-none select-none"
         dir={dir}
       >
@@ -118,10 +118,10 @@ export const Home = () => {
       {/* Professional Features Section */}
       <div className="w-full max-w-5xl xl:max-w-6xl mx-auto mt-20 z-20 relative pointer-events-auto" dir={dir}>
         <motion.div
-          initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
-          whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-col items-start text-start mb-10 md:mb-16 gap-6"
         >
           <div className="max-w-2xl">
@@ -144,10 +144,10 @@ export const Home = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
           {/* Feature 1 - Left Panel */}
           <motion.div
-            initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
-            whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
             className="group relative overflow-hidden rounded-3xl bg-[#080808] border border-white/5 p-6 md:p-10 flex flex-col justify-between min-h-[350px] md:min-h-[400px] shadow-2xl"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
@@ -200,10 +200,10 @@ export const Home = () => {
           {/* Right Panels stacked */}
           <div className="flex flex-col gap-5 md:gap-6">
             <motion.div
-              initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
-              whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
               className="group relative overflow-hidden rounded-3xl bg-[#080808] border border-white/5 p-6 md:p-8 flex-1 flex flex-col shadow-2xl"
             >
               <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
@@ -239,10 +239,10 @@ export const Home = () => {
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
-              whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className="group relative overflow-hidden rounded-3xl bg-[#080808] border border-white/5 p-6 md:p-8 flex-1 flex flex-col shadow-2xl"
             >
               <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
@@ -287,10 +287,10 @@ export const Home = () => {
       {/* Telegram CTA */}
       <motion.div
         id="font-finder-cta"
-        initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
-        whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        initial={{ opacity: 0, y: 15 }}
+        whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-50px" }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-3xl xl:max-w-4xl mx-auto mt-6 md:mt-10 z-20 relative pointer-events-auto"
         dir={dir}
       >

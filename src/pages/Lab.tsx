@@ -11,7 +11,7 @@ import { saveFontHistory, getFontHistoryList, getFontHistoryItem, FontHistoryIte
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { formatFontName } from '../utils/text';
 
-const getFeatureDescription = (tag: string, parsedFont: any): string => {
+const getFeatureDescription = (tag: string, parsedFont: any, t: (key: string) => string): string => {
   if (parsedFont && parsedFont.names) {
     // 1. Try to find if this is a custom feature with a NameID in featureParams
     if (parsedFont.tables?.gsub?.features) {
@@ -31,38 +31,25 @@ const getFeatureDescription = (tag: string, parsedFont: any): string => {
     }
   }
 
-  const officialSpecs: Record<string, string> = {
-    liga: 'Standard Ligatures',
-    calt: 'Contextual Alternates',
-    case: 'Case-Sensitive Forms',
-    ccmp: 'Glyph Composition/Decomposition',
-    dlig: 'Discretionary Ligatures',
-    frac: 'Fractions',
-    locl: 'Localized Forms',
-    rlig: 'Required Ligatures',
-    salt: 'Stylistic Alternates',
-    swsh: 'Swash',
-    aalt: 'Access All Alternates',
-    init: 'Initial Forms',
-    medi: 'Medial Forms',
-    fina: 'Terminal Forms',
-    isol: 'Isolated Forms',
-    mark: 'Mark Positioning',
-    mkmk: 'Mark to Mark Positioning',
-    curs: 'Cursive Positioning',
-    rclt: 'Required Contextual Alternates',
-    kern: 'Kerning',
-    ss01: 'Stylistic Set 1',
-    ss02: 'Stylistic Set 2',
-    ss03: 'Stylistic Set 3',
-    ss04: 'Stylistic Set 4',
-  };
+  const titleKey = `ot.${tag}.title`;
+  const descKey = `ot.${tag}.desc`;
+  const titleVal = t(titleKey);
+  const descVal = t(descKey);
 
-  if (officialSpecs[tag]) {
-    return officialSpecs[tag];
+  if (titleVal !== titleKey && descVal !== descKey) {
+    return `${titleVal}: ${descVal}`;
+  } else if (descVal !== descKey) {
+    return descVal;
+  } else if (titleVal !== titleKey) {
+    return titleVal;
   }
 
-  return 'لا يوجد وصف مرفق';
+  if (tag.startsWith('ss') && tag.length === 4) {
+    const num = tag.substring(2);
+    return `${t('ot.stylistic_set')} ${num}`;
+  }
+
+  return t('lab.no_desc');
 };
 
 
@@ -211,7 +198,7 @@ export const Lab = () => {
   const [expandedSection, setExpandedSection] = useState<string>('size');
   const [showAdvancedFeatures, setShowAdvancedFeatures] = useState(false);
   const glyphsContainerRef = useRef<HTMLDivElement>(null);
-  const fullscreenTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const isUpdatingGlyphsRef = useRef(false);
   const fullscreenToolsRef = useRef<HTMLDivElement>(null);
   const fullscreenToggleBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -772,7 +759,13 @@ export const Lab = () => {
                 onScroll={(e) => {
                   const target = e.currentTarget;
                   if (target.scrollHeight - target.scrollTop <= target.clientHeight + 600) {
-                    setRenderedGlyphCount(prev => prev + 200);
+                    if (renderedGlyphCount < filteredGlyphs.length && !isUpdatingGlyphsRef.current) {
+                      isUpdatingGlyphsRef.current = true;
+                      setRenderedGlyphCount(prev => Math.min(prev + 200, filteredGlyphs.length));
+                      setTimeout(() => {
+                        isUpdatingGlyphsRef.current = false;
+                      }, 150);
+                    }
                   }
                 }}
                 className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4 max-h-[350px] overflow-y-auto p-4 bg-black/40 rounded-2xl border border-white/5 custom-scrollbar"
@@ -1118,7 +1111,7 @@ export const Lab = () => {
                              >
                                <div className="flex items-center gap-2">
                                  <Layers className="w-4 h-4 text-purple-400" />
-                                 <span className="text-xs font-bold text-white">OpenType</span>
+                                 <span className="text-xs font-bold text-white">{t('lab.opentype')}</span>
                                </div>
                                <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${expandedSection === 'opentype' ? 'rotate-180' : ''}`} />
                              </button>
@@ -1141,7 +1134,7 @@ export const Lab = () => {
                                         const advanced = featuresObj.filter(([tag]) => isAdvancedFeature(tag));
 
                                         const renderFeature = ([tag, enabled]: [string, boolean]) => {
-                                          const desc = getFeatureDescription(tag, font);
+                                          const desc = getFeatureDescription(tag, font, t);
                                           const isInfoOpen = activeFeatureTooltip === tag;
                                           return (
                                             <div
@@ -1226,7 +1219,7 @@ export const Lab = () => {
                                                 >
                                                   <div className="flex items-center gap-2">
                                                     <Settings size={14} className="text-white/50" />
-                                                    <span>{t('dir') === 'rtl' ? 'الميزات المتقدمة' : 'Advanced Features'}</span>
+                                                    <span>{t('lab.advanced_features')}</span>
                                                   </div>
                                                   <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedFeatures ? 'rotate-180' : ''}`} />
                                                 </button>
@@ -1266,7 +1259,7 @@ export const Lab = () => {
                              >
                                <div className="flex items-center gap-2">
                                  <Sliders className="w-4 h-4 text-green-400" />
-                                 <span className="text-xs font-bold text-white">Variable Axes</span>
+                                 <span className="text-xs font-bold text-white">{t('lab.variable_axes')}</span>
                                </div>
                                <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${expandedSection === 'axes' ? 'rotate-180' : ''}`} />
                              </button>
@@ -1351,7 +1344,7 @@ export const Lab = () => {
                   contentEditable
                   suppressContentEditableWarning
                   onBlur={(e) => setPreviewText(e.currentTarget.innerText)}
-                  onInput={(e) => {
+                  onInput={() => {
                     // Update state silently without re-triggering render loop on every keystroke
                   }}
                   className="w-full outline-none bg-transparent overflow-visible text-center break-words whitespace-pre-wrap"

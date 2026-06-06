@@ -1,10 +1,9 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export const NotFound = () => {
-  const { t, dir } = useLanguage();
+  const { dir } = useLanguage();
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">

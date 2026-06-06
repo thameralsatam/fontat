@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts, getWeightRelationshipsForFonts } from '../services/fontService';
 import { getGroups } from '../services/groupService';
-import { Trash2, Download, X, Layers, Upload, Plus, Check, Dices, Filter, Edit3, ArrowRight, ArrowLeft, Sliders, Layout, Copy, Sparkles, BookOpen, Beaker, ExternalLink, ChevronDown } from 'lucide-react';
+import { Trash2, Download, X, Layers, Upload, Plus, Check, Dices, Filter, Edit3, ArrowRight, ArrowLeft, Sliders, Layout, Copy, Sparkles, BookOpen, Beaker, ExternalLink, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { saveFontHistory } from '../lib/db';
 // @ts-ignore
@@ -584,22 +584,37 @@ export const GroupDetails = ({
     setRenderedCountInPage(7);
   }, [currentPage]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      // If we scroll near the bottom of the visible document window
-      const scrolledToBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 450;
-      if (scrolledToBottom) {
-        setRenderedCountInPage(prev => prev + 5);
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+
 
   // Toolbar State
   const [fontSize, setFontSize] = useState(25); // Default size
-  const [globalPreviewText, setGlobalPreviewText] = useState('اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)');
+  const [globalPreviewText, setGlobalPreviewText] = useState(() => {
+    if (isPublicAllFonts) {
+      return localStorage.getItem('fontinfo_preview_public') || 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
+    } else if (id) {
+      return localStorage.getItem(`fontinfo_preview_group_${id}`) || localStorage.getItem('fontinfo_preview_private') || 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
+    }
+    return 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
+  });
   const deferredGlobalPreviewText = useDeferredValue(globalPreviewText);
+
+  useEffect(() => {
+    if (isPublicAllFonts) {
+      localStorage.setItem('fontinfo_preview_public', globalPreviewText);
+    } else if (id) {
+      localStorage.setItem(`fontinfo_preview_group_${id}`, globalPreviewText);
+      localStorage.setItem('fontinfo_preview_private', globalPreviewText);
+    }
+  }, [globalPreviewText, isPublicAllFonts, id]);
+
+  useEffect(() => {
+    const saved = isPublicAllFonts
+      ? localStorage.getItem('fontinfo_preview_public')
+      : (id ? (localStorage.getItem(`fontinfo_preview_group_${id}`) || localStorage.getItem('fontinfo_preview_private')) : null);
+    
+    setGlobalPreviewText(saved || 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)');
+    setFontPreviews({});
+  }, [id, isPublicAllFonts]);
   const [fontPreviews, setFontPreviews] = useState<Record<string, string>>({});
   const [pulseFontId, setPulseFontId] = useState<string | null>(null);
   const [modalPulseFontId, setModalPulseFontId] = useState<string | null>(null);
@@ -613,6 +628,24 @@ export const GroupDetails = ({
   };
 
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const fontGridRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const uploadedSessionFontsRef = useRef<Record<string, { localUrl: string, name: string }>>({});
+
+  useEffect(() => {
+    uploadQueue.forEach(task => {
+      if (task.status === 'success' && task.localUrl) {
+        const idKey = task.fontId || task.id;
+        if (!uploadedSessionFontsRef.current[idKey]) {
+          uploadedSessionFontsRef.current[idKey] = {
+            localUrl: task.localUrl,
+            name: task.file.name
+          };
+        }
+      }
+    });
+  }, [uploadQueue]);
 
 
 
@@ -718,24 +751,36 @@ export const GroupDetails = ({
        const matchedTask = relevantQueueItems.find(t => t.fontId === dbFont.id);
        if (matchedTask) {
           // Keep the original artificial timestamp to preserve the stable sorting order while in queue
-          // Retain localUrl to prevent Flash Of Unstyled Text (FOUT) when DB refreshes
+          // Retain localUrl in sessionLocalUrl to prevent Flash Of Unstyled Text (FOUT) when DB refreshes
           return { 
             ...dbFont, 
-            download_url: matchedTask.localUrl || dbFont.download_url,
+            download_url: dbFont.download_url || matchedTask.downloadUrl || '',
+            sessionLocalUrl: matchedTask.localUrl,
             created_at: matchedTask.timestamp ? new Date(matchedTask.timestamp).toISOString() : dbFont.created_at,
             metadata: { ...dbFont.metadata, taskId: matchedTask.id, status: matchedTask.status } 
-          };
+          } as Font & { sessionLocalUrl?: string };
        }
-       return dbFont;
+
+       // Preserve local URL during active session to prevent broken font preview and FOUT
+       const sessionFont = uploadedSessionFontsRef.current[dbFont.id];
+       if (sessionFont) {
+          return {
+             ...dbFont,
+             sessionLocalUrl: sessionFont.localUrl
+          } as Font & { sessionLocalUrl?: string };
+       }
+
+       return dbFont as Font & { sessionLocalUrl?: string };
     });
 
-    const optimisticItems: Font[] = relevantQueueItems.map(task => ({
+    const optimisticItems: (Font & { sessionLocalUrl?: string })[] = relevantQueueItems.map(task => ({
       id: task.fontId || task.id,
       group_id: id!,
       asset_id: '', 
       name: task.file.name,
       size: task.file.size,
-      download_url: task.downloadUrl || task.localUrl || '',
+      download_url: task.downloadUrl || '',
+      sessionLocalUrl: task.localUrl,
       created_at: task.timestamp ? new Date(task.timestamp).toISOString() : new Date().toISOString(),
       updated_at: new Date().toISOString(),
       user_id: user?.id || '',
@@ -778,9 +823,36 @@ export const GroupDetails = ({
     return allFonts;
   }, [dbFonts, uploadQueue, id, user, childFontIds, isPublicAllFonts, publicTagFilters.join(',')]);
 
+  const ITEMS_PER_PAGE = 15;
   const paginatedFonts = useMemo(() => {
-    return displayFonts;
-  }, [displayFonts]);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return displayFonts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [displayFonts, currentPage]);
+
+  // Continuous progressive font rendering using a single high-performance sentinel observer
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setRenderedCountInPage((prev) => Math.min(prev + 6, paginatedFonts.length));
+        }
+      },
+      {
+        root: null,
+        rootMargin: '100px 0px 400px 0px', // Pre-trigger loading of next fonts before they enter the screen
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [paginatedFonts.length, renderedCountInPage]);
 
   // Dynamic weights loading for active visible/rendered fonts in the current page via secure RPC
   useEffect(() => {
@@ -911,7 +983,9 @@ export const GroupDetails = ({
       }
 
       for (const font of fontsToLoad) {
-        if (font.download_url && font.id) {
+        const anyFont = font as any;
+        const fontUrl = anyFont.sessionLocalUrl || font.download_url;
+        if (fontUrl && font.id) {
           const styleId = `style-${font.id}`;
           if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
@@ -920,26 +994,28 @@ export const GroupDetails = ({
             // Determine format
             let format = "format('truetype')";
             const lowerName = (font.name || '').toLowerCase();
-            if (lowerName.endsWith('.woff2') || font.download_url.includes('.woff2')) format = "format('woff2')";
-            else if (lowerName.endsWith('.woff') || font.download_url.includes('.woff')) format = "format('woff')";
-            else if (lowerName.endsWith('.otf') || font.download_url.includes('.otf')) format = "format('opentype')";
+            if (lowerName.endsWith('.woff2') || fontUrl.includes('.woff2')) format = "format('woff2')";
+            else if (lowerName.endsWith('.woff') || fontUrl.includes('.woff')) format = "format('woff')";
+            else if (lowerName.endsWith('.otf') || fontUrl.includes('.otf')) format = "format('opentype')";
 
             style.textContent = `
               @font-face {
                 font-family: "${font.name}";
-                src: url("${font.download_url}") ${format};
+                src: url("${fontUrl}") ${format};
                 font-display: swap;
               }
             `;
             document.head.appendChild(style);
 
             // Preload link to handle CORS explicitly as requested
-            const link = document.createElement('link');
-            link.rel = 'preload';
-            link.as = 'font';
-            link.href = font.download_url;
-            link.crossOrigin = 'anonymous';
-            document.head.appendChild(link);
+            if (fontUrl.startsWith('http')) {
+              const link = document.createElement('link');
+              link.rel = 'preload';
+              link.as = 'font';
+              link.href = fontUrl;
+              link.crossOrigin = 'anonymous';
+              document.head.appendChild(link);
+            }
           }
         }
       }
@@ -948,7 +1024,7 @@ export const GroupDetails = ({
   }, [paginatedFonts, renderedCountInPage, weightsModal.isOpen, weightsModal.weights, weightsModal.parentFont]);
 
   useEffect(() => {
-    // Cleanup DOM style nodes and preloads when context, page, tag filter, or mode changes
+    // Cleanup DOM style nodes and preloads when context, tag filter, or mode changes
     return () => {
       const dynamicStyles = document.querySelectorAll('style[id^="style-"]');
       dynamicStyles.forEach(el => el.remove());
@@ -956,7 +1032,7 @@ export const GroupDetails = ({
       const dynamicLinks = document.querySelectorAll('link[rel="preload"][as="font"]');
       dynamicLinks.forEach(el => el.remove());
     };
-  }, [id, currentPage, publicTagFilters.join(','), isPublicAllFonts]);
+  }, [id, publicTagFilters.join(','), isPublicAllFonts]);
 
   useEffect(() => {
     const adjust = () => {
@@ -1536,17 +1612,18 @@ export const GroupDetails = ({
 
       <input type="file" ref={weightInputRef} onChange={handleWeightUpload} className="hidden" accept=".ttf,.otf,.woff,.woff2" multiple />
 
-      <div className="w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
+      <div ref={fontGridRef} className="w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {paginatedFonts.slice(0, renderedCountInPage).map((item, i) => (
             <motion.div
               key={item.metadata?.taskId || item.id}
               id={`font-card-${item.id}`}
-              initial={{ opacity: 0, y: 10 }}
+              data-index={i}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2, delay: i * 0.05 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.15, delay: i * 0.02 }}
               className={`group font-card-item bg-[#141414] p-4 rounded-2xl border transition-all duration-300 flex flex-col gap-3 relative overflow-hidden border-white/5 hover:border-white/10 cursor-pointer ${pulseFontId === item.id ? 'ring-1 ring-white/50 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'ring-0 ring-transparent shadow-none'}`}
               onClick={() => {
                 navigate(isPublicAllFonts ? `/fonts/${item.name}` : `/my-fonts/${item.id}${id ? `?group=${id}` : ''}`);
@@ -1557,7 +1634,7 @@ export const GroupDetails = ({
               <div className="flex items-center justify-between w-full gap-4">
                 <div className="flex items-center gap-4 min-w-0">
                   <div className="bg-white/5 w-10 h-10 rounded-xl text-white opacity-60 group-hover:text-white group-hover:bg-white/10 transition-all shrink-0 flex items-center justify-center overflow-hidden">
-                    {(!item.metadata?.isUploading || item.download_url) && (
+                    {(!item.metadata?.isUploading || item.download_url || (item as any).sessionLocalUrl) && (
                       <span style={{ fontFamily: `"${item.name}", sans-serif`, fontSize: '22px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {dir === 'rtl' ? 'ع' : 'a'}
                       </span>
@@ -1700,6 +1777,83 @@ export const GroupDetails = ({
             </div>
           )}
         </div>
+
+        {/* Single sentinel for high-performance lazy scroll loading */}
+        {paginatedFonts.length > renderedCountInPage && (
+          <div ref={sentinelRef} className="h-4 w-full bg-transparent" />
+        )}
+
+        {/* Modern Glass Pagination UI */}
+        {Math.ceil(displayFonts.length / ITEMS_PER_PAGE) > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-white/5 font-sans">
+            <div className="text-sm text-white/50">
+              {t('pagination.page')} <span className="font-semibold text-white">{currentPage}</span> {t('pagination.of')} <span className="font-semibold text-white">{Math.ceil(displayFonts.length / ITEMS_PER_PAGE)}</span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (currentPage > 1) {
+                    setCurrentPage(prev => prev - 1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                disabled={currentPage === 1}
+                className="h-10 px-4 bg-white/[0.02] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 text-white/70 rounded-xl transition-all duration-300 flex items-center gap-1.5 active:scale-95 disabled:opacity-20 disabled:pointer-events-none disabled:scale-100 cursor-pointer text-sm"
+              >
+                {dir === 'rtl' ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                <span>{t('pagination.prev')}</span>
+              </button>
+
+              <div className="hidden sm:flex items-center gap-1">
+                {Array.from({ length: Math.ceil(displayFonts.length / ITEMS_PER_PAGE) }, (_, i) => i + 1).map((p) => {
+                  const totalP = Math.ceil(displayFonts.length / ITEMS_PER_PAGE);
+                  // Only show current page, 1, last page, and pages close to current
+                  if (totalP > 6 && p !== 1 && p !== totalP && Math.abs(p - currentPage) > 1) {
+                    if (p === 2 && currentPage > 3) {
+                      return <span key="dots-prev" className="text-white/30 px-1 font-light">...</span>;
+                    }
+                    if (p === totalP - 1 && currentPage < totalP - 2) {
+                      return <span key="dots-next" className="text-white/30 px-1 font-light">...</span>;
+                    }
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => {
+                        setCurrentPage(p);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-medium transition-all duration-300 cursor-pointer text-sm
+                        ${currentPage === p 
+                          ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.15)] scale-105' 
+                          : 'bg-white/[0.02] border border-white/5 text-white/55 hover:bg-white/5 hover:border-white/10 hover:text-white active:scale-95'}`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => {
+                  const totalP = Math.ceil(displayFonts.length / ITEMS_PER_PAGE);
+                  if (currentPage < totalP) {
+                    setCurrentPage(prev => prev + 1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                disabled={currentPage === Math.ceil(displayFonts.length / ITEMS_PER_PAGE)}
+                className="h-10 px-4 bg-white/[0.02] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 text-white/70 rounded-xl transition-all duration-300 flex items-center gap-1.5 active:scale-95 disabled:opacity-20 disabled:pointer-events-none disabled:scale-100 cursor-pointer text-sm"
+              >
+                <span>{t('pagination.next')}</span>
+                {dir === 'rtl' ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Weights Modal */}
@@ -1721,109 +1875,126 @@ export const GroupDetails = ({
                   </button>
                 </div>
 
-              <div className="overflow-y-auto pr-2 custom-scrollbar max-h-[310px] min-h-0 space-y-2">
-                {/* Parent Font */}
-                <div className={`bg-white/5 p-2 rounded-xl border flex flex-col gap-1 relative overflow-hidden transition-all duration-700 ${modalPulseFontId === weightsModal.parentFont?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
-                   <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
-                           <span style={{ fontFamily: `"${weightsModal.parentFont?.name}", sans-serif`, fontSize: '14px', lineHeight: 1 }}>{dir === 'rtl' ? 'ع' : 'a'}</span>
-                        </div>
-                        <div>
-                          <p className="text-white font-bold text-xs truncate max-w-[150px]">{formatFontName(weightsModal.parentFont?.name || '')}</p>
-                        </div>
-                      </div>
-                      <button onClick={(e) => { e.stopPropagation(); handleDownload(weightsModal.parentFont?.download_url!, weightsModal.parentFont?.name!); }} className="p-1.5 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white transition-colors">
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                   </div>
-                   <textarea value={getPreviewText(weightsModal.parentFont?.id || '')} onChange={(e) => handlePreviewChange(weightsModal.parentFont?.id || '', e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-light resize-none h-8 overflow-hidden" style={{ fontFamily: weightsModal.parentFont?.name ? `"${weightsModal.parentFont.name}", sans-serif` : 'sans-serif', fontSize: '15px', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', fontFeatureSettings: 'normal', fontVariantLigatures: 'normal' }} />
-                </div>
-
-                {/* Weights */}
-                {(() => {
-                  const parentId = weightsModal.parentFont?.id;
-                  if (!parentId) return null;
-
-                  const relevantWeightTasks = uploadQueue.filter(task => task.parentFontId === parentId);
-                  
-                  const realWeights = weightsModal.weights.map(w => {
-                     const childFont = w.child_font;
-                     if (!childFont) return null;
-                     const matchedTask = relevantWeightTasks.find(t => t.fontId === w.child_font_id || t.file.name === childFont.name);
-                     if (matchedTask) {
-                        return { 
-                          id: w.id, 
-                          font: { 
-                            ...childFont, 
-                            download_url: matchedTask.localUrl || childFont.download_url,
-                            created_at: matchedTask.timestamp ? new Date(matchedTask.timestamp).toISOString() : childFont.created_at,
-                            metadata: { ...childFont.metadata, taskId: matchedTask.id, status: matchedTask.status } 
-                          }, 
-                          isOptimistic: false, 
-                          childFontId: w.child_font_id 
-                        };
-                     }
-                     return { id: w.id, font: childFont, isOptimistic: false, childFontId: w.child_font_id };
-                  }).filter(Boolean) as any[];
-
-                  const existingTaskIds = new Set(realWeights.map(rw => rw.font?.metadata?.taskId).filter(Boolean));
-                  
-                  const optimisticWeights = relevantWeightTasks
-                    .filter(task => !existingTaskIds.has(task.id) && !realWeights.some(real => real.childFontId === task.fontId || real.font?.name === task.file.name))
-                    .map(task => ({
-                    id: task.id,
-                    font: { 
-                      id: task.fontId || task.id, 
-                      name: task.file.name, 
-                      download_url: task.downloadUrl || task.localUrl || '', 
-                      created_at: task.timestamp ? new Date(task.timestamp).toISOString() : new Date().toISOString(),
-                      metadata: { isUploading: task.status !== 'success', status: task.status, taskId: task.id } 
-                    },
-                    isOptimistic: true, childFontId: task.fontId
-                  }));
-
-                  const allWeights = [...optimisticWeights, ...realWeights];
-                  allWeights.sort((a, b) => {
-                     const dateA = new Date((a as any).created_at || a.font?.created_at || 0);
-                     const dateB = new Date((b as any).created_at || b.font?.created_at || 0);
-                     return dateA.getTime() - dateB.getTime();
-                  });
-
-                  if (allWeights.length === 0) return <p className="text-center text-white opacity-30 py-8 text-sm">{t('font.no_weights')}</p>;
-
-                  return allWeights.map((w) => (
-                    <div key={w.font?.metadata?.taskId || w.id} className={`bg-white/5 p-2 rounded-xl border flex flex-col gap-1 group/item transition-all duration-700 ${modalPulseFontId === w.font?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
-                       <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
-                               <span style={{ fontFamily: w.font?.name ? `"${w.font.name}", sans-serif` : 'sans-serif', fontSize: '14px', lineHeight: 1 }}>{dir === 'rtl' ? 'ع' : 'a'}</span>
-                            </div>
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p dir="ltr" className="text-white font-medium text-xs truncate max-w-[150px] text-left">{formatFontName(w.font?.name || '')}</p>
-                              {w.font?.metadata?.status === 'success' && <Check className="w-3.5 h-3.5 text-white flex-shrink-0" />}
-                            </div>
+                <div className="overflow-y-auto pr-2 custom-scrollbar max-h-[310px] min-h-0 space-y-2">
+                  {/* Parent Font */}
+                  <div className={`bg-white/5 p-2 rounded-xl border flex flex-col gap-1 relative overflow-hidden transition-all duration-700 ${modalPulseFontId === weightsModal.parentFont?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
+                             <span style={{ fontFamily: `"${weightsModal.parentFont?.name}", sans-serif`, fontSize: '14px', lineHeight: 1 }}>{dir === 'rtl' ? 'ع' : 'a'}</span>
                           </div>
-                          <div className="flex items-center">
-                            {!w.font?.metadata?.isUploading && (
-                              <>
-                                <button onClick={(e) => { e.stopPropagation(); handleDownload(w.font?.download_url!, w.font?.name!); }} className="p-2 -mr-1 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white transition-colors">
-                                  <Download className="w-3.5 h-3.5" />
-                                </button>
-                                {isOwner && !w.isOptimistic && (
-                                  <button onClick={(e) => { e.stopPropagation(); setDeleteWeightModal({ isOpen: true, childFontId: w.childFontId || null }); }} className="p-2 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-30 hover:text-red-400 transition-colors" title="Delete Weight">
-                                    <Trash2 className="w-3.5 h-3.5" />
+                          <div>
+                            <p className="text-white font-bold text-xs truncate max-w-[150px]">{formatFontName(weightsModal.parentFont?.name || '')}</p>
+                          </div>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); handleDownload(weightsModal.parentFont?.download_url!, weightsModal.parentFont?.name!); }} className="p-1.5 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white transition-colors">
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                     </div>
+                     <textarea value={getPreviewText(weightsModal.parentFont?.id || '')} onChange={(e) => handlePreviewChange(weightsModal.parentFont?.id || '', e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-light resize-none h-8 overflow-hidden" style={{ fontFamily: weightsModal.parentFont?.name ? `"${weightsModal.parentFont.name}", sans-serif` : 'sans-serif', fontSize: '15px', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', fontFeatureSettings: 'normal', fontVariantLigatures: 'normal' }} />
+                  </div>
+
+                  {/* Weights */}
+                  {(() => {
+                    const parentId = weightsModal.parentFont?.id;
+                    if (!parentId) return null;
+
+                    const relevantWeightTasks = uploadQueue.filter(task => task.parentFontId === parentId);
+                    
+                    const realWeights = weightsModal.weights.map(w => {
+                       const childFont = w.child_font;
+                       if (!childFont) return null;
+                       const matchedTask = relevantWeightTasks.find(t => t.fontId === w.child_font_id || t.file.name === childFont.name);
+                       if (matchedTask) {
+                          return { 
+                            id: w.id, 
+                            font: { 
+                              ...childFont, 
+                              download_url: childFont.download_url || matchedTask.downloadUrl || '',
+                              sessionLocalUrl: matchedTask.localUrl,
+                              created_at: matchedTask.timestamp ? new Date(matchedTask.timestamp).toISOString() : childFont.created_at,
+                              metadata: { ...childFont.metadata, taskId: matchedTask.id, status: matchedTask.status } 
+                            }, 
+                            isOptimistic: false, 
+                            childFontId: w.child_font_id 
+                          };
+                       }
+
+                       // Handle session cache for weights uploaded in the current session
+                       const sessionFont = uploadedSessionFontsRef.current[w.child_font_id];
+                       if (sessionFont) {
+                          return {
+                            id: w.id,
+                            font: {
+                              ...childFont,
+                              sessionLocalUrl: sessionFont.localUrl
+                            },
+                            isOptimistic: false,
+                            childFontId: w.child_font_id
+                          };
+                       }
+
+                       return { id: w.id, font: childFont, isOptimistic: false, childFontId: w.child_font_id };
+                    }).filter(Boolean) as any[];
+
+                    const existingTaskIds = new Set(realWeights.map(rw => rw.font?.metadata?.taskId).filter(Boolean));
+                    
+                    const optimisticWeights = relevantWeightTasks
+                      .filter(task => !existingTaskIds.has(task.id) && !realWeights.some(real => real.childFontId === task.fontId || real.font?.name === task.file.name))
+                      .map(task => ({
+                      id: task.id,
+                      font: { 
+                        id: task.fontId || task.id, 
+                        name: task.file.name, 
+                        download_url: task.downloadUrl || '', 
+                        sessionLocalUrl: task.localUrl,
+                        created_at: task.timestamp ? new Date(task.timestamp).toISOString() : new Date().toISOString(),
+                        metadata: { isUploading: task.status !== 'success', status: task.status, taskId: task.id } 
+                      },
+                      isOptimistic: true, childFontId: task.fontId
+                    }));
+
+                    const allWeights = [...optimisticWeights, ...realWeights];
+                    allWeights.sort((a, b) => {
+                       const dateA = new Date((a as any).created_at || a.font?.created_at || 0);
+                       const dateB = new Date((b as any).created_at || b.font?.created_at || 0);
+                       return dateA.getTime() - dateB.getTime();
+                    });
+
+                    if (allWeights.length === 0) return <p className="text-center text-white opacity-30 py-8 text-sm">{t('font.no_weights')}</p>;
+
+                    return allWeights.map((w) => (
+                      <div key={w.font?.metadata?.taskId || w.id} className={`bg-white/5 p-2 rounded-xl border flex flex-col gap-1 group/item transition-all duration-700 ${modalPulseFontId === w.font?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
+                         <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
+                                 <span style={{ fontFamily: w.font?.name ? `"${w.font.name}", sans-serif` : 'sans-serif', fontSize: '14px', lineHeight: 1 }}>{dir === 'rtl' ? 'ع' : 'a'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <p dir="ltr" className="text-white font-medium text-xs truncate max-w-[150px] text-left">{formatFontName(w.font?.name || '')}</p>
+                                {w.font?.metadata?.status === 'success' && <Check className="w-3.5 h-3.5 text-white flex-shrink-0" />}
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              {!w.font?.metadata?.isUploading && (
+                                <>
+                                  <button onClick={(e) => { e.stopPropagation(); handleDownload(w.font?.download_url!, w.font?.name!); }} className="p-2 -mr-1 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white transition-colors">
+                                    <Download className="w-3.5 h-3.5" />
                                   </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                       </div>
-                       <textarea value={getPreviewText(w.font?.id || '')} onChange={(e) => handlePreviewChange(w.font?.id || '', e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-light resize-none h-8 overflow-hidden" style={{ fontFamily: w.font?.name ? `"${w.font.name}", sans-serif` : 'sans-serif', fontSize: '15px', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', fontFeatureSettings: 'normal', fontVariantLigatures: 'normal' }} />
-                    </div>
-                  ));
-                })()}
-              </div>
+                                  {isOwner && !w.isOptimistic && (
+                                    <button onClick={(e) => { e.stopPropagation(); setDeleteWeightModal({ isOpen: true, childFontId: w.childFontId || null }); }} className="p-2 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-30 hover:text-red-400 transition-colors" title="Delete Weight">
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                         </div>
+                         <textarea value={getPreviewText(w.font?.id || '')} onChange={(e) => handlePreviewChange(w.font?.id || '', e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-light resize-none h-8 overflow-hidden" style={{ fontFamily: w.font?.name ? `"${w.font.name}", sans-serif` : 'sans-serif', fontSize: '15px', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', fontFeatureSettings: 'normal', fontVariantLigatures: 'normal' }} />
+                      </div>
+                    ));
+                  })()}
+                </div>
               
               {isOwner && (
                 <div className="mt-4 pt-4 border-t border-white/10">

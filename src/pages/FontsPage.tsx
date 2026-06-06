@@ -443,6 +443,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
         {/* Group Fonts View */}
         {mode === 'public' ? (
           <GroupDetails 
+            key="group-details-public"
             isPublicAllFonts={true}
             publicTagFilters={publicTagFilters}
             onClearTagFilter={() => setPublicTagFilters([])}
@@ -453,6 +454,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           />
         ) : viewingGroupId ? (
           <GroupDetails 
+            key={`group-details-private-${viewingGroupId}`}
             groupId={viewingGroupId}
             groupData={groups.find(g => g.id === viewingGroupId)}
             highlightedFont={highlightedFont}
