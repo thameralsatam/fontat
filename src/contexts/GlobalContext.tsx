@@ -294,10 +294,8 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
       // Just finished a batch
       const successCount = uploadQueue.filter(t => t.status === 'success').length;
       if (successCount > 0) {
-         // Auto-clear success tasks after 3 seconds to remove checkmarks
-         setTimeout(() => {
-           setUploadQueue(prev => prev.filter(t => t.status !== 'success'));
-         }, 3000);
+         // Deliberately do not clear successful tasks so they retain their local URLs and UI state
+         // Users requested replacement only happens on refresh/navigation.
       }
     }
     

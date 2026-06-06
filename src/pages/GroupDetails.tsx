@@ -631,7 +631,7 @@ export const GroupDetails = ({
   const fontGridRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const uploadedSessionFontsRef = useRef<Record<string, { localUrl: string, name: string }>>({});
+  const uploadedSessionFontsRef = useRef<Record<string, { localUrl: string, name: string, taskId: string }>>({});
 
   useEffect(() => {
     uploadQueue.forEach(task => {
@@ -640,7 +640,8 @@ export const GroupDetails = ({
         if (!uploadedSessionFontsRef.current[idKey]) {
           uploadedSessionFontsRef.current[idKey] = {
             localUrl: task.localUrl,
-            name: task.file.name
+            name: task.file.name,
+            taskId: task.id
           };
         }
       }
@@ -766,7 +767,8 @@ export const GroupDetails = ({
        if (sessionFont) {
           return {
              ...dbFont,
-             sessionLocalUrl: sessionFont.localUrl
+             sessionLocalUrl: sessionFont.localUrl,
+             metadata: { ...dbFont.metadata, taskId: sessionFont.taskId, status: 'success' }
           } as Font & { sessionLocalUrl?: string };
        }
 
@@ -869,7 +871,8 @@ export const GroupDetails = ({
       if (fontsToFetch.length === 0) return;
 
       try {
-        const fetchIds = fontsToFetch.map(f => f.id);
+        const fetchIds = fontsToFetch.map(f => f.id).filter(id => id && id.length === 36 && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+        if (fetchIds.length === 0) return;
         const rels = await getWeightRelationshipsForFonts(fetchIds);
         
         if (!rels || rels.length === 0) return;
@@ -986,7 +989,7 @@ export const GroupDetails = ({
         const anyFont = font as any;
         const fontUrl = anyFont.sessionLocalUrl || font.download_url;
         if (fontUrl && font.id) {
-          const styleId = `style-${font.id}`;
+          const styleId = `style-${font.metadata?.taskId || font.id}`;
           if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
             style.id = styleId;
@@ -1614,7 +1617,7 @@ export const GroupDetails = ({
 
       <div ref={fontGridRef} className="w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {paginatedFonts.slice(0, renderedCountInPage).map((item, i) => (
             <motion.div
               key={item.metadata?.taskId || item.id}
@@ -1927,7 +1930,8 @@ export const GroupDetails = ({
                             id: w.id,
                             font: {
                               ...childFont,
-                              sessionLocalUrl: sessionFont.localUrl
+                              sessionLocalUrl: sessionFont.localUrl,
+                              metadata: { ...childFont.metadata, taskId: sessionFont.taskId, status: 'success' }
                             },
                             isOptimistic: false,
                             childFontId: w.child_font_id
