@@ -75,9 +75,11 @@ export type Notification = {
 };
 
 export type NotificationPreferences = {
+  all_notifications: boolean;
   updates: boolean;
   alerts: boolean;
   info: boolean;
+  promotion: boolean;
 };
 
 

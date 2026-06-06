@@ -581,7 +581,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
           {displayedGroups.length === 0 && (
             <div className="py-20 text-center text-white/30 flex flex-col items-center justify-center">
               <Folder className="w-12 h-12 mb-4 opacity-20" />
-              <p>No groups available</p>
+              <p>{t('groups.no_groups_available')}</p>
             </div>
           )}
         </div>

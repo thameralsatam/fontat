@@ -55,13 +55,15 @@ export const deleteNotification = async (id: string): Promise<void> => {
 
 // Get User Preferences (Local Storage Only)
 export const getUserNotificationPreferences = async (_userId: string): Promise<NotificationPreferences> => {
+  const defaultPrefs: NotificationPreferences = { all_notifications: true, updates: true, alerts: true, info: true, promotion: true };
   const local = localStorage.getItem('fontat_notification_prefs');
   if (local) {
     try {
-      return JSON.parse(local);
+      const parsed = JSON.parse(local);
+      return { ...defaultPrefs, ...parsed };
     } catch(e) {}
   }
-  return { updates: true, alerts: true, info: true };
+  return defaultPrefs;
 };
 
 // Update User Preferences (Local Storage Only)

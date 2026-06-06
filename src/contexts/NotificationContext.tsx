@@ -5,6 +5,7 @@ import { getNotifications, getUserNotificationPreferences } from '../services/no
 
 // Manage read state in localStorage (Last 30 days logic can be done by fetching and filtering, or simply storing IDs)
 const READ_NOTIFICATIONS_KEY = 'fontat_read_notifications';
+const DELETED_NOTIFICATIONS_KEY = 'fontat_deleted_notifications';
 const PREFS_KEY = 'fontat_notification_prefs';
 
 interface NotificationContextType {
@@ -12,6 +13,7 @@ interface NotificationContextType {
   unreadCount: number;
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
+  deleteNotification: (notificationId: string) => void;
   reloadNotifications: () => Promise<void>;
   loading: boolean;
 }
@@ -22,20 +24,42 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
-  // Load read IDs from localStorage
+  // Load read and deleted IDs from localStorage
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(READ_NOTIFICATIONS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
+      const storedRead = localStorage.getItem(READ_NOTIFICATIONS_KEY);
+      if (storedRead) {
+        const parsed = JSON.parse(storedRead);
+        if (Array.isArray(parsed)) setReadIds(new Set(parsed));
+      }
+      
+      const storedDeleted = localStorage.getItem(DELETED_NOTIFICATIONS_KEY);
+      if (storedDeleted) {
+        const parsed = JSON.parse(storedDeleted);
         if (Array.isArray(parsed)) {
-          setReadIds(new Set(parsed));
+            const now = Date.now();
+            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+            // Filter out old deleted entries
+            const valid = parsed.filter(item => {
+               if (typeof item === 'string') return true; // keep old string records temporarily
+               if (item && item.deletedAt) {
+                   return (now - item.deletedAt) < thirtyDaysMs;
+               }
+               return true;
+            });
+            const ids = valid.map(item => typeof item === 'string' ? item : item.id).filter(Boolean);
+            setDeletedIds(new Set(ids));
+            // Update local storage if we filtered some out
+            if (valid.length !== parsed.length) {
+               localStorage.setItem(DELETED_NOTIFICATIONS_KEY, JSON.stringify(valid));
+            }
         }
       }
     } catch (e) {
-      console.error('Failed to parse read notifications from local storage', e);
+      console.error('Failed to parse read/deleted notifications from local storage', e);
     }
   }, []);
 
@@ -43,13 +67,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setLoading(true);
     try {
       // Load user preferences
-      let prefs: NotificationPreferences = { updates: true, alerts: true, info: true };
+      let prefs: NotificationPreferences = { all_notifications: true, updates: true, alerts: true, info: true, promotion: true };
       if (user) {
         try { prefs = await getUserNotificationPreferences(user.id); } catch(e) {}
       } else {
         try {
            const stored = localStorage.getItem(PREFS_KEY);
-           if (stored) prefs = JSON.parse(stored);
+           if (stored) {
+              const parsed = JSON.parse(stored);
+              prefs = { ...prefs, ...parsed };
+           }
         } catch(e) {}
       }
 
@@ -61,10 +88,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       const filteredData = data.filter(n => {
           if (new Date(n.created_at) <= thirtyDaysAgo) return false;
+          // Hide manually deleted items
+          if (deletedIds.has(n.id)) return false;
+          
+          // Alert is critical and cannot be disabled
+          if (n.type === 'alert') return true;
+          
+          // If all notifications are disabled globally, hide others
+          if (!prefs.all_notifications) return false;
+
           // Also hide based on preferences if it's general
           if (n.type === 'update' && !prefs.updates) return false;
-          if (n.type === 'alert' && !prefs.alerts) return false;
-          if ((n.type === 'info' || n.type === 'promotion') && !prefs.info) return false;
+          if (n.type === 'info' && !prefs.info) return false;
+          if (n.type === 'promotion' && !prefs.promotion) return false;
+          
           return true;
       });
       
@@ -74,7 +111,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, deletedIds]);
 
   useEffect(() => {
     loadNotifications();
@@ -82,6 +119,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const interval = setInterval(loadNotifications, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [loadNotifications]);
+
+  const deleteNotification = useCallback((notificationId: string) => {
+    setDeletedIds(prev => {
+        const newSet = new Set(prev);
+        newSet.add(notificationId);
+        
+        // We can store it as objects with timestamp to clear after 30 days
+        const toStore = Array.from(newSet).map(id => ({ id, deletedAt: Date.now() }));
+        localStorage.setItem(DELETED_NOTIFICATIONS_KEY, JSON.stringify(toStore));
+        return newSet;
+    });
+  }, []);
 
   const markAsRead = useCallback((notificationId: string) => {
     setReadIds(prev => {
@@ -116,6 +165,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       unreadCount,
       markAsRead,
       markAllAsRead,
+      deleteNotification,
       reloadNotifications: loadNotifications,
       loading
     }}>

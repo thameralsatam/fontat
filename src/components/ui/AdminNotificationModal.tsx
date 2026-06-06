@@ -1,10 +1,20 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, Image as ImageIcon, Loader2, Save } from 'lucide-react';
+import { X, Plus, Trash2, Image as ImageIcon, Loader2, Save, Info, ArrowUpCircle, AlertTriangle, Gift } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { NotificationSlide } from '../../types';
 import { createNotification, uploadNotificationImage } from '../../services/notificationService';
 import { useLanguage } from '../../contexts/LanguageContext';
+
+const TypeOption = ({ selected, value, label, icon: Icon, onClick }: { selected: boolean, value: string, label: string, icon: any, onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-all ${selected ? 'bg-white/10 border-white/20' : 'bg-black/50 border-white/5 hover:bg-white/5 hover:border-white/10'}`}
+  >
+    <Icon className={`w-4 h-4 ${value === 'update' ? 'text-blue-400' : value === 'alert' ? 'text-amber-400' : value === 'promotion' ? 'text-purple-400' : 'text-green-400'}`} />
+    <span className="text-sm font-medium text-white">{label}</span>
+  </button>
+);
 
 export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClose: () => void, onSuccess: () => void }) => {
   const [type, setType] = useState('info');
@@ -15,8 +25,6 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
   const { dir } = useLanguage();
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
-
-  if (!isOpen) return null;
 
   const handleAddSlide = () => {
     setSlides([...slides, { id: Math.random().toString(), title: '', description: '', image_url: '' }]);
@@ -66,6 +74,7 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
 
   return createPortal(
     <AnimatePresence>
+      {isOpen && (
       <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center sm:p-4" dir={dir}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
         
@@ -86,18 +95,13 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
           <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-6 space-y-6">
             {/* Notification Type */}
             <div>
-              <label className="block text-sm text-white opacity-50 mb-2">نوع الإشعار</label>
-              <select 
-                 className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30"
-                 value={type}
-                 onChange={(e) => setType(e.target.value)}
-                 dir={dir}
-              >
-                  <option value="update">تحديث (Update)</option>
-                  <option value="info">معلومة (Info)</option>
-                  <option value="alert">تنبيه (Alert)</option>
-                  <option value="promotion">ترويج (Promotion)</option>
-              </select>
+              <label className="block text-sm text-white opacity-50 mb-3">نوع الإشعار</label>
+              <div className="grid grid-cols-2 gap-2">
+                 <TypeOption selected={type === 'update'} value="update" label="تحديث" icon={ArrowUpCircle} onClick={() => setType('update')} />
+                 <TypeOption selected={type === 'info'} value="info" label="معلومة" icon={Info} onClick={() => setType('info')} />
+                 <TypeOption selected={type === 'alert'} value="alert" label="تنبيه" icon={AlertTriangle} onClick={() => setType('alert')} />
+                 <TypeOption selected={type === 'promotion'} value="promotion" label="ترويج" icon={Gift} onClick={() => setType('promotion')} />
+              </div>
             </div>
 
             {/* Slides List */}
@@ -192,6 +196,7 @@ export const AdminNotificationModal = ({ isOpen, onClose, onSuccess }: { isOpen:
 
         </motion.div>
       </div>
+      )}
     </AnimatePresence>,
     document.body
   );

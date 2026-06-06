@@ -1776,7 +1776,7 @@ export const GroupDetails = ({
         
           {displayFonts.length === 0 && (
             <div className="col-span-full text-center py-20 text-white opacity-30 bg-[#141414] rounded-[2rem] border border-white/5 border-dashed">
-              No fonts yet. {isOwner && 'Upload one to get started.'}
+              {t('font.no_fonts')} {isOwner && t('font.start_upload')}
             </div>
           )}
         </div>
@@ -1799,12 +1799,7 @@ export const GroupDetails = ({
                   if (currentPage > 1) {
                     setCurrentPage(prev => prev - 1);
                     setTimeout(() => {
-                      if (fontGridRef.current) {
-                        const y = fontGridRef.current.getBoundingClientRect().top + window.scrollY - 150;
-                        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-                      } else {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }, 50);
                   }
                 }}
@@ -1835,12 +1830,7 @@ export const GroupDetails = ({
                       onClick={() => {
                         setCurrentPage(p);
                         setTimeout(() => {
-                          if (fontGridRef.current) {
-                            const y = fontGridRef.current.getBoundingClientRect().top + window.scrollY - 150;
-                            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-                          } else {
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
                         }, 50);
                       }}
                       className={`w-10 h-10 rounded-xl flex items-center justify-center font-medium transition-all duration-300 cursor-pointer text-sm
@@ -1860,12 +1850,7 @@ export const GroupDetails = ({
                   if (currentPage < totalP) {
                     setCurrentPage(prev => prev + 1);
                     setTimeout(() => {
-                      if (fontGridRef.current) {
-                        const y = fontGridRef.current.getBoundingClientRect().top + window.scrollY - 150;
-                        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-                      } else {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }, 50);
                   }
                 }}

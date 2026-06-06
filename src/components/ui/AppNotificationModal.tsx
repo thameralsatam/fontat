@@ -76,9 +76,9 @@ export const AppNotificationModal = ({
                      className="flex flex-col flex-1"
                   >
                      {slide.image_url && (
-                        <div className="w-full h-48 sm:h-64 bg-black/40 border-b border-white/5 relative">
-                           <img src={slide.image_url} alt={slide.title} className="w-full h-full object-cover" />
-                           <div className="absolute inset-0 bg-gradient-to-t from-[#111111] to-transparent pointer-events-none" />
+                        <div className="w-full bg-black/40 border-b border-white/5 relative flex justify-center items-center">
+                           <img src={slide.image_url} alt={slide.title} className="w-full h-auto max-h-[50vh] object-contain" />
+                           <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent pointer-events-none" />
                         </div>
                      )}
                      

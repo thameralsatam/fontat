@@ -1,49 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LogOut, Settings, Loader2, Mail, Eye, EyeOff, Bell, ChevronDown, ChevronUp, Shield, Key, Trash2, UserCircle2 } from 'lucide-react';
+import { LogOut, Loader2, Eye, EyeOff, Bell, ChevronDown, Key, UserCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
+import { NotificationPreferences } from '../types';
 import { getUserNotificationPreferences, updateUserNotificationPreferences } from '../services/notificationService';
 
 const PREFS_KEY = 'fontat_notification_prefs';
-
-const CRYSTAL_CSS = `
-  @keyframes shimmer-sweep {
-    0%   { left: -55%; }
-    100% { left: 155%; }
-  }
-  @keyframes float-lock {
-    0%, 100% { transform: translateY(0px);  }
-    50%       { transform: translateY(-4px); }
-  }
-  @keyframes soon-shimmer {
-    0%   { background-position: -200% center; }
-    100% { background-position:  200% center; }
-  }
-  @keyframes shake {
-    0%,100% { transform: translateX(0);    }
-    18%      { transform: translateX(-7px); }
-    36%      { transform: translateX( 7px); }
-    54%      { transform: translateX(-5px); }
-    72%      { transform: translateX( 4px); }
-    90%      { transform: translateX(-2px); }
-  }
-  @keyframes aurora {
-    0%   { transform: translate(-50%,-50%) rotate(0deg)   scale(1);   }
-    50%  { transform: translate(-50%,-50%) rotate(180deg) scale(1.4); }
-    100% { transform: translate(-50%,-50%) rotate(360deg) scale(1);   }
-  }
-`;
-
-const CustomLockIcon = () => (
-  <svg width="22" height="24" viewBox="0 0 22 24" fill="none">
-    <rect x="2" y="11" width="18" height="12" rx="4" stroke="#ffffff" strokeWidth="1.5" fill="rgba(255,255,255,0.2)" />
-    <path d="M6 11V8a5 5 0 0 1 10 0v3" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
-    <circle cx="11" cy="16.5" r="1.8" fill="#ffffff" />
-    <rect x="10.2" y="16.5" width="1.6" height="2.8" rx="0.8" fill="#ffffff" />
-  </svg>
-);
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18">
@@ -54,154 +18,16 @@ const GoogleIcon = () => (
   </svg>
 );
 
-const CrystalLockedGoogleButton = ({ language }: { language: string }) => {
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const [shaking, setShaking] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const frameRef = useRef<number | null>(null);
-
-  const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!containerRef.current) return;
-    if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    frameRef.current = requestAnimationFrame(() => {
-      const r = containerRef.current?.getBoundingClientRect();
-      if (!r) return;
-      const dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-      const dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-      setTilt({ x: -dy * 15, y: dx * 15 });
-    });
-  }, []);
-
-  const onMouseLeave = useCallback(() => setTilt({ x: 0, y: 0 }), []);
-
-  const onClick = useCallback(() => {
-    if (shaking) return;
-    setShaking(true);
-    setTimeout(() => setShaking(false), 560);
-  }, [shaking]);
-
-  const hue = 210 + tilt.y * 5;
-  const iridescent = `radial-gradient(ellipse at ${50 + tilt.y * 9}% ${50 + tilt.x * 9}%, hsla(${hue},65%,68%,0.08) 0%, transparent 65%)`;
-
-  return (
-    <>
-      <style>{CRYSTAL_CSS}</style>
-      <div
-        ref={containerRef}
-        onMouseMove={onMouseMove}
-        onMouseLeave={onMouseLeave}
-        onClick={onClick}
-        style={{ position: "relative", cursor: "not-allowed", width: "100%", height: "54px" }}
-      >
-        <div style={{
-          position: "absolute", inset: 0,
-          borderRadius: "24px",
-          zIndex: 10
-        }}>
-          <div style={{
-            width: "100%", height: "100%",
-            ...(shaking && { animation: "shake 0.56s ease" }),
-          }}>
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              gap: "12px", padding: "14px 24px", width: "100%", height: "100%",
-              background: "rgba(255, 255, 255, 0.7)",
-              borderRadius: "24px",
-              color: "#111111",
-              fontSize: "15px", fontWeight: "700",
-              userSelect: "none", pointerEvents: "none",
-            }}>
-              <GoogleIcon />
-              {language === 'ar' ? 'المتابعة باستخدام جوجل' : 'Continue with Google'}
-            </div>
-
-            <div style={{
-              position: "absolute", inset: 0,
-              borderRadius: "24px",
-              overflow: "hidden",
-              background: "rgba(8,9,14,0.15)",
-              backdropFilter: "blur(1.5px) saturate(1.2)",
-              WebkitBackdropFilter: "blur(1.5px) saturate(1.2)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.35), 0 14px 48px rgba(0,0,0,0.75), 0 2px 10px rgba(0,0,0,0.5)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "4px",
-            }}>
-              <div style={{
-                position: "absolute", inset: 0,
-                background: iridescent,
-                transition: "background 0.18s ease",
-                pointerEvents: "none",
-              }} />
-              <div style={{
-                position: "absolute",
-                width: "220px", height: "220px",
-                top: "50%", left: "50%",
-                background: "radial-gradient(circle, rgba(100,118,210,0.07) 0%, transparent 65%)",
-                animation: "aurora 12s linear infinite",
-                pointerEvents: "none",
-              }} />
-              <div style={{
-                position: "absolute", top: 0,
-                left: "22%", right: "22%", height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.42), transparent)",
-                pointerEvents: "none",
-              }} />
-              <div style={{
-                position: "absolute", top: 0, bottom: 0,
-                width: "32%",
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0.05) 60%, transparent)",
-                transform: "skewX(-9deg)",
-                animation: "shimmer-sweep 4.8s cubic-bezier(0.4,0,0.6,1) infinite",
-                animationDelay: "1.8s",
-                pointerEvents: "none",
-              }} />
-              
-              <div style={{
-                animation: "float-lock 3.6s ease-in-out infinite",
-                position: "relative", zIndex: 2,
-                filter: "drop-shadow(0 0 7px rgba(255,255,255,0.25))",
-                transform: "scale(0.85)"
-              }}>
-                <CustomLockIcon />
-              </div>
-              <div style={{
-                position: "relative", zIndex: 2,
-                fontSize: "9px", fontWeight: 700,
-                letterSpacing: "0.32em",
-                background: "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,1) 35%, rgba(255,255,255,1) 50%, rgba(255,255,255,1) 65%, rgba(255,255,255,0.5) 100%)",
-                backgroundSize: "200% auto",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                animation: "soon-shimmer 2.6s linear infinite",
-                marginTop: "2px"
-              }}>
-                 {language === 'ar' ? 'قريباً' : 'S O O N'}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-};
-
 export const Account = () => {
   const { user } = useAuth();
   const { language, t, dir, setLanguage } = useLanguage();
   
   // Settings State
-  const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
-  const [isNotificationSettingsExpanded, setIsNotificationSettingsExpanded] = useState(false);
-  const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isNotificationExpanded, setIsNotificationExpanded] = useState(false);
+  const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   
   // Login State
-  const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -210,7 +36,7 @@ export const Account = () => {
   const [error, setError] = useState('');
 
   // Notification Preferences
-  const [prefs, setPrefs] = useState({ updates: true, alerts: true, info: true });
+  const [prefs, setPrefs] = useState<NotificationPreferences>({ all_notifications: true, updates: true, alerts: true, info: true, promotion: true });
   const [savingPrefs, setSavingPrefs] = useState(false);
 
   useEffect(() => {
@@ -225,7 +51,10 @@ export const Account = () => {
        } else {
           try {
              const stored = localStorage.getItem(PREFS_KEY);
-             if (stored) setPrefs(JSON.parse(stored));
+             if (stored) {
+               const parsed = JSON.parse(stored);
+               setPrefs(p => ({ ...p, ...parsed }));
+             }
           } catch (e) {}
        }
     };
@@ -276,280 +105,253 @@ export const Account = () => {
     }
   };
 
-
   return (
     <div className="pt-4 pb-20 relative overflow-hidden">
       <div className="w-full max-w-xl mx-auto mt-10 px-4 relative z-10">
         {user ? (
           <>
-            {/* Redesigned User Card -> Free float */}
-            <div className="relative flex flex-col items-center justify-center text-center mb-8 mt-6">
-              {/* Avatar */}
-              <div className="relative w-24 h-24 bg-white/[0.02] rounded-full p-1 shadow-2xl border border-white/10 mb-4 backdrop-blur-[40px] backdrop-saturate-[200%]">
-                <div className="w-full h-full bg-gradient-to-br from-white/10 to-transparent rounded-full flex items-center justify-center text-white border border-white/5">
-                  <Mail className="w-10 h-10 opacity-80" />
-                </div>
+            <div className="space-y-4">
+              {/* Profile Card */}
+              <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-6 flex flex-col items-center text-center">
+                 <div className="w-16 h-16 bg-white/[0.02] border border-white/10 rounded-full flex items-center justify-center text-white/60 mb-3 shadow-inner">
+                   <UserCircle2 className="w-8 h-8 opacity-75" />
+                 </div>
+                 <h3 className="text-lg font-medium text-white tracking-tight break-all max-w-sm mb-1">
+                   {user.email || ''}
+                 </h3>
+                 <div className="flex gap-2 items-center justify-center">
+                   <span className="px-2.5 py-0.5 rounded-full bg-white/5 text-white/50 text-[11px] font-medium tracking-wide uppercase border border-white/5">
+                     {user.user_metadata?.role === 'admin' ? (language === 'ar' ? 'مدير النظام' : 'Admin') : (language === 'ar' ? 'مستخدم' : 'Member')}
+                   </span>
+                   <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/5 text-cyan-400/80 text-[11px] font-medium border border-cyan-500/10">
+                     {user?.created_at ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(user.created_at)) : '2024'}
+                   </span>
+                 </div>
               </div>
 
-              {/* Info */}
-              <h3 className="text-xl font-medium text-white mb-2 break-all px-4 max-w-sm">
-                {user.email || ''}
-              </h3>
-
-              {/* Ranks / Badges */}
-              <div className="flex gap-2 items-center justify-center mt-2">
-                <span className="px-3 py-1 rounded-full bg-white/10 text-white opacity-80 text-xs font-semibold backdrop-blur-md border border-white/10 uppercase tracking-wider">
-                  {user.user_metadata?.role === 'admin' ? (language === 'ar' ? 'مدير النظام' : 'Admin') : (language === 'ar' ? 'مستخدم' : 'Member')}
-                </span>
-                <span className="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-semibold backdrop-blur-md border border-cyan-500/20">
-                  {user?.created_at ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(user.created_at)) : '2024'}
-                </span>
-              </div>
-            </div>
-
-            {/* Curved Separator */}
-            <div className="relative w-full h-[40px] flex justify-center overflow-hidden mb-6">
-              <svg className="absolute top-0 w-[150%] max-w-[800px] h-[100px] pointer-events-none" viewBox="0 0 1000 100" preserveAspectRatio="none">
-                <path d="M0,0 Q500,80 1000,0" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
-              </svg>
-            </div>
-
-            <div className="relative z-10 mb-10 w-full max-w-md mx-auto flex flex-col gap-1">
-              {/* Expandable Settings */}
-              <div className="transition-all duration-300">
-                <button 
-                  onClick={() => setIsSettingsExpanded(!isSettingsExpanded)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-white/5 rounded-2xl transition-all group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="bg-white/10 p-2.5 rounded-xl text-white opacity-70 group-hover:text-white transition-all">
-                      <Settings className="w-5 h-5" />
-                    </div>
-                    <span className="text-base font-medium text-white opacity-70 group-hover:text-white transition-colors">إعدادات الحساب</span>
-                  </div>
-                  <div className="text-white opacity-40 group-hover:opacity-70 transition-colors">
-                    {isSettingsExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                  </div>
-                </button>
-
-            {/* Settings Content */}
-                <div className={`transition-all duration-300 ease-in-out ${isSettingsExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
-                  <div className="p-3 pt-0 space-y-1 border-t border-white/5">
-                    
-                    <div className="h-[1px] w-full bg-white/5 my-1" />
-
-                    {/* Notification Settings Accordion */}
-                    <div>
-                      <button 
-                        onClick={() => setIsNotificationSettingsExpanded(!isNotificationSettingsExpanded)}
-                        className="w-full p-3 flex items-center justify-between hover:bg-white/5 rounded-xl transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Bell className="w-5 h-5 text-white opacity-60" />
-                          <span className="text-white text-sm font-medium">إعدادات الإشعارات</span>
+              {/* Accordions Group */}
+              <div className="space-y-3">
+                 
+                 {/* ACCORDION 1: Notification Settings */}
+                 <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl overflow-hidden transition-all duration-300">
+                    <button 
+                      onClick={() => setIsNotificationExpanded(!isNotificationExpanded)}
+                      className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] active:bg-white/[0.01] transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="text-white/60">
+                           <Bell className="w-5 h-5 stroke-[1.5]" />
                         </div>
-                        {isNotificationSettingsExpanded ? <ChevronUp className="w-4 h-4 text-white opacity-40" /> : <ChevronDown className="w-4 h-4 text-white opacity-40" />}
-                      </button>
-                      
-                      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isNotificationSettingsExpanded ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="p-2 pl-4 border-l border-white/10 ml-4 space-y-1 mt-1">
-                          {[
-                            { key: 'updates', title: 'تحديثات المنصة', desc: 'تغييرات وميزات جديدة في الموقع' },
-                            { key: 'alerts', title: 'تنبيهات هامة', desc: 'إشعارات هامة وتنبيهات أمنية' },
-                            { key: 'info', title: 'معلومات ونصائح', desc: 'أخبار وشروحات تهمك' }
-                          ].map((item) => (
-                            <div key={item.key} className="flex items-center justify-between p-2 rounded-xl hover:bg-white/5 transition-colors">
-                                <div>
-                                  <div className="text-white opacity-90 text-sm">{item.title}</div>
-                                  <div className="text-white opacity-40 text-[11px] mt-0.5">{item.desc}</div>
+                        <span className="text-white text-sm font-medium">{language === 'ar' ? 'إعدادات الإشعارات' : 'Notification Settings'}</span>
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-white/40 transition-transform duration-300 ${isNotificationExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <div className={`transition-all duration-300 ease-in-out ${isNotificationExpanded ? 'max-h-[500px] border-t border-white/5 opacity-100' : 'max-h-0 opacity-0 overflow-hidden pointer-events-none'}`}>
+                       <div className="p-5 space-y-4">
+                          {/* Global Toggle */}
+                          <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                             <div>
+                                <div className="text-white/90 text-sm font-medium">{language === 'ar' ? 'تفعيل كافة الإشعارات' : 'Enable All Notifications'}</div>
+                                <div className="text-white/40 text-[11px] mt-0.5">{language === 'ar' ? 'تمكين أو تعطيل استلام الإشعارات بشكل عام' : 'Enable or disable receiving notifications'}</div>
+                             </div>
+                             <button 
+                                onClick={() => togglePref('all_notifications')}
+                                disabled={savingPrefs}
+                                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${prefs.all_notifications ? 'bg-cyan-500' : 'bg-white/10'} ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+                             >
+                                <span 
+                                  className="pointer-events-none absolute h-3.5 w-3.5 rounded-full bg-white shadow transition-transform duration-200 ease-in-out" 
+                                  style={{
+                                    transform: prefs.all_notifications ? (dir === 'rtl' ? 'translateX(-16px)' : 'translateX(16px)') : 'translateX(0)',
+                                    [dir === 'rtl' ? 'right' : 'left']: '2px'
+                                  }}
+                                />
+                             </button>
+                          </div>
+
+                          <div className={`space-y-3 transition-opacity duration-300 ${!prefs.all_notifications ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
+                            {[
+                              { key: 'updates', title: language === 'ar' ? 'تحديثات المنصة' : 'Platform Updates', desc: language === 'ar' ? 'إشعارات حول الميزات والتغييرات الجديدة' : 'Alerts about new features and changes' },
+                              { key: 'info', title: language === 'ar' ? 'معلومات ونصائح' : 'Info & Tips', desc: language === 'ar' ? 'شروحات ومعلومات ونصائح قد تهمك' : 'Tips, guides, and useful information' },
+                              { key: 'promotion', title: language === 'ar' ? 'رسائل ترويجية' : 'Promotional', desc: language === 'ar' ? 'عروض ورسائل ترويجية وتخفيضات' : 'Offers, promotions, and discounts' },
+                              { key: 'alerts', title: language === 'ar' ? 'تنبيهات هامة' : 'Critical Alerts', desc: language === 'ar' ? 'تنبيهات أمنية هامة (دائماً نشطة)' : 'Important security alerts (always active)', isFixed: true }
+                            ].map((item) => {
+                              const isActive = item.isFixed ? true : prefs[item.key as keyof typeof prefs];
+
+                              return (
+                                <div key={item.key} className="flex items-center justify-between py-1 text-start">
+                                    <div>
+                                      <div className={`text-xs font-medium ${item.isFixed ? 'text-red-400' : 'text-white/85'}`}>{item.title}</div>
+                                      <div className="text-white/40 text-[10px] mt-0.5">{item.desc}</div>
+                                    </div>
+                                    <button 
+                                      onClick={() => !item.isFixed && togglePref(item.key as keyof typeof prefs)}
+                                      disabled={savingPrefs || item.isFixed}
+                                      className={`relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? (item.isFixed ? 'bg-red-500/40' : 'bg-cyan-500/80') : 'bg-white/10'} ${(savingPrefs || item.isFixed) ? 'cursor-not-allowed' : ''}`}
+                                    >
+                                      <span 
+                                        className="pointer-events-none absolute h-3 w-3 rounded-full bg-white shadow transition-transform duration-200 ease-in-out" 
+                                        style={{
+                                          transform: isActive ? (dir === 'rtl' ? 'translateX(-12px)' : 'translateX(12px)') : 'translateX(0)',
+                                          [dir === 'rtl' ? 'right' : 'left']: '2px'
+                                        }}
+                                      />
+                                    </button>
                                 </div>
-                                <button 
-                                  onClick={() => togglePref(item.key as keyof typeof prefs)}
-                                  disabled={savingPrefs}
-                                  className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${prefs[item.key as keyof typeof prefs] ? 'bg-cyan-500' : 'bg-white/20'} ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                >
-                                  <span 
-                                    className="pointer-events-none absolute top-[2px] h-4 w-4 rounded-full bg-white shadow ring-0 transition-all duration-200 ease-in-out" 
-                                    style={{
-                                      [dir === 'rtl' ? 'right' : 'left']: prefs[item.key as keyof typeof prefs] ? '18px' : '2px'
-                                    }}
-                                  />
-                                </button>
-                            </div>
-                          ))}
+                              );
+                            })}
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* ACCORDION 2: Security & Safety */}
+                 <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl overflow-hidden transition-all duration-300">
+                    <button 
+                      onClick={() => setIsSecurityExpanded(!isSecurityExpanded)}
+                      className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] active:bg-white/[0.01] transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="text-white/60">
+                           <Key className="w-5 h-5 stroke-[1.5]" />
                         </div>
+                        <span className="text-white text-sm font-medium">{language === 'ar' ? 'الأمان والحماية' : 'Security & Safety'}</span>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Security Settings Accordion */}
-              <div className="transition-all duration-300">
-                <button 
-                  onClick={() => setIsSecurityExpanded(!isSecurityExpanded)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-white/5 rounded-2xl transition-all group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="bg-white/10 p-2.5 rounded-xl text-white opacity-70 group-hover:text-white transition-all">
-                      <Shield className="w-5 h-5" />
-                    </div>
-                    <span className="text-base font-medium text-white opacity-70 group-hover:text-white transition-colors">إعدادات الأمان</span>
-                  </div>
-                  <div className="text-white opacity-40 group-hover:opacity-70 transition-colors">
-                    {isSecurityExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                  </div>
-                </button>
-
-                {/* Security Content */}
-                <div className={`transition-all duration-300 ease-in-out ${isSecurityExpanded ? 'max-h-[300px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
-                  <div className="p-3 space-y-1 border-t border-white/5">
-                    
-                    {/* Change Password */}
-                    <button className="w-full flex items-center p-3 hover:bg-white/5 rounded-xl transition-colors">
-                      <div className="flex items-center gap-3">
-                        <Key className="w-4 h-4 text-white opacity-60" />
-                        <span className="text-white opacity-90 text-sm">تغيير كلمة المرور</span>
-                      </div>
+                      <ChevronDown className={`w-4 h-4 text-white/40 transition-transform duration-300 ${isSecurityExpanded ? 'rotate-180' : ''}`} />
                     </button>
 
-                    <div className="h-[1px] w-full bg-white/5 my-1" />
+                    <div className={`transition-all duration-300 ease-in-out ${isSecurityExpanded ? 'max-h-[300px] border-t border-white/5 opacity-100' : 'max-h-0 opacity-0 overflow-hidden pointer-events-none'}`}>
+                       <div className="p-5 space-y-4">
+                          {/* Change Password */}
+                          <div className="flex items-center justify-between py-1 text-start opacity-45">
+                             <div>
+                                <div className="text-white/80 text-xs font-medium">{language === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}</div>
+                                <div className="text-white/40 text-[10px] mt-0.5">{language === 'ar' ? 'تحديث كلمة السر لحسابك' : 'Modify account password'}</div>
+                             </div>
+                             <span className="bg-white/5 px-2 py-0.5 rounded text-[9px] text-white/45 tracking-wider font-semibold">
+                                {language === 'ar' ? 'قريباً' : 'SOON'}
+                             </span>
+                          </div>
 
-                    {/* Delete Account */}
-                    <button className="w-full flex items-center p-3 hover:bg-red-500/10 rounded-xl transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <Trash2 className="w-4 h-4 text-red-400 group-hover:text-red-300" />
-                        <span className="text-red-400 group-hover:text-red-300 text-sm transition-colors">حذف الحساب</span>
-                      </div>
-                    </button>
-                    
-                  </div>
-                </div>
-              </div>
-
-              {/* Logout Button */}
-              <div className="transition-all duration-300">
-               <button 
-                  onClick={() => setIsLogoutModalOpen(true)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-red-500/5 rounded-2xl transition-all group"
-               >
-                  <div className="flex items-center gap-4">
-                    <div className="bg-red-500/10 p-2.5 rounded-xl text-red-500/80 group-hover:bg-red-500 group-hover:text-white transition-all">
-                      <LogOut className="w-5 h-5" />
+                          {/* Delete Account */}
+                          <div className="flex items-center justify-between py-1 text-start opacity-45">
+                             <div>
+                                <div className="text-red-400/80 text-xs font-medium">{language === 'ar' ? 'حذف الحساب بصفة نهائية' : 'Delete Account Permanently'}</div>
+                                <div className="text-white/40 text-[10px] mt-0.5">{language === 'ar' ? 'إزالة كافة البيانات المخزنة لدينا' : 'Erase all personal metadata'}</div>
+                             </div>
+                             <span className="bg-red-500/10 px-2 py-0.5 rounded text-[9px] text-red-400/50 tracking-wider font-semibold">
+                                {language === 'ar' ? 'قريباً' : 'SOON'}
+                             </span>
+                          </div>
+                       </div>
                     </div>
-                    <span className="text-base font-medium text-red-500/80 group-hover:text-red-500 transition-colors">{language === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}</span>
-                  </div>
-               </button>
+                 </div>
+
               </div>
+
+              {/* Minimalist Log Out Button */}
+              <button 
+                 onClick={() => setIsLogoutModalOpen(true)}
+                 className="w-full p-4 bg-[#0a0a0a]/85 border border-white/5 rounded-3xl text-sm font-medium text-red-400/80 hover:text-red-300 hover:bg-red-500/[0.03] active:bg-red-500/[0.01] transition-all flex items-center justify-center gap-2"
+              >
+                 <LogOut className="w-4 h-4 stroke-[1.5]" />
+                 <span>{language === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}</span>
+              </button>
             </div>
           </>
         ) : (
           <>
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-[#0d0d0d] border border-white/5 p-8 sm:p-12 mb-8 shadow-2xl">
-              <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
-              
-              <div className="relative z-10 mb-10 text-center">
-                <div className="w-20 h-20 bg-[#121212] rounded-full flex items-center justify-center mx-auto mb-6 border border-white/5 shadow-xl relative">
-                  <div className="absolute inset-0 rounded-full border border-white/5 animate-[spin_4s_linear_infinite]" style={{ borderTopColor: 'transparent', borderLeftColor: 'transparent' }}></div>
-                  <UserCircle2 className="w-10 h-10 text-white opacity-60" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">
-                  {t('login.submit')}
-                </h3>
-                <p className="text-white opacity-40 text-sm max-w-[260px] mx-auto">
-                  {language === 'ar' ? 'سجل دخولك للوصول إلى خطوطك المفضلة وإعداداتك الخاصة.' : 'Sign in to access your favorite fonts and custom settings.'}
-                </p>
+            <div className="space-y-4">
+              {/* Guest Profile Card */}
+              <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-6 flex flex-col items-center text-center">
+                 <div className="w-16 h-16 bg-white/[0.02] border border-white/10 rounded-full flex items-center justify-center text-white/50 mb-3 shadow-inner">
+                   <UserCircle2 className="w-8 h-8 opacity-75" />
+                 </div>
+                 <h3 className="text-lg font-medium text-white tracking-tight mb-1">
+                   {isSignUp ? (language === 'ar' ? 'إنشاء حساب جديد' : 'Create New Account') : (language === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
+                 </h3>
+                 <p className="text-white/40 text-xs max-w-[280px]">
+                   {language === 'ar' ? 'سجل دخولك للوصول إلى خطوطك المفضلة وإعداداتك الخاصة.' : 'Sign in to access your favorite fonts and custom settings.'}
+                 </p>
               </div>
-              
-              {error && (
-                <div className="bg-red-500/10 text-red-500 p-3 rounded-xl text-sm mb-6 text-center border border-red-500/20">
-                  {error}
+
+              {/* Minimalist Google Auth Card (Moved up) */}
+              <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-4 flex items-center justify-between opacity-40 cursor-not-allowed select-none">
+                <div className="flex items-center gap-3">
+                  <GoogleIcon />
+                  <span className="text-white text-xs font-medium">{language === 'ar' ? 'المتابعة باستخدام جوجل' : 'Continue with Google'}</span>
                 </div>
-              )}
+                <span className="bg-white/5 px-2 py-0.5 rounded text-[9px] text-white/45 tracking-wider font-semibold">
+                   {language === 'ar' ? 'قريباً' : 'SOON'}
+                </span>
+              </div>
 
-              <div className="space-y-4">
-                {/* Google Login - Crystal Locked */}
-                <CrystalLockedGoogleButton language={language} />
-
-                <div className="relative flex items-center py-4">
-                  <div className="flex-grow border-t border-white/10"></div>
-                  <span className="flex-shrink-0 mx-4 text-white opacity-40 text-sm">{language === 'ar' ? 'أو' : 'OR'}</span>
-                  <div className="flex-grow border-t border-white/10"></div>
-                </div>
-
-                {/* Email Login Expandable */}
-                <div className="bg-[#080808]/50 border border-white/5 rounded-3xl transition-all duration-300">
-                  <button 
-                    onClick={() => setShowEmailLogin(!showEmailLogin)}
-                    className="w-full py-4 text-white opacity-80 hover:text-white hover:bg-white/5 font-medium flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Mail className="w-5 h-5" />
-                    {language === 'ar' ? 'المتابعة بالبريد الإلكتروني' : 'Continue with Email'}
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showEmailLogin ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showEmailLogin ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-                    <div className="p-5 pt-2">
-                      <form onSubmit={handleEmailAuth} className="space-y-4">
-                        <div>
-                          <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-5 py-3 rounded-2xl border border-white/10 bg-black/50 text-white placeholder:text-white opacity-30 focus:ring-2 focus:ring-white/20 focus:border-white/50 outline-none transition-all text-sm"
-                            placeholder={t('login.email_placeholder')}
-                            required
-                          />
-                        </div>
-                        <div className="relative group">
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className={`w-full px-5 py-3 rounded-2xl border border-white/10 bg-black/50 text-white placeholder:text-white opacity-30 focus:ring-2 focus:ring-white/20 focus:border-white/50 outline-none transition-all text-sm ${dir === 'rtl' ? 'pl-12 pr-5' : 'pr-12 pl-5'}`}
-                            placeholder={t('login.password_placeholder')}
-                            required
-                          />
-                          {password.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setShowPassword(!showPassword)}
-                              className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center text-white opacity-50 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10 ${dir === 'rtl' ? 'left-4' : 'right-4'}`}
-                            >
-                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                          )}
-                        </div>
-                        
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          className="w-full bg-white/10 text-white border border-white/20 py-3 rounded-2xl font-medium text-sm hover:bg-white/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                          {isSignUp ? t('login.signup') : t('login.submit')}
-                        </button>
-                      </form>
-
-                      <div className="mt-4 text-center">
-                        <button
-                          onClick={() => setIsSignUp(!isSignUp)}
-                          className="text-white opacity-40 hover:text-white text-xs transition-colors flex items-center justify-center gap-1 mx-auto"
-                        >
-                          <span>{isSignUp ? t('login.have_account_text') : t('login.no_account_text')}</span>
-                          <span className="underline underline-offset-2">{isSignUp ? t('login.login_action') : t('login.register_action')}</span>
-                        </button>
-                      </div>
-                    </div>
+              {/* Login/Signup Core Card */}
+              <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-6 space-y-4">
+                {error && (
+                  <div className="bg-red-500/10 text-red-400 text-xs p-3 rounded-2xl text-center border border-red-500/10">
+                    {error}
                   </div>
-                </div>
+                )}
 
+                <form onSubmit={handleEmailAuth} className="space-y-3">
+                  <div>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 rounded-2xl border border-white/5 bg-white/[0.02] text-white placeholder:text-white/30 hover:border-white/10 focus:border-cyan-500/30 focus:bg-[#0c0c0c] focus:ring-0 outline-none transition-all text-sm"
+                      placeholder={language === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
+                      required
+                    />
+                  </div>
+                  <div className="relative group">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={`w-full px-4 py-3 rounded-2xl border border-white/5 bg-white/[0.02] text-white placeholder:text-white/30 hover:border-white/10 focus:border-cyan-500/30 focus:bg-[#0c0c0c] focus:ring-0 outline-none transition-all text-sm ${dir === 'rtl' ? 'pl-11 pr-4' : 'pr-11 pl-4'}`}
+                      placeholder={language === 'ar' ? 'كلمة المرور' : 'Password'}
+                      required
+                    />
+                    {password.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center text-white/50 hover:text-white transition-colors p-1 rounded-full hover:bg-white/5 ${dir === 'rtl' ? 'left-3.5' : 'right-3.5'}`}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    )}
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-white hover:bg-white/95 text-black py-3 rounded-2xl font-medium text-xs transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {isSignUp ? (language === 'ar' ? 'إنشاء الحساب' : 'Create Account') : (language === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
+                  </button>
+                </form>
+
+                <div className="text-center pt-2 border-t border-white/5">
+                  <button
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    className="text-white/40 hover:text-white/60 text-[11px] transition-colors flex items-center justify-center gap-1 mx-auto"
+                  >
+                    <span>{isSignUp ? (language === 'ar' ? 'تمتلك حساباً بالفعل؟' : 'Have an account?') : (language === 'ar' ? 'ليس لديك حساب؟' : 'Don\'t have an account?')}</span>
+                    <span className="underline underline-offset-2">{isSignUp ? (language === 'ar' ? 'سجل دخولك' : 'Sign In') : (language === 'ar' ? 'أنشئ حساباً' : 'Sign Up')}</span>
+                  </button>
+                </div>
               </div>
+
             </div>
 
             {/* Language Switcher for Guest */}
             <div className="flex justify-center mt-6">
-              <div className="relative flex bg-[#080808] border border-white/5 p-1 rounded-2xl shadow-xl w-[180px]" dir="ltr">
+              <div className="relative flex bg-[#0a0a0a]/85 border border-white/5 p-1 rounded-2xl shadow-xl w-[180px]" dir="ltr">
                 <div 
                   className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] shadow-md"
                   style={{
@@ -559,13 +361,13 @@ export const Account = () => {
                 />
                 <button 
                   onClick={() => setLanguage('en')}
-                  className={`relative z-10 flex-1 py-2 text-sm font-medium transition-colors duration-300 ${language === 'en' ? 'text-black leading-none' : 'text-white opacity-50 hover:opacity-100 leading-none'}`}
+                  className={`relative z-10 flex-1 py-1.5 text-xs font-medium transition-colors duration-300 cursor-pointer ${language === 'en' ? 'text-black font-semibold' : 'text-white opacity-50 hover:opacity-100'}`}
                 >
                   EN
                 </button>
                 <button 
                   onClick={() => setLanguage('ar')}
-                  className={`relative z-10 flex-1 py-2 text-sm font-medium transition-colors duration-300 ${language === 'ar' ? 'text-black' : 'text-white opacity-50 hover:opacity-100'}`}
+                  className={`relative z-10 flex-1 py-1.5 text-xs font-medium transition-colors duration-300 cursor-pointer ${language === 'ar' ? 'text-black font-semibold' : 'text-white opacity-50 hover:opacity-100'}`}
                 >
                   عربي
                 </button>
