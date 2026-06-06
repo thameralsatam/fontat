@@ -291,7 +291,10 @@ export const getWeightRelationshipsForFonts = async (fontIds: string[]): Promise
     .select('parent_font_id, child_font_id')
     .in('parent_font_id', fontIds);
   if (error) {
-    console.error('Error fetching weights relationships for subset:', error);
+    // Silently return empty array on RLS permission denied errors (42501) which happen during active uploads
+    if (error.code !== '42501') {
+      console.error('Error fetching weights relationships for subset:', error);
+    }
     return [];
   }
   return data || [];

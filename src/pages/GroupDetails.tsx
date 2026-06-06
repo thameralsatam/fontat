@@ -1788,17 +1788,24 @@ export const GroupDetails = ({
 
         {/* Modern Glass Pagination UI */}
         {Math.ceil(displayFonts.length / ITEMS_PER_PAGE) > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-white/5 font-sans">
-            <div className="text-sm text-white/50">
-              {t('pagination.page')} <span className="font-semibold text-white">{currentPage}</span> {t('pagination.of')} <span className="font-semibold text-white">{Math.ceil(displayFonts.length / ITEMS_PER_PAGE)}</span>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mt-8 pt-6 border-t border-white/5 font-sans mb-8">
+            <div className="text-sm text-white/50 w-full sm:w-auto text-center sm:text-left">
+              {t('pagination.page')} <span className="font-semibold text-white mx-2">{currentPage}</span> {t('pagination.of')} <span className="font-semibold text-white mx-2">{Math.ceil(displayFonts.length / ITEMS_PER_PAGE)}</span>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center flex-wrap gap-2 w-full sm:w-auto">
               <button
                 onClick={() => {
                   if (currentPage > 1) {
                     setCurrentPage(prev => prev - 1);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setTimeout(() => {
+                      if (fontGridRef.current) {
+                        const y = fontGridRef.current.getBoundingClientRect().top + window.scrollY - 150;
+                        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                      } else {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }, 50);
                   }
                 }}
                 disabled={currentPage === 1}
@@ -1827,7 +1834,14 @@ export const GroupDetails = ({
                       key={p}
                       onClick={() => {
                         setCurrentPage(p);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        setTimeout(() => {
+                          if (fontGridRef.current) {
+                            const y = fontGridRef.current.getBoundingClientRect().top + window.scrollY - 150;
+                            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                          } else {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }, 50);
                       }}
                       className={`w-10 h-10 rounded-xl flex items-center justify-center font-medium transition-all duration-300 cursor-pointer text-sm
                         ${currentPage === p 
@@ -1845,7 +1859,14 @@ export const GroupDetails = ({
                   const totalP = Math.ceil(displayFonts.length / ITEMS_PER_PAGE);
                   if (currentPage < totalP) {
                     setCurrentPage(prev => prev + 1);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setTimeout(() => {
+                      if (fontGridRef.current) {
+                        const y = fontGridRef.current.getBoundingClientRect().top + window.scrollY - 150;
+                        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                      } else {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }, 50);
                   }
                 }}
                 disabled={currentPage === Math.ceil(displayFonts.length / ITEMS_PER_PAGE)}
