@@ -4,6 +4,28 @@ import { Upload, Compass, Camera, Focus, Search, ExternalLink, Check, Copy, Fold
 import { motion } from "framer-motion";
 import { useLanguage } from "../contexts/LanguageContext";
 
+const TelegramAvatar = ({ image, nameAr, nameEn, isAr }: { image?: string; nameAr: string; nameEn: string; isAr: boolean }) => {
+  const [hasError, setHasError] = useState(!image);
+
+  return (
+    <div className="relative shrink-0 select-none w-12 h-12 rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden flex items-center justify-center group-hover:border-cyan-500/30 transition-all duration-300 shadow-md">
+      {!hasError && image ? (
+        <img
+          src={image}
+          alt={isAr ? nameAr : nameEn}
+          className="w-full h-full object-cover transition-opacity duration-300"
+          referrerPolicy="no-referrer"
+          onError={() => setHasError(true)}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-bold text-white/30 group-hover:text-cyan-400/50 transition-colors pointer-events-none uppercase">
+          {nameEn.slice(0, 2)}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const Home = () => {
   const navigate = useNavigate();
   const { t, dir, language } = useLanguage();
@@ -33,13 +55,13 @@ export const Home = () => {
   const telegramData = [
     {
       nameAr: "نقاشات خطوط أحمد الغريب",
-      nameEn: "AlGharib Fonts Discussions",
+      nameEn: "AlGharib Fonts Discussions Group",
       link: "https://t.me/ElgharibFonts",
       username: "@ElgharibFonts",
       isDesigner: false,
-      image: "/telegram-images/elgharib-main.webp",
-      tagsAr: ["جروب", "مجاني", "عربي", "نقاشات"],
-      tagsEn: ["Group", "Free", "Arabic", "Discussions"],
+      image: "/telegram-images/elgharib-discussions.webp",
+      tagsAr: ["جروب", "كشف الخطوط بالصور", "مجاني", "عربي"],
+      tagsEn: ["Group", "Detect Fonts via Images", "Free", "Arabic"],
       supportsImageSearch: true
     },
     {
@@ -49,8 +71,8 @@ export const Home = () => {
       username: "@ElgharibFont",
       isDesigner: false,
       image: "/telegram-images/elgharib-main.webp",
-      tagsAr: ["قناة", "مجاني", "عربي", "إنجليزي", "مكتبة"],
-      tagsEn: ["Channel", "Free", "Arabic", "English", "Library"]
+      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+      tagsEn: ["Channel", "Free", "Arabic", "Library"]
     },
     {
       nameAr: "خطوط الغريب",
@@ -63,14 +85,14 @@ export const Home = () => {
       tagsEn: ["Channel", "Free", "Arabic", "Library"]
     },
     {
-      nameAr: "خطوط قرآن",
-      nameEn: "Quranic Fonts",
+      nameAr: "خطوط قران",
+      nameEn: "Quranic Fonts Channel",
       link: "https://t.me/quranfont",
       username: "@quranfont",
       isDesigner: false,
       image: "/telegram-images/quranic-fonts.webp",
-      tagsAr: ["قناة", "مجاني", "عربي", "قرآني", "مكتبة"],
-      tagsEn: ["Channel", "Free", "Arabic", "Quranic", "Library"]
+      tagsAr: ["قناة", "مجاني", "عربي", "إنجليزي", "أيقونات", "قرآني", "مكتبة"],
+      tagsEn: ["Channel", "Free", "Arabic", "English", "Icons", "Quranic", "Library"]
     },
     {
       nameAr: "خطوط إنجليزية أحمد الغريب",
@@ -84,23 +106,13 @@ export const Home = () => {
     },
     {
       nameAr: "خطوط أيقونات أحمد الغريب",
-      nameEn: "AlGharib Icon Fonts Group",
+      nameEn: "AlGharib Icon Fonts Channel",
       link: "https://t.me/ElghribFonts",
       username: "@ElghribFonts",
       isDesigner: false,
       image: "/telegram-images/elgharib-icons.webp",
-      tagsAr: ["جروب", "مجاني", "عربي", "أيقونات", "مكتبة"],
-      tagsEn: ["Group", "Free", "Arabic", "Icons", "Library"]
-    },
-    {
-      nameAr: "Medad",
-      nameEn: "Medad",
-      link: "https://t.me/MedadFonts",
-      username: "@MedadFonts",
-      isDesigner: false,
-      image: "/telegram-images/medad.webp",
-      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
-      tagsEn: ["Channel", "Free", "Arabic", "Library"]
+      tagsAr: ["قناة", "مجاني", "عربي", "أيقونات", "مكتبة"],
+      tagsEn: ["Channel", "Free", "Arabic", "Icons", "Library"]
     },
     {
       nameAr: "المكتبة العربية للخطوط",
@@ -118,9 +130,9 @@ export const Home = () => {
       link: "https://t.me/OmarHassanType",
       username: "@OmarHassanType",
       isDesigner: true,
-      image: "/telegram-images/omar-hassan-type.webp",
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "مصمم خطوط"],
-      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Font Designer"]
+      image: "/telegram-images/omar-hassan.webp",
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     },
     {
       nameAr: "Iwantype",
@@ -129,8 +141,18 @@ export const Home = () => {
       username: "@iwantype",
       isDesigner: true,
       image: "/telegram-images/iwantype.webp",
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "مصمم خطوط", "استوديو"],
-      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Font Designer", "Studio"]
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
+    },
+    {
+      nameAr: "Medad",
+      nameEn: "Medad",
+      link: "https://t.me/MedadFonts",
+      username: "@MedadFonts",
+      isDesigner: true,
+      image: "/telegram-images/medad.webp",
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو", "مكتبة"],
+      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio", "Library"]
     },
     {
       nameAr: "TSfonts",
@@ -139,8 +161,8 @@ export const Home = () => {
       username: "@tsfont",
       isDesigner: true,
       image: "/telegram-images/tsfonts.webp",
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "مصمم خطوط", "استوديو"],
-      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Font Designer", "Studio"]
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     },
     {
       nameAr: "Mostafa El Abasiry",
@@ -148,9 +170,9 @@ export const Home = () => {
       link: "https://t.me/arabictypo",
       username: "@arabictypo",
       isDesigner: true,
-      image: "/telegram-images/mostafa-el-abasiry.webp",
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "مصمم خطوط"],
-      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Font Designer"]
+      image: "/telegram-images/mostafa-elabasiry.webp",
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     }
   ];
 
@@ -547,19 +569,15 @@ export const Home = () => {
                   <div>
                     {/* Header Row with Logo/Avatar and Username */}
                     <div className="flex items-center gap-3.5 mb-3.5">
-                      {entity.image && (
-                        <div className="relative shrink-0 select-none">
-                          <img
-                            src={entity.image}
-                            alt={isAr ? entity.nameAr : entity.nameEn}
-                            className="w-12 h-12 rounded-2xl object-cover border border-white/10 shadow-md group-hover:border-cyan-500/30 transition-all duration-300"
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-                      )}
+                      <TelegramAvatar 
+                        image={entity.image} 
+                        nameAr={entity.nameAr} 
+                        nameEn={entity.nameEn} 
+                        isAr={isAr} 
+                      />
                       <div className="flex-1 min-w-0">
                         {/* Channel/Group name - Larger and highly visible */}
-                        <h3 className="text-sm md:text-[15px] font-bold tracking-tight transition-colors duration-300 leading-snug text-white opacity-95 group-hover:text-cyan-300 truncate">
+                        <h3 className="text-sm md:text-[15px] font-bold tracking-tight transition-colors duration-300 leading-relaxed text-white opacity-95 group-hover:text-cyan-300 pt-1.5 pb-1 select-text truncate">
                           {isAr ? entity.nameAr : entity.nameEn}
                         </h3>
                         {/* Telegram Link/username */}
@@ -579,40 +597,33 @@ export const Home = () => {
 
                     {/* Curated Beautiful Labels/Tags */}
                     <div className="flex flex-wrap gap-1.5 mb-2">
-                      {(isAr ? entity.tagsAr : entity.tagsEn).map((tag) => {
+                       {(isAr ? entity.tagsAr : entity.tagsEn).map((tag) => {
                         const isGroup = tag === 'جروب' || tag === 'Group';
                         const isChannel = tag === 'قناة' || tag === 'Channel';
                         const isFree = tag === 'مجاني' || tag === 'Free';
                         const isPaid = tag === 'مدفوع' || tag === 'Paid';
                         const isDesigner = tag === 'مصمم خطوط' || tag === 'Font Designer' || tag === 'استوديو' || tag === 'Studio';
+                        const isImageSearch = tag === 'تحديد الخط بالصور' || tag === 'Font Identification' || tag === 'كشف الخطوط بالصور' || tag === 'Detect Fonts via Images';
 
                         return (
                           <span 
                             key={tag} 
-                            className={`text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full transition-all duration-300 ${
+                            className={`text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full transition-all duration-300 inline-flex items-center gap-1 ${
                               isGroup ? 'bg-amber-500/10 text-amber-400 border border-amber-500/15' :
                               isChannel ? 'bg-[#2AABEE]/10 text-[#2AABEE] border border-[#2AABEE]/15' :
                               isFree ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15' :
                               isPaid ? 'bg-rose-500/10 text-rose-400 border border-rose-500/15' :
                               isDesigner ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/15' :
+                              isImageSearch ? 'bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/25 animate-pulse shadow-[0_0_8px_rgba(217,70,239,0.25)]' :
                               'bg-white/5 border border-white/5 text-white/55'
                             }`}
                           >
-                            {tag}
+                            {isImageSearch && <Camera className="w-3.5 h-3.5 text-fuchsia-300 shrink-0" />}
+                            {isImageSearch ? (isAr ? "كشف الخطوط بالصور" : "Verify Font via Image") : tag}
                           </span>
                         );
                       })}
                     </div>
-
-                    {/* Unique subtle feature hint below the tags - clean, minimalist, no annoying capsule background */}
-                    {entity.supportsImageSearch && (
-                      <div className="flex items-center gap-1.5 mt-3 text-[11px] text-cyan-400/90 font-medium">
-                        <Camera className="w-3.5 h-3.5 text-cyan-400 shrink-0 animate-pulse" />
-                        <span>
-                          {isAr ? "يدعم البحث بالصور" : "Supports image search"}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   {/* Aesthetic Action Row - Lifted and compacted */}
