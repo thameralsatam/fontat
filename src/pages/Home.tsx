@@ -1,11 +1,168 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, Compass, Beaker, Send, Camera, Focus } from "lucide-react";
+import { Upload, Compass, Camera, Focus, Search, ExternalLink, Check, Copy, Folder } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "../contexts/LanguageContext";
 
 export const Home = () => {
   const navigate = useNavigate();
   const { t, dir, language } = useLanguage();
+
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [telegramSearch, setTelegramSearch] = useState("");
+
+  useEffect(() => {
+    if (window.location.hash === "#telegram-directory") {
+      const el = document.getElementById("telegram-directory");
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 300);
+      }
+    }
+  }, []);
+
+  const handleCopyLink = (link: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(link);
+    setCopiedLink(link);
+    setTimeout(() => setCopiedLink(null), 2000);
+  };
+
+  const telegramData = [
+    {
+      nameAr: "نقاشات خطوط أحمد الغريب",
+      nameEn: "AlGharib Fonts Discussions",
+      link: "https://t.me/ElgharibFonts",
+      username: "@ElgharibFonts",
+      isDesigner: false,
+      image: "/telegram-images/elgharib-main.webp",
+      tagsAr: ["جروب", "مجاني", "عربي", "نقاشات"],
+      tagsEn: ["Group", "Free", "Arabic", "Discussions"],
+      supportsImageSearch: true
+    },
+    {
+      nameAr: "خطوط أحمد الغريب",
+      nameEn: "AlGharib Main Fonts",
+      link: "https://t.me/ElgharibFont",
+      username: "@ElgharibFont",
+      isDesigner: false,
+      image: "/telegram-images/elgharib-main.webp",
+      tagsAr: ["قناة", "مجاني", "عربي", "إنجليزي", "مكتبة"],
+      tagsEn: ["Channel", "Free", "Arabic", "English", "Library"]
+    },
+    {
+      nameAr: "خطوط الغريب",
+      nameEn: "AlGharib Fonts",
+      link: "https://t.me/font4u",
+      username: "@font4u",
+      isDesigner: false,
+      image: "/telegram-images/elgharib-font4u.webp",
+      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+      tagsEn: ["Channel", "Free", "Arabic", "Library"]
+    },
+    {
+      nameAr: "خطوط قرآن",
+      nameEn: "Quranic Fonts",
+      link: "https://t.me/quranfont",
+      username: "@quranfont",
+      isDesigner: false,
+      image: "/telegram-images/quranic-fonts.webp",
+      tagsAr: ["قناة", "مجاني", "عربي", "قرآني", "مكتبة"],
+      tagsEn: ["Channel", "Free", "Arabic", "Quranic", "Library"]
+    },
+    {
+      nameAr: "خطوط إنجليزية أحمد الغريب",
+      nameEn: "AlGharib English Fonts",
+      link: "https://t.me/ElghribFont",
+      username: "@ElghribFont",
+      isDesigner: false,
+      image: "/telegram-images/elgharib-english.webp",
+      tagsAr: ["قناة", "مجاني", "إنجليزي", "مكتبة"],
+      tagsEn: ["Channel", "Free", "English", "Library"]
+    },
+    {
+      nameAr: "خطوط أيقونات أحمد الغريب",
+      nameEn: "AlGharib Icon Fonts Group",
+      link: "https://t.me/ElghribFonts",
+      username: "@ElghribFonts",
+      isDesigner: false,
+      image: "/telegram-images/elgharib-icons.webp",
+      tagsAr: ["جروب", "مجاني", "عربي", "أيقونات", "مكتبة"],
+      tagsEn: ["Group", "Free", "Arabic", "Icons", "Library"]
+    },
+    {
+      nameAr: "Medad",
+      nameEn: "Medad",
+      link: "https://t.me/MedadFonts",
+      username: "@MedadFonts",
+      isDesigner: false,
+      image: "/telegram-images/medad.webp",
+      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+      tagsEn: ["Channel", "Free", "Arabic", "Library"]
+    },
+    {
+      nameAr: "المكتبة العربية للخطوط",
+      nameEn: "Arabic Fonts Library",
+      link: "https://t.me/arabicllibrary",
+      username: "@arabicllibrary",
+      isDesigner: false,
+      image: "/telegram-images/arabic-library.webp",
+      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+      tagsEn: ["Channel", "Free", "Arabic", "Library"]
+    },
+    {
+      nameAr: "Omar Hassan Type",
+      nameEn: "Omar Hassan Type",
+      link: "https://t.me/OmarHassanType",
+      username: "@OmarHassanType",
+      isDesigner: true,
+      image: "/telegram-images/omar-hassan-type.webp",
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "مصمم خطوط"],
+      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Font Designer"]
+    },
+    {
+      nameAr: "Iwantype",
+      nameEn: "Iwantype",
+      link: "https://t.me/iwantype",
+      username: "@iwantype",
+      isDesigner: true,
+      image: "/telegram-images/iwantype.webp",
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "مصمم خطوط", "استوديو"],
+      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Font Designer", "Studio"]
+    },
+    {
+      nameAr: "TSfonts",
+      nameEn: "TSfonts",
+      link: "https://t.me/tsfont",
+      username: "@tsfont",
+      isDesigner: true,
+      image: "/telegram-images/tsfonts.webp",
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "مصمم خطوط", "استوديو"],
+      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Font Designer", "Studio"]
+    },
+    {
+      nameAr: "Mostafa El Abasiry",
+      nameEn: "Mostafa El Abasiry",
+      link: "https://t.me/arabictypo",
+      username: "@arabictypo",
+      isDesigner: true,
+      image: "/telegram-images/mostafa-el-abasiry.webp",
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "مصمم خطوط"],
+      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Font Designer"]
+    }
+  ];
+
+  const filteredTelegram = telegramData.filter(entity => {
+    const isAr = language === 'ar';
+    const nameMatch = isAr 
+      ? entity.nameAr.toLowerCase().includes(telegramSearch.toLowerCase())
+      : entity.nameEn.toLowerCase().includes(telegramSearch.toLowerCase());
+    
+    const usernameMatch = entity.username.toLowerCase().includes(telegramSearch.toLowerCase());
+    return nameMatch || usernameMatch;
+  });
 
   const dummyCards = [
     { name: "Cairo", weight: "Regular", ext: ".ttf", preview: t("home.preview_char") },
@@ -151,10 +308,9 @@ export const Home = () => {
             className="group relative overflow-hidden rounded-3xl bg-[#080808] border border-white/5 p-6 md:p-10 flex flex-col justify-between min-h-[350px] md:min-h-[400px] shadow-2xl"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-
             <div className="relative z-10">
-              <div className="w-12 h-12 rounded-[1.25rem] bg-gradient-to-b from-white/10 to-transparent border border-white/10 flex items-center justify-center mb-6 group-hover:bg-white/10 transition-all duration-300">
-                <Beaker className="w-5 h-5 text-white opacity-80 group-hover:scale-110 transition-transform duration-500" />
+              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 text-white group-hover:bg-white/10 transition-colors duration-300">
+                <Compass className="w-6 h-6" />
               </div>
               <h3 className="text-white opacity-90 font-semibold text-lg md:text-xl mb-3 tracking-tight">
                 {t("home.feature1_title")}
@@ -306,10 +462,6 @@ export const Home = () => {
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                    <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
                 </div>
-                {/* Telegram floating Mini Badge */}
-                <div className={`absolute -bottom-1 ${dir === 'rtl' ? '-left-1' : '-right-1'} w-6 h-6 bg-[#2AABEE] rounded-full flex items-center justify-center border-2 border-[#080808] shadow-md group-hover:scale-110 transition-transform duration-500 z-20`}>
-                  <Send className={`w-2.5 h-2.5 text-white ${dir === 'rtl' ? 'mr-[-1px]' : 'ml-[-1px]'}`} />
-                </div>
               </div>
 
               {/* Text Content */}
@@ -319,26 +471,186 @@ export const Home = () => {
                 </h3>
                 <p className="text-white opacity-40 text-xs md:text-sm font-light leading-relaxed group-hover:opacity-60 transition-colors">
                   {language === 'ar' 
-                    ? 'التقط صورة للخط المجهول وأرسلها في جروبنا على تليجرام، وسيقوم فريقنا بالتعرف عليه وإرسال ملف الخط لك.' 
-                    : 'Take a picture of the unknown font and send it in our Telegram group. Our team will identify and send it.'}
+                    ? 'أرسل صورة الخط المجهول في جروب النقاشات وسنتعرف عليه ونرسله لك فوراً.' 
+                    : 'Send any unknown font image in our discussions group and we will find it for you instantly.'}
                 </p>
               </div>
             </div>
-            
-            {/* CTA Button */}
-            <div className="shrink-0 w-full md:w-auto mt-2 md:mt-0 flex justify-end">
-               <a href="https://t.me/ElgharibFonts" target="_blank" rel="noopener noreferrer" className="flex flex-row items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-gray-100 text-black font-bold text-xs tracking-wide shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 whitespace-nowrap">
-                  <span>{language === 'ar' ? 'انضم للجروب' : 'Join the Group'}</span>
-                  <div className={`w-5 h-5 rounded-full bg-black/5 flex items-center justify-center ${dir === 'rtl' ? '-ml-1' : '-mr-1'}`}>
-                    <svg className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                  </div>
-               </a>
-            </div>
-          </div>
-        </div>
+             
+             {/* CTA Buttons */}
+             <div className="shrink-0 w-full md:w-auto mt-2 md:mt-0 flex justify-end items-center">
+                <a 
+                  href="#telegram-directory" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('telegram-directory')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="w-full sm:w-auto flex flex-row items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-gray-100 text-black font-bold text-xs tracking-wide shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 whitespace-nowrap cursor-pointer"
+                >
+                   <span>{language === 'ar' ? 'تصفح دليل القنوات والجروبات' : 'Browse Directory'}</span>
+                   <div className={`w-4 h-4 rounded-full bg-black/5 flex items-center justify-center ${dir === 'rtl' ? '-ml-1' : '-mr-1'}`}>
+                     <svg className={`w-2.5 h-2.5 ${dir === 'rtl' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                       <path d="M5 12h14M12 5l7 7-7 7" />
+                     </svg>
+                   </div>
+                </a>
+             </div>
+           </div>
+         </div>
       </motion.div>
+
+      {/* Embedded Telegram Directory Section */}
+      <div 
+        id="telegram-directory" 
+         className="w-full max-w-5xl xl:max-w-6xl mx-auto mt-24 mb-10 px-0 relative z-20"
+         dir={dir}
+       >
+         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 border-b border-white/5 pb-6">
+           <div>
+             <h2 className="text-xl md:text-3xl font-bold text-white tracking-tight">
+               {language === 'ar' ? 'دليل قنوات ومجموعات تليجرام' : 'Telegram Channels & Groups Directory'}
+             </h2>
+             <p className="text-white opacity-50 text-xs md:text-sm mt-1 max-w-xl font-light">
+               {language === 'ar' 
+                 ? 'تصفح وتابع أفضل قنوات ومجموعات تليجرام المتخصصة بنشر الخطوط العربية وملحقات التصميم.'
+                 : 'Browse and follow the best Telegram channels and groups specializing in Arabic fonts and design assets.'}
+             </p>
+           </div>
+
+           {/* Search Box */}
+           <div className="relative w-full md:max-w-xs font-sans">
+             <input
+               type="text"
+               value={telegramSearch}
+               onChange={(e) => setTelegramSearch(e.target.value)}
+               placeholder={language === 'ar' ? 'ابحث باسم القناة أو المعرف...' : 'Search name or user...'}
+               className="w-full pl-9 pr-9 py-2.5 bg-[#0c0c0c] border border-white/10 hover:border-white/20 rounded-xl text-white text-xs outline-none focus:border-[#2AABEE]/40 focus:bg-[#070707] transition-all"
+             />
+             <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 ${dir === 'rtl' ? 'right-3' : 'left-3'}`} />
+           </div>
+         </div>
+
+         {/* Channels/Groups Grid */}
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+           {filteredTelegram.map((entity) => {
+              const isAr = language === 'ar';
+              const isCopied = copiedLink === entity.link;
+
+              return (
+                <div
+                  key={entity.link}
+                  className="group relative overflow-hidden rounded-[1.5rem] flex flex-col justify-between shadow-[0_4px_30px_rgba(0,0,0,0.4)] transition-all duration-300 hover:translate-y-[-2px] p-5 md:p-6 bg-[#0c0c0c]/80 border border-white/[0.06] hover:border-white/15 hover:bg-[#111111]/90"
+                >
+                  {/* Gentle hover accent glow */}
+                  <div className="absolute inset-0 bg-gradient-to-br transition-opacity duration-300 pointer-events-none from-cyan-400/[0.02] via-transparent to-transparent opacity-0 group-hover:opacity-100" />
+
+                  <div>
+                    {/* Header Row with Logo/Avatar and Username */}
+                    <div className="flex items-center gap-3.5 mb-3.5">
+                      {entity.image && (
+                        <div className="relative shrink-0 select-none">
+                          <img
+                            src={entity.image}
+                            alt={isAr ? entity.nameAr : entity.nameEn}
+                            className="w-12 h-12 rounded-2xl object-cover border border-white/10 shadow-md group-hover:border-cyan-500/30 transition-all duration-300"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {/* Channel/Group name - Larger and highly visible */}
+                        <h3 className="text-sm md:text-[15px] font-bold tracking-tight transition-colors duration-300 leading-snug text-white opacity-95 group-hover:text-cyan-300 truncate">
+                          {isAr ? entity.nameAr : entity.nameEn}
+                        </h3>
+                        {/* Telegram Link/username */}
+                        <div className="mt-0.5">
+                          <a 
+                            href={entity.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#2abcfe] hover:text-[#2abcfe]/85 transition-colors"
+                          >
+                            <span className="font-mono">{entity.username}</span>
+                            <ExternalLink className="w-3 h-3 opacity-80" />
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Curated Beautiful Labels/Tags */}
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {(isAr ? entity.tagsAr : entity.tagsEn).map((tag) => {
+                        const isGroup = tag === 'جروب' || tag === 'Group';
+                        const isChannel = tag === 'قناة' || tag === 'Channel';
+                        const isFree = tag === 'مجاني' || tag === 'Free';
+                        const isPaid = tag === 'مدفوع' || tag === 'Paid';
+                        const isDesigner = tag === 'مصمم خطوط' || tag === 'Font Designer' || tag === 'استوديو' || tag === 'Studio';
+
+                        return (
+                          <span 
+                            key={tag} 
+                            className={`text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full transition-all duration-300 ${
+                              isGroup ? 'bg-amber-500/10 text-amber-400 border border-amber-500/15' :
+                              isChannel ? 'bg-[#2AABEE]/10 text-[#2AABEE] border border-[#2AABEE]/15' :
+                              isFree ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15' :
+                              isPaid ? 'bg-rose-500/10 text-rose-400 border border-rose-500/15' :
+                              isDesigner ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/15' :
+                              'bg-white/5 border border-white/5 text-white/55'
+                            }`}
+                          >
+                            {tag}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* Unique subtle feature hint below the tags - clean, minimalist, no annoying capsule background */}
+                    {entity.supportsImageSearch && (
+                      <div className="flex items-center gap-1.5 mt-3 text-[11px] text-cyan-400/90 font-medium">
+                        <Camera className="w-3.5 h-3.5 text-cyan-400 shrink-0 animate-pulse" />
+                        <span>
+                          {isAr ? "يدعم البحث بالصور" : "Supports image search"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Aesthetic Action Row - Lifted and compacted */}
+                  <div className="flex items-center gap-2 pt-3 border-t border-white/[0.04] z-10 w-full mt-1.5">
+                    <a 
+                      href={entity.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex-1 py-1.5 md:py-2 px-3 md:px-4 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95 bg-white hover:bg-gray-100 text-black"
+                    >
+                      <span>
+                        {isAr 
+                          ? (entity.tagsAr.includes("جروب") || entity.tagsAr.includes("Group") || entity.nameAr.includes("جروب") ? "الانتقال للجروب" : "الانتقال للقناة") 
+                          : (entity.tagsEn.includes("Group") || entity.tagsAr.includes("جروب") ? "Go to Group" : "Go to Channel")}
+                      </span>
+                    </a>
+
+                    <button 
+                      onClick={(e) => handleCopyLink(entity.link, e)}
+                      className={`p-2 rounded-xl border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/5 transition-all cursor-pointer ${isCopied ? 'border-green-500/20 text-green-400 bg-green-500/5' : ''}`}
+                      title={isAr ? 'نسخ الرابط' : 'Copy link'}
+                    >
+                      {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {filteredTelegram.length === 0 && (
+             <div className="col-span-full py-16 text-center text-white/30 flex flex-col items-center justify-center">
+               <Folder className="w-8 h-8 mb-3 opacity-15" />
+               <p className="text-xs font-light">
+                 {language === 'ar' ? 'لا توجد نتائج تطابق بحثك حالياً.' : 'No matching results found.'}
+               </p>
+             </div>
+           )}
+         </div>
+      </div>
 
     </div>
   );

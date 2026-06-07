@@ -258,6 +258,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 text-sm text-white opacity-50 mb-10">
             <Link to="/about" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'عن مبادرة فونتات' : 'About Fontat'}</Link>
             <div className="hidden sm:block w-1 h-1 rounded-full bg-white/20"></div>
+            <Link to="/#telegram-directory" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'دليل قنوات ومجموعات تليجرام' : 'Telegram Directory'}</Link>
+            <div className="hidden sm:block w-1 h-1 rounded-full bg-white/20"></div>
             <Link to="/terms" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'شروط الاستخدام' : 'Terms of Service'}</Link>
             <div className="hidden sm:block w-1 h-1 rounded-full bg-white/20"></div>
             <Link to="/privacy" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy Policy'}</Link>

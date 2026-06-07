@@ -56,6 +56,7 @@ const SwipeableNotification = ({
   const controls = useAnimation();
   const [deleted, setDeleted] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleDragEnd = async (_: any, info: any) => {
     const isRtl = dir === 'rtl';
@@ -70,6 +71,7 @@ const SwipeableNotification = ({
       } else {
         controls.start({ x: 0 });
         setIsRevealed(false);
+        setConfirmDelete(false);
       }
     } else {
       if (offset < -threshold || velocity < -200) {
@@ -78,6 +80,7 @@ const SwipeableNotification = ({
       } else {
         controls.start({ x: 0 });
         setIsRevealed(false);
+        setConfirmDelete(false);
       }
     }
   };
@@ -94,6 +97,7 @@ const SwipeableNotification = ({
       e.stopPropagation();
       controls.start({ x: 0 });
       setIsRevealed(false);
+      setConfirmDelete(false);
     } else {
       onOpen();
     }
@@ -109,19 +113,23 @@ const SwipeableNotification = ({
     <div className="relative overflow-hidden border-b border-white/5 last:border-0 hover:bg-white/5 group bg-black/40">
       {/* Delete Confirmation Button behind the item */}
       <div 
-        className={`absolute inset-y-0 ${isRtl ? 'left-0' : 'right-0'} w-[74px] flex items-center justify-center bg-red-600/90 hover:bg-red-600 transition-colors z-0`}
+        className={`absolute inset-y-0 ${isRtl ? 'left-0' : 'right-0'} w-[74px] flex items-center justify-center transition-colors duration-300 z-0 ${confirmDelete ? 'bg-red-700/100' : 'bg-red-600/90 hover:bg-red-600'}`}
       >
         <button
           onClick={(e) => {
             e.stopPropagation();
-            handleDelete();
+            if (!confirmDelete) {
+              setConfirmDelete(true);
+            } else {
+              handleDelete();
+            }
           }}
           className="w-full h-full flex flex-col items-center justify-center text-white/90 hover:text-white transition-all cursor-pointer gap-0.5 active:scale-95"
-          title={isRtl ? 'حذف' : 'Delete'}
+          title={confirmDelete ? (isRtl ? 'تأكيد الحذف' : 'Confirm Delete') : (isRtl ? 'حذف' : 'Delete')}
         >
-          <Trash2 className="w-4 h-4 stroke-[1.8]" />
-          <span className="text-[10px] font-semibold tracking-wide">
-            {isRtl ? 'حذف' : 'Delete'}
+          <Trash2 className={`w-4 h-4 stroke-[1.8] transition-transform duration-300 ${confirmDelete ? 'scale-110 text-white animate-pulse' : ''}`} />
+          <span className="text-[10px] font-semibold tracking-wide transition-all duration-300">
+            {confirmDelete ? (isRtl ? 'تأكيد؟' : 'Sure?') : (isRtl ? 'حذف' : 'Delete')}
           </span>
         </button>
       </div>
