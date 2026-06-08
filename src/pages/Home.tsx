@@ -4,30 +4,46 @@ import { Upload, Compass, Camera, Focus, Search, ExternalLink, Check, Copy, Fold
 import { motion } from "framer-motion";
 import { useLanguage } from "../contexts/LanguageContext";
 
-import img_iwantype from "../assets/images/iwantype_logo_1780927162081.png";
-
 const TelegramAvatar = ({ image, nameAr, nameEn, isAr }: { image?: string; nameAr: string; nameEn: string; isAr: boolean }) => {
   const [hasError, setHasError] = useState(!image);
 
+  useEffect(() => {
+    setHasError(!image);
+  }, [image]);
+
   const getInitials = () => {
     const text = isAr ? nameAr : nameEn;
-    // Clean up any starting non-alphanumeric/non-arabic chars if needed, but simple slice is great
-    const cleanText = text.replace(/^[^a-zA-Z\u0600-\u06FF]+/, "");
-    return cleanText.slice(0, 2);
+    // Clean up parentheses, brackets, special characters
+    const clean = text.replace(/[()\[\]\-+_=?!@#$%^&*]/g, " ").trim();
+    const words = clean.split(/\s+/).filter(Boolean);
+    
+    if (words.length >= 2) {
+      return (words[0].charAt(0) + words[1].charAt(0));
+    } else if (words.length === 1) {
+      return words[0].slice(0, 2);
+    }
+    return "";
   };
 
   return (
-    <div className="relative shrink-0 select-none w-12 h-12 rounded-2xl border border-white/10 bg-gradient-to-br from-cyan-500/10 to-blue-500/5 overflow-hidden flex items-center justify-center group-hover:border-cyan-500/30 transition-all duration-300 shadow-md">
+    <div 
+      className={`relative shrink-0 select-none w-12 h-12 rounded-2xl bg-black overflow-hidden flex items-center justify-center transition-all duration-300 shadow-md ${
+        !image || hasError ? "border border-neutral-800" : ""
+      }`}
+    >
       {!hasError && image ? (
         <img
           src={image}
           alt={isAr ? nameAr : nameEn}
-          className="w-full h-full object-cover transition-opacity duration-300"
+          className="w-full h-full object-cover transition-opacity duration-300 relative z-10"
           referrerPolicy="no-referrer"
           onError={() => setHasError(true)}
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center font-sans text-xs font-bold text-cyan-400 group-hover:text-cyan-300 transition-colors pointer-events-none uppercase">
+        <div 
+          className="absolute inset-0 flex items-center justify-center font-bold text-white/30 group-hover:text-white/60 transition-colors uppercase text-sm select-none"
+          style={{ fontFamily: "'Kufam', sans-serif" }}
+        >
           {getInitials()}
         </div>
       )}
@@ -67,8 +83,9 @@ export const Home = () => {
       nameEn: "AlGharib Fonts Discussions Group",
       link: "https://t.me/ElgharibFonts",
       username: "@ElgharibFonts",
+      image: "/telegram-images/Ahmad gareb group.webp",
       isDesigner: false,
-            tagsAr: ["جروب", "كشف الخطوط بالصور", "مجاني", "عربي"],
+      tagsAr: ["جروب", "كشف الخطوط بالصور", "مجاني", "عربي"],
       tagsEn: ["Group", "Detect Fonts via Images", "Free", "Arabic"],
       supportsImageSearch: true
     },
@@ -77,8 +94,9 @@ export const Home = () => {
       nameEn: "AlGharib Main Fonts",
       link: "https://t.me/ElgharibFont",
       username: "@ElgharibFont",
+      image: "/telegram-images/Ahmed gareb fonts.webp",
       isDesigner: false,
-            tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "Library"]
     },
     {
@@ -86,8 +104,9 @@ export const Home = () => {
       nameEn: "AlGharib Fonts",
       link: "https://t.me/font4u",
       username: "@font4u",
+      image: "/telegram-images/Grib fonts.webp",
       isDesigner: false,
-            tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "Library"]
     },
     {
@@ -95,8 +114,9 @@ export const Home = () => {
       nameEn: "Quranic Fonts Channel",
       link: "https://t.me/quranfont",
       username: "@quranfont",
+      image: "/telegram-images/quran fonts.webp",
       isDesigner: false,
-            tagsAr: ["قناة", "مجاني", "عربي", "إنجليزي", "أيقونات", "قرآني", "مكتبة"],
+      tagsAr: ["قناة", "مجاني", "عربي", "إنجليزي", "أيقونات", "قرآني", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "English", "Icons", "Quranic", "Library"]
     },
     {
@@ -104,8 +124,9 @@ export const Home = () => {
       nameEn: "AlGharib English Fonts",
       link: "https://t.me/ElghribFont",
       username: "@ElghribFont",
+      image: "/telegram-images/Ahmed gareb English fonts.webp",
       isDesigner: false,
-            tagsAr: ["قناة", "مجاني", "إنجليزي", "مكتبة"],
+      tagsAr: ["قناة", "مجاني", "إنجليزي", "مكتبة"],
       tagsEn: ["Channel", "Free", "English", "Library"]
     },
     {
@@ -113,8 +134,9 @@ export const Home = () => {
       nameEn: "AlGharib Icon Fonts Channel",
       link: "https://t.me/ElghribFonts",
       username: "@ElghribFonts",
+      image: "/telegram-images/Ahmad gareb icon fonts.webp",
       isDesigner: false,
-            tagsAr: ["قناة", "مجاني", "عربي", "أيقونات", "مكتبة"],
+      tagsAr: ["قناة", "مجاني", "عربي", "أيقونات", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "Icons", "Library"]
     },
     {
@@ -122,8 +144,9 @@ export const Home = () => {
       nameEn: "Arabic Fonts Library",
       link: "https://t.me/arabicllibrary",
       username: "@arabicllibrary",
+      image: "/telegram-images/Arabic Library of Calligraphy .webp",
       isDesigner: false,
-            tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "Library"]
     },
     {
@@ -131,8 +154,9 @@ export const Home = () => {
       nameEn: "Omar Hassan Type",
       link: "https://t.me/OmarHassanType",
       username: "@OmarHassanType",
+      image: "/telegram-images/Omar Hassan Type.webp",
       isDesigner: true,
-            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     },
     {
@@ -140,9 +164,9 @@ export const Home = () => {
       nameEn: "Iwantype",
       link: "https://t.me/iwantype",
       username: "@iwantype",
-      image: img_iwantype,
+      image: "/telegram-images/Iwantype.webp",
       isDesigner: true,
-            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     },
     {
@@ -150,8 +174,9 @@ export const Home = () => {
       nameEn: "Medad",
       link: "https://t.me/MedadFonts",
       username: "@MedadFonts",
+      image: "/telegram-images/Medad.webp",
       isDesigner: true,
-            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو", "مكتبة"],
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو", "مكتبة"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio", "Library"]
     },
     {
@@ -159,8 +184,9 @@ export const Home = () => {
       nameEn: "TSfonts",
       link: "https://t.me/tsfont",
       username: "@tsfont",
+      image: "/telegram-images/TSfonts.webp",
       isDesigner: true,
-            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     },
     {
@@ -168,8 +194,9 @@ export const Home = () => {
       nameEn: "Mostafa El Abasiry",
       link: "https://t.me/arabictypo",
       username: "@arabictypo",
+      image: "/telegram-images/Mostafa El Abasiry.webp",
       isDesigner: true,
-            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     }
   ];
@@ -563,7 +590,7 @@ export const Home = () => {
                   className="group relative overflow-hidden rounded-[1.5rem] flex flex-col justify-between shadow-[0_4px_30px_rgba(0,0,0,0.4)] transition-all duration-300 hover:translate-y-[-2px] p-5 md:p-6 bg-[#0c0c0c]/80 border border-white/[0.06] hover:border-white/15 hover:bg-[#111111]/90"
                 >
                   {/* Gentle hover accent glow */}
-                  <div className="absolute inset-0 bg-gradient-to-br transition-opacity duration-300 pointer-events-none from-cyan-400/[0.02] via-transparent to-transparent opacity-0 group-hover:opacity-100" />
+                  <div className="absolute inset-0 bg-gradient-to-br transition-opacity duration-300 pointer-events-none from-white/[0.015] via-transparent to-transparent opacity-0 group-hover:opacity-100" />
 
                   <div>
                     {/* Header Row with Logo/Avatar and Username */}
