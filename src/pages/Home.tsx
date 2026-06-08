@@ -4,25 +4,20 @@ import { Upload, Compass, Camera, Focus, Search, ExternalLink, Check, Copy, Fold
 import { motion } from "framer-motion";
 import { useLanguage } from "../contexts/LanguageContext";
 
-// Import images as native ES modules for bulletproof bundling
-import img_elgharibDiscussions from "../assets/telegram-images/elgharib-discussions.webp";
-import img_elgharibMain from "../assets/telegram-images/elgharib-main.webp";
-import img_elgharibFont4u from "../assets/telegram-images/elgharib-font4u.webp";
-import img_quranicFonts from "../assets/telegram-images/quranic-fonts.webp";
-import img_elgharibEnglish from "../assets/telegram-images/elgharib-english.webp";
-import img_elgharibIcons from "../assets/telegram-images/elgharib-icons.webp";
-import img_arabicLibrary from "../assets/telegram-images/arabic-library.webp";
-import img_omarHassan from "../assets/telegram-images/omar-hassan.webp";
-import img_iwantype from "../assets/telegram-images/iwantype.webp";
-import img_medad from "../assets/telegram-images/medad.webp";
-import img_tsfonts from "../assets/telegram-images/tsfonts.webp";
-import img_mostafaElabasiry from "../assets/telegram-images/mostafa-elabasiry.webp";
+import img_iwantype from "../assets/images/iwantype_logo_1780927162081.png";
 
 const TelegramAvatar = ({ image, nameAr, nameEn, isAr }: { image?: string; nameAr: string; nameEn: string; isAr: boolean }) => {
   const [hasError, setHasError] = useState(!image);
 
+  const getInitials = () => {
+    const text = isAr ? nameAr : nameEn;
+    // Clean up any starting non-alphanumeric/non-arabic chars if needed, but simple slice is great
+    const cleanText = text.replace(/^[^a-zA-Z\u0600-\u06FF]+/, "");
+    return cleanText.slice(0, 2);
+  };
+
   return (
-    <div className="relative shrink-0 select-none w-12 h-12 rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden flex items-center justify-center group-hover:border-cyan-500/30 transition-all duration-300 shadow-md">
+    <div className="relative shrink-0 select-none w-12 h-12 rounded-2xl border border-white/10 bg-gradient-to-br from-cyan-500/10 to-blue-500/5 overflow-hidden flex items-center justify-center group-hover:border-cyan-500/30 transition-all duration-300 shadow-md">
       {!hasError && image ? (
         <img
           src={image}
@@ -32,8 +27,8 @@ const TelegramAvatar = ({ image, nameAr, nameEn, isAr }: { image?: string; nameA
           onError={() => setHasError(true)}
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-bold text-white/30 group-hover:text-cyan-400/50 transition-colors pointer-events-none uppercase">
-          {nameEn.slice(0, 2)}
+        <div className="absolute inset-0 flex items-center justify-center font-sans text-xs font-bold text-cyan-400 group-hover:text-cyan-300 transition-colors pointer-events-none uppercase">
+          {getInitials()}
         </div>
       )}
     </div>
@@ -73,8 +68,7 @@ export const Home = () => {
       link: "https://t.me/ElgharibFonts",
       username: "@ElgharibFonts",
       isDesigner: false,
-      image: img_elgharibDiscussions,
-      tagsAr: ["جروب", "كشف الخطوط بالصور", "مجاني", "عربي"],
+            tagsAr: ["جروب", "كشف الخطوط بالصور", "مجاني", "عربي"],
       tagsEn: ["Group", "Detect Fonts via Images", "Free", "Arabic"],
       supportsImageSearch: true
     },
@@ -84,8 +78,7 @@ export const Home = () => {
       link: "https://t.me/ElgharibFont",
       username: "@ElgharibFont",
       isDesigner: false,
-      image: img_elgharibMain,
-      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+            tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "Library"]
     },
     {
@@ -94,8 +87,7 @@ export const Home = () => {
       link: "https://t.me/font4u",
       username: "@font4u",
       isDesigner: false,
-      image: img_elgharibFont4u,
-      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+            tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "Library"]
     },
     {
@@ -104,8 +96,7 @@ export const Home = () => {
       link: "https://t.me/quranfont",
       username: "@quranfont",
       isDesigner: false,
-      image: img_quranicFonts,
-      tagsAr: ["قناة", "مجاني", "عربي", "إنجليزي", "أيقونات", "قرآني", "مكتبة"],
+            tagsAr: ["قناة", "مجاني", "عربي", "إنجليزي", "أيقونات", "قرآني", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "English", "Icons", "Quranic", "Library"]
     },
     {
@@ -114,8 +105,7 @@ export const Home = () => {
       link: "https://t.me/ElghribFont",
       username: "@ElghribFont",
       isDesigner: false,
-      image: img_elgharibEnglish,
-      tagsAr: ["قناة", "مجاني", "إنجليزي", "مكتبة"],
+            tagsAr: ["قناة", "مجاني", "إنجليزي", "مكتبة"],
       tagsEn: ["Channel", "Free", "English", "Library"]
     },
     {
@@ -124,8 +114,7 @@ export const Home = () => {
       link: "https://t.me/ElghribFonts",
       username: "@ElghribFonts",
       isDesigner: false,
-      image: img_elgharibIcons,
-      tagsAr: ["قناة", "مجاني", "عربي", "أيقونات", "مكتبة"],
+            tagsAr: ["قناة", "مجاني", "عربي", "أيقونات", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "Icons", "Library"]
     },
     {
@@ -134,8 +123,7 @@ export const Home = () => {
       link: "https://t.me/arabicllibrary",
       username: "@arabicllibrary",
       isDesigner: false,
-      image: img_arabicLibrary,
-      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
+            tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "Library"]
     },
     {
@@ -144,8 +132,7 @@ export const Home = () => {
       link: "https://t.me/OmarHassanType",
       username: "@OmarHassanType",
       isDesigner: true,
-      image: img_omarHassan,
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     },
     {
@@ -153,9 +140,9 @@ export const Home = () => {
       nameEn: "Iwantype",
       link: "https://t.me/iwantype",
       username: "@iwantype",
-      isDesigner: true,
       image: img_iwantype,
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+      isDesigner: true,
+            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     },
     {
@@ -164,8 +151,7 @@ export const Home = () => {
       link: "https://t.me/MedadFonts",
       username: "@MedadFonts",
       isDesigner: true,
-      image: img_medad,
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو", "مكتبة"],
+            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو", "مكتبة"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio", "Library"]
     },
     {
@@ -174,8 +160,7 @@ export const Home = () => {
       link: "https://t.me/tsfont",
       username: "@tsfont",
       isDesigner: true,
-      image: img_tsfonts,
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     },
     {
@@ -184,8 +169,7 @@ export const Home = () => {
       link: "https://t.me/arabictypo",
       username: "@arabictypo",
       isDesigner: true,
-      image: img_mostafaElabasiry,
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
+            tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
       tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     }
   ];
@@ -546,6 +530,7 @@ export const Home = () => {
              <h2 className="text-xl md:text-3xl font-bold text-white tracking-tight">
                {language === 'ar' ? 'دليل قنوات ومجموعات تليجرام' : 'Telegram Channels & Groups Directory'}
              </h2>
+              
              <p className="text-white opacity-50 text-xs md:text-sm mt-1 max-w-xl font-light">
                {language === 'ar' 
                  ? 'تصفح وتابع أفضل قنوات ومجموعات تليجرام المتخصصة بنشر الخطوط العربية وملحقات التصميم.'
@@ -584,7 +569,7 @@ export const Home = () => {
                     {/* Header Row with Logo/Avatar and Username */}
                     <div className="flex items-center gap-3.5 mb-3.5">
                       <TelegramAvatar 
-                        image={entity.image} 
+                        image={entity.image}
                         nameAr={entity.nameAr} 
                         nameEn={entity.nameEn} 
                         isAr={isAr} 
@@ -675,9 +660,9 @@ export const Home = () => {
              </div>
            )}
          </div>
-      </div>
+       </div>
 
+     
     </div>
   );
 };
-
