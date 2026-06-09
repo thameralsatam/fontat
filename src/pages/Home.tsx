@@ -100,16 +100,6 @@ export const Home = () => {
       tagsEn: ["Channel", "Free", "Arabic", "Library"]
     },
     {
-      nameAr: "خطوط الغريب",
-      nameEn: "AlGharib Fonts",
-      link: "https://t.me/font4u",
-      username: "@font4u",
-      image: "/telegram-images/Grib fonts.webp",
-      isDesigner: false,
-      tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
-      tagsEn: ["Channel", "Free", "Arabic", "Library"]
-    },
-    {
       nameAr: "خطوط قران",
       nameEn: "Quranic Fonts Channel",
       link: "https://t.me/quranfont",
@@ -148,16 +138,6 @@ export const Home = () => {
       isDesigner: false,
       tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"],
       tagsEn: ["Channel", "Free", "Arabic", "Library"]
-    },
-    {
-      nameAr: "Omar Hassan Type",
-      nameEn: "Omar Hassan Type",
-      link: "https://t.me/OmarHassanType",
-      username: "@OmarHassanType",
-      image: "/telegram-images/Omar Hassan Type.webp",
-      isDesigner: true,
-      tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"],
-      tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"]
     },
     {
       nameAr: "Iwantype",
