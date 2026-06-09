@@ -41,8 +41,6 @@ interface GlobalContextType {
   setSearchQuery: (query: string) => void;
   activeTab: 'all' | 'public' | 'private';
   setActiveTab: (tab: 'all' | 'public' | 'private') => void;
-  
-  // New state for Layout/BottomNav integration
   activeGroup: Group | null;
   setActiveGroup: (group: Group | null) => void;
   onRenameGroup: (group: Group) => void;
@@ -58,14 +56,19 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'public' | 'private'>('all');
-  
-  // New state
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
   const [onRenameGroup, setOnRenameGroup] = useState<(group: Group) => void>(() => () => {});
   const [onDeleteGroup, setOnDeleteGroup] = useState<(group: Group) => void>(() => () => {});
 
   const processingRef = useRef(false);
+  // ✅ FIX: useRef بدل dependency على uploadQueue في addToUploadQueue
+  const uploadQueueRef = useRef<UploadTask[]>([]);
   const { t } = useLanguage();
+
+  // نحدّث الـ ref كل ما يتغير الـ state
+  useEffect(() => {
+    uploadQueueRef.current = uploadQueue;
+  }, [uploadQueue]);
 
   // --- Notifications Logic ---
   const addNotification = useCallback((type: 'upload' | 'warning' | 'info' | 'success' | 'error', message: string, details?: string) => {
@@ -73,16 +76,9 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
     setNotifications(prev => {
       const isDuplicate = prev.some(n => n.message === message && n.type === type && Date.now() - n.timestamp < 2000);
       if (isDuplicate) return prev;
-      return [...prev, {
-        id,
-        type,
-        message,
-        details,
-        isExpanded: false,
-        timestamp: Date.now()
-      }];
+      return [...prev, { id, type, message, details, isExpanded: false, timestamp: Date.now() }];
     });
-    
+
     if (type !== 'upload') {
       const timeout = type === 'warning' ? 20000 : 15000;
       setTimeout(() => {
@@ -92,9 +88,7 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const toggleNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.map(n => 
-      n.id === id ? { ...n, isExpanded: !n.isExpanded } : n
-    ));
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isExpanded: !n.isExpanded } : n));
   }, []);
 
   const removeNotification = useCallback((id: string) => {
@@ -103,16 +97,10 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
 
   // --- Offline Detection ---
   useEffect(() => {
-    const handleOnline = () => {
-      addNotification('success', t('error.connection_restored'), t('error.connection_restored_desc'));
-    };
-    const handleOffline = () => {
-      addNotification('error', t('error.no_connection'), t('error.no_connection_desc'));
-    };
-
+    const handleOnline = () => addNotification('success', t('error.connection_restored'), t('error.connection_restored_desc'));
+    const handleOffline = () => addNotification('error', t('error.no_connection'), t('error.no_connection_desc'));
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -120,30 +108,26 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   }, [addNotification]);
 
   // --- Upload Logic ---
+  // ✅ FIX: حذف uploadQueue من الـ dependencies، نستخدم uploadQueueRef بدلها
   const addToUploadQueue = useCallback(async (files: File[], groupId: string | null, parentFontId?: string) => {
-    // 1. Handle Limit (Max 10)
     let filesToProcess = files;
     if (files.length > 10) {
       addNotification('error', t('common.error') || 'Error');
       filesToProcess = files.slice(0, 10);
     }
 
-    // 2. Check for duplicates (DB + Current Queue) BEFORE adding to state
     try {
-      // Check against DB
       let dbDuplicateNames = new Set<string>();
       if (parentFontId) {
-        // Check if this font name already exists as a weight for this parent
         const weights = await getFontWeights(parentFontId);
         dbDuplicateNames = new Set(weights.map(w => w.child_font?.name || ''));
       } else {
-        // Check against group fonts
         const groupFonts = await getGroupFonts(groupId);
         dbDuplicateNames = new Set(groupFonts.map(f => f.name));
       }
 
-      // Check against Current Queue (Pending/Uploading)
-      const queueDuplicateNames = new Set(uploadQueue.map(t => t.file.name));
+      // ✅ نقرأ من الـ ref بدل الـ state مباشرة
+      const queueDuplicateNames = new Set(uploadQueueRef.current.map(t => t.file.name));
 
       const uniqueFiles: File[] = [];
       const duplicateNames: string[] = [];
@@ -156,21 +140,17 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
         }
       });
 
-      // 3. Notify about duplicates
       if (duplicateNames.length > 0) {
         const title = t('font.duplicate_title');
         let details = '';
-
         if (duplicateNames.length <= 5) {
           details = duplicateNames.map(name => `• ${name}`).join('\n');
         } else {
-          details = `• ${duplicateNames.slice(0, 5).map(name => name).join('\n')}\n...and ${duplicateNames.length - 5} more`;
+          details = `• ${duplicateNames.slice(0, 5).join('\n')}\n...and ${duplicateNames.length - 5} more`;
         }
-
         addNotification('error', title, details);
       }
 
-      // 4. Add ONLY unique files to queue
       if (uniqueFiles.length > 0) {
         const newTasks: UploadTask[] = uniqueFiles.map((file, index) => ({
           id: Math.random().toString(36).substr(2, 9),
@@ -181,15 +161,12 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
           parentFontId,
           status: 'pending',
           progress: 0,
-          timestamp: Date.now() + index // Index 0 gets smaller timestamp to appear FIRST (above index 1)
+          timestamp: Date.now() + index
         }));
-
         setUploadQueue(prev => [...prev, ...newTasks]);
       }
-
     } catch (error) {
       console.error('Error checking duplicates:', error);
-      // Fallback: If check fails, add all (safety net, though duplicates will fail in processNext)
       const newTasks: UploadTask[] = filesToProcess.map((file, index) => ({
         id: Math.random().toString(36).substr(2, 9),
         tempId: `temp-${Date.now()}-${index}`,
@@ -203,13 +180,12 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
       }));
       setUploadQueue(prev => [...prev, ...newTasks]);
     }
-  }, [uploadQueue, addNotification, t]);
+  }, [addNotification, t]); // ✅ حذف uploadQueue من هنا
 
   // Process Queue Effect
   useEffect(() => {
     const processNext = async () => {
       if (processingRef.current) return;
-
       const nextTask = uploadQueue.find(t => t.status === 'pending');
       if (!nextTask) return;
 
@@ -217,44 +193,28 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
 
       const attemptUpload = async (retries: number): Promise<any> => {
         try {
-          // Mark as uploading
           setUploadQueue(prev => prev.map(t => t.id === nextTask.id ? { ...t, status: 'uploading' } : t));
-
-          // Simulate delay for UI smoothness
           await new Promise(resolve => setTimeout(resolve, 500));
 
           let font;
           if (nextTask.parentFontId) {
-            // It's a weight upload
             font = await uploadFontWeight(nextTask.file, nextTask.parentFontId, nextTask.groupId);
           } else {
-            // It's a normal font upload
             const res = await uploadFontToGroup(nextTask.file, nextTask.groupId);
             font = res.font;
           }
 
-          // Mark as success
-          setUploadQueue(prev => prev.map(t => 
-            t.id === nextTask.id ? { 
-              ...t, 
-              status: 'success', 
-              fontId: font.id, 
-              downloadUrl: font.download_url, 
-              progress: 100 
-            } : t
+          setUploadQueue(prev => prev.map(t =>
+            t.id === nextTask.id ? { ...t, status: 'success', fontId: font.id, downloadUrl: font.download_url, progress: 100 } : t
           ));
-
         } catch (error: any) {
           if (retries > 0 && !error.message?.includes('already in the group')) {
-            console.warn(`Upload failed, retrying... (${retries} left)`, error);
-            await new Promise(res => setTimeout(res, 1000)); // wait before retry
+            await new Promise(res => setTimeout(res, 1000));
             return attemptUpload(retries - 1);
           } else {
-            console.error(`Upload failed for ${nextTask.file.name}`, error);
-            setUploadQueue(prev => prev.map(t => 
+            setUploadQueue(prev => prev.map(t =>
               t.id === nextTask.id ? { ...t, status: 'error', error: error.message || 'Upload failed' } : t
             ));
-            
             if (error.message?.includes('already in the group')) {
               addNotification('error', t('font.duplicate_title') || 'Duplicate font', error.message);
             } else {
@@ -264,7 +224,7 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
         }
       };
 
-      await attemptUpload(2); // max 2 retries
+      await attemptUpload(2);
       processingRef.current = false;
     };
 
@@ -272,7 +232,7 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   }, [uploadQueue, addNotification, t]);
 
   const retryUpload = useCallback((taskId: string) => {
-    setUploadQueue(prev => prev.map(task => 
+    setUploadQueue(prev => prev.map(task =>
       task.id === taskId ? { ...task, status: 'pending', error: undefined } : task
     ));
   }, []);
@@ -285,47 +245,29 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
     setUploadQueue(prev => prev.filter(t => t.fontId !== fontId));
   }, []);
 
-  // Completion Detector
   const wasUploadingRef = useRef(false);
   useEffect(() => {
     const isUploading = uploadQueue.some(t => t.status === 'pending' || t.status === 'uploading');
-    
-    if (wasUploadingRef.current && !isUploading) {
-      // Just finished a batch
-      const successCount = uploadQueue.filter(t => t.status === 'success').length;
-      if (successCount > 0) {
-         // Deliberately do not clear successful tasks so they retain their local URLs and UI state
-         // Users requested replacement only happens on refresh/navigation.
-      }
-    }
-    
     wasUploadingRef.current = isUploading;
   }, [uploadQueue, t]);
 
   // Sync Upload Notification
   useEffect(() => {
     const uploadingCount = uploadQueue.filter(t => t.status === 'uploading' || t.status === 'pending').length;
-    
+
     setNotifications(prev => {
       const uploadNotif = prev.find(n => n.type === 'upload');
-      
       if (uploadingCount > 0) {
-        const msg = t('font.uploading_progress').replace('{current}', (uploadQueue.length - uploadingCount + 1).toString()).replace('{total}', uploadQueue.length.toString());
+        const msg = t('font.uploading_progress')
+          .replace('{current}', (uploadQueue.length - uploadingCount + 1).toString())
+          .replace('{total}', uploadQueue.length.toString());
         if (uploadNotif) {
           return prev.map(n => n.id === uploadNotif.id ? { ...n, message: msg } : n);
         } else {
-          return [...prev, {
-            id: 'global-upload-progress',
-            type: 'upload',
-            message: msg,
-            isExpanded: false,
-            timestamp: Date.now()
-          }];
+          return [...prev, { id: 'global-upload-progress', type: 'upload', message: msg, isExpanded: false, timestamp: Date.now() }];
         }
       } else {
-        if (uploadNotif) {
-          return prev.filter(n => n.type !== 'upload');
-        }
+        if (uploadNotif) return prev.filter(n => n.type !== 'upload');
         return prev;
       }
     });
