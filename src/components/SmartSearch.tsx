@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -11,7 +11,7 @@ export interface SearchResult {
   metadata?: any;
   download_url?: string;
   total_count: number;
-  group_id?: string; // fallback if available
+  group_id?: string;
   tags?: string[];
 }
 
@@ -29,6 +29,9 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loadedFontIds, setLoadedFontIds] = useState<Set<string>>(new Set());
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // ✅ FIX: Map بدل array — نتتبع كل FontFace بـ id لمنع التراكم
+  const loadedFontsMapRef = useRef<Map<string, FontFace>>(new Map());
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -74,81 +77,97 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
     return () => clearTimeout(timer);
   }, [query, mode]);
 
-  // Handle dynamic font loading for previews
+  // ✅ FIX: نستخدم Map لتتبع الخطوط — نحمّل فقط اللي مو محمّل، ونمسح اللي مو مطلوب
   useEffect(() => {
-    let active = true;
-    const loadedFonts: FontFace[] = [];
+    if (results.length === 0) {
+      // مسح كل الخطوط المحمّلة عند إخلاء النتائج
+      loadedFontsMapRef.current.forEach(font => {
+        try { document.fonts.delete(font); } catch (_) {}
+      });
+      loadedFontsMapRef.current.clear();
+      setLoadedFontIds(new Set());
+      return;
+    }
+
+    let cancelled = false;
 
     const loadFonts = async () => {
-      const ids = new Set<string>();
-      
+      const currentIds = new Set(results.map(r => r.id).filter(Boolean));
+      const newIds = new Set<string>();
+
+      // مسح الخطوط اللي ما عادت في النتائج
+      loadedFontsMapRef.current.forEach((font, id) => {
+        if (!currentIds.has(id)) {
+          try { document.fonts.delete(font); } catch (_) {}
+          loadedFontsMapRef.current.delete(id);
+        }
+      });
+
       for (const result of results) {
-        if (!active) break;
-        if (result.download_url && result.id) {
+        if (cancelled) break;
+        if (!result.download_url || !result.id) continue;
+        // تخطي اللي محمّل مسبقاً
+        if (loadedFontsMapRef.current.has(result.id)) {
+          newIds.add(result.id);
+          continue;
+        }
+
+        try {
           const fontName = `search-preview-${result.id}`;
           const font = new FontFace(fontName, `url(${result.download_url})`);
-          try {
-            await font.load();
-            if (active) {
-              document.fonts.add(font);
-              loadedFonts.push(font);
-              ids.add(result.id);
-            }
-          } catch (err) {
-            console.error('Failed to load font demo for', result.name, err);
-          }
+          await font.load();
+          if (cancelled) break;
+          document.fonts.add(font);
+          loadedFontsMapRef.current.set(result.id, font);
+          newIds.add(result.id);
+        } catch (_) {
+          // فشل تحميل الخط — نتجاهل بصمت
         }
       }
 
-      if (active && ids.size > 0) {
-        setLoadedFontIds(ids);
+      if (!cancelled) {
+        setLoadedFontIds(new Set(newIds));
       }
     };
 
-    if (results.length > 0) {
-      loadFonts();
-    } else {
-      setLoadedFontIds(new Set());
-    }
+    loadFonts();
 
     return () => {
-      active = false;
-      loadedFonts.forEach(font => {
-        try {
-          document.fonts.delete(font);
-        } catch (e) {
-          // Ignore delete errors
-        }
-      });
+      cancelled = true;
     };
   }, [results]);
 
-  const handleSelect = (result: SearchResult | { type: 'tag', tag: string }) => {
+  // ✅ Cleanup عند unmount — مسح كل الخطوط
+  useEffect(() => {
+    return () => {
+      loadedFontsMapRef.current.forEach(font => {
+        try { document.fonts.delete(font); } catch (_) {}
+      });
+      loadedFontsMapRef.current.clear();
+    };
+  }, []);
+
+  const handleSelect = useCallback((result: SearchResult | { type: 'tag', tag: string }) => {
     setIsOpen(false);
     setQuery('');
     onSelect(result);
-  };
+  }, [onSelect]);
 
   const totalCount = results.length > 0 ? Number(results[0].total_count) : 0;
-  const additionalCount = Array.isArray(results) ? (totalCount > 5 ? totalCount - results.length : 0) : 0;
+  const additionalCount = totalCount > 5 ? totalCount - results.length : 0;
 
   const isHashtagSearch = query.trim().startsWith('#');
   const hashtagSearchTerm = query.trim().substring(1).trim().toLowerCase();
 
-  // Extract unique tags from results using simple loops
   const uniqueTags = new Set<string>();
-  if (mode === 'public') {
+  if (mode === 'public' && isHashtagSearch) {
     results.forEach(result => {
       if (Array.isArray(result.tags)) {
         result.tags.forEach(tag => {
           if (tag && typeof tag === 'string') {
             const cleanedTag = tag.trim();
-            if (isHashtagSearch) {
-              if (!hashtagSearchTerm || cleanedTag.toLowerCase().includes(hashtagSearchTerm)) {
-                uniqueTags.add(cleanedTag);
-              }
-            } else {
-              // Normally we do not mix hashtags
+            if (!hashtagSearchTerm || cleanedTag.toLowerCase().includes(hashtagSearchTerm)) {
+              uniqueTags.add(cleanedTag);
             }
           }
         });
@@ -156,7 +175,6 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
     });
   }
   const tagsList = Array.from(uniqueTags).slice(0, 15);
-
 
   return (
     <div ref={wrapperRef} className="relative w-full mx-auto z-50" dir={dir}>
@@ -176,8 +194,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
             <Search className="w-5 h-5 text-white opacity-40" />
           )}
         </div>
-        
-        {/* Clear Button */}
+
         {query.length > 0 && (
           <button
             onClick={() => {
@@ -210,9 +227,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="text-cyan-400 font-mono text-lg font-light">#</span>
-                        <span className="text-white text-sm font-light group-hover:text-cyan-400 transition-colors">
-                          {tag}
-                        </span>
+                        <span className="text-white text-sm font-light group-hover:text-cyan-400 transition-colors">{tag}</span>
                       </div>
                       <span className="text-xs text-white/30 group-hover:text-white/50 transition-colors font-light">
                         {dir === 'rtl' ? 'تصفية الخطوط العامة' : 'Filter Public Fonts'}
@@ -254,9 +269,9 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                             </span>
                           )}
                         </div>
-                        <span 
-                          className="text-white text-[14px] overflow-hidden text-ellipsis whitespace-nowrap w-full text-right transition-opacity duration-300" 
-                          style={{ 
+                        <span
+                          className="text-white text-[14px] overflow-hidden text-ellipsis whitespace-nowrap w-full text-right transition-opacity duration-300"
+                          style={{
                             fontFamily: loadedFontIds.has(result.id) ? `"search-preview-${result.id}", sans-serif` : 'sans-serif',
                             fontWeight: 'normal',
                             opacity: loadedFontIds.has(result.id) ? 1 : 0.3
@@ -269,7 +284,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                   </div>
                   {additionalCount > 0 && (
                     <div className="px-5 py-2.5 text-center text-white/40 text-[11px] font-light border-t border-white/[0.03] shrink-0 bg-white/[0.01]">
-                       + {additionalCount} {dir === 'rtl' ? 'نتائج إضافية' : 'additional results'}
+                      + {additionalCount} {dir === 'rtl' ? 'نتائج إضافية' : 'additional results'}
                     </div>
                   )}
                 </>

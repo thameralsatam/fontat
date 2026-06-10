@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Bell, Info, ArrowUpCircle, AlertTriangle, Gift, Trash2 } from 'lucide-react';
 import { useAppNotifications } from '../../contexts/NotificationContext';
@@ -21,35 +21,36 @@ const NotificationIcon = ({ type }: { type: string }) => {
   }
 };
 
-const formatTimeAgo = (dateStr: string, t: any) => {
+// ✅ FIX: دالة خارج الـ component — لا تتعاد إنشاؤها
+function computeTimeAgo(dateStr: string, t: (key: string) => string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) return `${diffInSeconds} ${t('time.seconds')}`;
-  
+
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes} ${t('time.minutes')}`;
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours} ${t('time.hours')}`;
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 7) {
-      return date.toLocaleDateString(document.documentElement.lang, { weekday: 'long' });
+    return date.toLocaleDateString(document.documentElement.lang, { weekday: 'long' });
   }
-  
-  return date.toLocaleDateString(document.documentElement.lang);
-};
 
-const SwipeableNotification = ({ 
-  n, 
-  onOpen, 
-  t 
-}: { 
-  n: Notification, 
-  onOpen: () => void, 
-  t: any 
+  return date.toLocaleDateString(document.documentElement.lang);
+}
+
+const SwipeableNotification = ({
+  n,
+  onOpen,
+  t
+}: {
+  n: Notification,
+  onOpen: () => void,
+  t: (key: string) => string
 }) => {
   const { deleteNotification } = useAppNotifications();
   const { dir } = useLanguage();
@@ -58,11 +59,14 @@ const SwipeableNotification = ({
   const [isRevealed, setIsRevealed] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // ✅ FIX: useMemo — تحسب الوقت مرة وتحفظه، مو في كل render
+  const timeAgo = useMemo(() => computeTimeAgo(n.created_at, t), [n.created_at, t]);
+
   const handleDragEnd = async (_: any, info: any) => {
     const isRtl = dir === 'rtl';
     const offset = info.offset.x;
     const velocity = info.velocity.x;
-    const threshold = 35; // easily triggered
+    const threshold = 35;
 
     if (isRtl) {
       if (offset > threshold || velocity > 200) {
@@ -87,9 +91,7 @@ const SwipeableNotification = ({
 
   const handleDelete = () => {
     setDeleted(true);
-    setTimeout(() => {
-      deleteNotification(n.id);
-    }, 300);
+    setTimeout(() => deleteNotification(n.id), 300);
   };
 
   const handleItemClick = (e: React.MouseEvent) => {
@@ -103,16 +105,13 @@ const SwipeableNotification = ({
     }
   };
 
-  if (deleted) {
-    return null;
-  }
+  if (deleted) return null;
 
   const isRtl = dir === 'rtl';
 
   return (
     <div className="relative overflow-hidden border-b border-white/5 last:border-0 hover:bg-white/5 group bg-black/40">
-      {/* Delete Confirmation Button behind the item */}
-      <div 
+      <div
         className={`absolute inset-y-0 ${isRtl ? 'left-0' : 'right-0'} w-[74px] flex items-center justify-center transition-colors duration-300 z-0 ${confirmDelete ? 'bg-red-700/100' : 'bg-red-600/90 hover:bg-red-600'}`}
       >
         <button
@@ -154,9 +153,8 @@ const SwipeableNotification = ({
           <p className="text-xs text-white opacity-50 mt-1 line-clamp-2 leading-relaxed">
             {n.slides[0]?.description || ''}
           </p>
-          <p className="text-[10px] text-white opacity-30 mt-2">
-            {formatTimeAgo(n.created_at, t)}
-          </p>
+          {/* ✅ يستخدم timeAgo المحسوبة بـ useMemo */}
+          <p className="text-[10px] text-white opacity-30 mt-2">{timeAgo}</p>
         </div>
         {!n.is_read && (
           <div className="shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-1.5 pointer-events-none" />
@@ -176,7 +174,7 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        dropdownRef.current && 
+        dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node) &&
         btnRef.current &&
         !btnRef.current.contains(event.target as Node)
@@ -193,15 +191,15 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
       <button
         ref={btnRef}
         onClick={() => {
-            setIsOpen(!isOpen);
-            if (!isOpen && unreadCount > 0) markAllAsRead();
+          setIsOpen(!isOpen);
+          if (!isOpen && unreadCount > 0) markAllAsRead();
         }}
         className="relative w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white hover:text-black hover:border-transparent transition-all duration-300 group focus:outline-none bg-black/50 backdrop-blur-sm"
       >
         <Bell className="w-4 h-4 stroke-[1.5] transition-transform duration-300 group-hover:scale-110" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 border border-[#090909] rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm">
-             {unreadCount > 9 ? '+9' : unreadCount}
+            {unreadCount > 9 ? '+9' : unreadCount}
           </span>
         )}
       </button>
@@ -219,11 +217,14 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
             <div className="flex items-center justify-between p-4 border-b border-white/10">
               <h3 className="font-medium text-white">{t('notifications.title') || 'الإشعارات'}</h3>
               <div className="flex gap-2">
-                  {isAdmin && (
-                    <button onClick={() => { setIsOpen(false); setTimeout(() => onOpenAdminPanel?.(), 100); }} className="text-xs px-2 py-1 bg-white/10 rounded hover:bg-white/20 transition-colors">
-                      {t('notifications.create') || 'جديد'}
-                    </button>
-                  )}
+                {isAdmin && (
+                  <button
+                    onClick={() => { setIsOpen(false); setTimeout(() => onOpenAdminPanel?.(), 100); }}
+                    className="text-xs px-2 py-1 bg-white/10 rounded hover:bg-white/20 transition-colors"
+                  >
+                    {t('notifications.create') || 'جديد'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -235,12 +236,12 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
               ) : (
                 <div className="flex flex-col">
                   {notifications.map((n) => (
-                      <SwipeableNotification 
-                         key={n.id} 
-                         n={n} 
-                         onOpen={() => { setIsOpen(false); onOpenNotification(n); }} 
-                         t={t}
-                      />
+                    <SwipeableNotification
+                      key={n.id}
+                      n={n}
+                      onOpen={() => { setIsOpen(false); onOpenNotification(n); }}
+                      t={t}
+                    />
                   ))}
                 </div>
               )}
