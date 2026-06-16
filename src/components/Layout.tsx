@@ -181,7 +181,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex-1 flex items-center justify-start gap-4 lg:gap-6 pointer-events-none">
             {/* Desktop Logo */}
             <div className="hidden lg:block">
-              <Link to="/" className="inline-block relative z-[10] pointer-events-auto mt-2">
+              <Link to="/" className="inline-block relative z-[10] pointer-events-auto">
                 <div className="w-[130px] h-fit flex items-center justify-center">
                   <Logo className="w-full h-auto text-white" />
                 </div>
@@ -193,7 +193,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               <div className="pointer-events-auto">
                 <Link 
                   to="/account" 
-                  className="flex items-center justify-center sm:px-4 sm:py-2 gap-2 text-xs font-medium text-white hover:bg-white hover:text-black transition-all w-9 h-9 sm:w-auto sm:h-auto rounded-full bg-black/50 sm:bg-black border border-white/10 sm:border-white/20 hover:border-white"
+                  className="flex items-center justify-center sm:px-4 sm:py-2 gap-2 text-xs font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-text-primary)] hover:text-[var(--color-bg-base)] transition-all w-9 h-9 sm:w-auto sm:h-auto rounded-full bg-[var(--color-bg-elevated-1)] border border-[var(--color-border)] hover:border-transparent"
                 >
                   <LogIn className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                   <span className="hidden sm:block">{dir === 'rtl' ? 'دخول' : 'Login'}</span>
@@ -206,7 +206,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center justify-center pointer-events-none lg:pointer-events-auto shrink-0 px-4">
             {/* Mobile Logo */}
             <div className="lg:hidden">
-              <Link to="/" className="inline-block relative z-[10] pointer-events-auto mt-2">
+              <Link to="/" className="inline-block relative z-[10] pointer-events-auto">
                 <div className="w-[130px] h-fit flex items-center justify-center">
                   <Logo className="w-full h-auto text-white" />
                 </div>
@@ -242,7 +242,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </main>
 
       {/* Footer */}
-      <footer className="pt-8 pb-32 mt-auto relative overflow-hidden bg-black/40 border-t border-white/5">
+      <footer className="pt-8 pb-32 mt-auto relative overflow-hidden bg-[var(--color-bg-base)] border-t border-[var(--color-border)]">
         <div className="mx-auto px-6 w-full max-w-4xl flex flex-col items-center text-center">
 
           <p className="text-white opacity-40 text-sm font-light leading-relaxed max-w-xl mb-8 mt-2">

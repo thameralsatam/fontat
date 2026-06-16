@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Logo } from './Logo';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -8,24 +9,34 @@ interface SplashScreenProps {
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const { dir } = useLanguage();
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    
     // Reveal is 1.7s. Wait after is 0.3s. delay is 0.2s
     // Trigger the slide up and shrink animation at 2.2s
     const outTimer = setTimeout(() => {
       setIsAnimatingOut(true);
     }, 2200);
 
-    // Animation takes 1.0s. Complete at 3.2s
-    const completeTimer = setTimeout(() => {
-      onComplete();
-    }, 3200);
-
     return () => {
+      window.removeEventListener('resize', handleResize);
       clearTimeout(outTimer);
-      clearTimeout(completeTimer);
     };
-  }, [onComplete]);
+  }, []);
+
+  const isLargeScreen = windowWidth >= 1024; // lg breakpoint
+
+  // Horizontal transition value to match the header logo position exactly on desktop
+  // Left Container padding px-6 = 24px, logo width = 130px. Logo center = 24 + 65 = 89px.
+  // In LTR, logo shifts to the left, (89 - windowWidth/2).
+  // In RTL, logo shifts to the right, (windowWidth/2 - 89).
+  const finalX = isLargeScreen 
+    ? (dir === 'rtl' ? (windowWidth / 2 - 89) : -(windowWidth / 2 - 89)) 
+    : 0;
 
   return (
     <motion.div 
@@ -34,11 +45,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       animate={isAnimatingOut ? { height: 96 } : { height: "100vh" }}
       exit={{ opacity: 0 }}
       transition={{ duration: 1.0, ease: [0.76, 0, 0.24, 1] }}
+      onAnimationComplete={() => {
+        if (isAnimatingOut) {
+          onComplete();
+        }
+      }}
     >
       <motion.div 
         className="relative flex items-center justify-center"
-        initial={{ width: 180, marginTop: 0 }}
-        animate={isAnimatingOut ? { width: 130, marginTop: 8 } : { width: 180, marginTop: 0 }}
+        initial={{ width: 180, marginTop: 0, x: 0, y: 0 }}
+        animate={isAnimatingOut ? { width: 130, marginTop: 0, x: finalX, y: -4 } : { width: 180, marginTop: 0, x: 0, y: 0 }}
         transition={{ duration: 1.0, ease: [0.76, 0, 0.24, 1] }}
       >
         {/* Logo under the cover */}

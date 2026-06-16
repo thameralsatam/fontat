@@ -131,7 +131,7 @@ import { useState, useEffect, useMemo } from "react";
 
  return ( 
  <div 
- className={`relative shrink-0 select-none w-12 h-12 rounded-2xl bg-black overflow-hidden flex items-center justify-center transition-all duration-300 shadow-md ${ 
+ className={`relative shrink-0 select-none w-12 h-12 rounded-2xl bg-[var(--color-bg-base)] overflow-hidden flex items-center justify-center transition-all duration-300 shadow-none ${ 
  !image || hasError ? "border border-neutral-800" : "" 
  }`} 
  > 
@@ -328,7 +328,7 @@ import { useState, useEffect, useMemo } from "react";
  whileInView={{ opacity: 1, y: 0 }} 
  viewport={{ once: true, margin: "-50px" }} 
  transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} 
- className="group relative overflow-hidden rounded-3xl bg-[#080808] border border-white/5 p-6 md:p-10 flex flex-col justify-between min-h-[350px] md:min-h-[400px] shadow-2xl" 
+ className="group relative overflow-hidden rounded-3xl bg-[var(--color-bg-elevated-1)] border border-[var(--color-border-subtle)] p-6 md:p-10 flex flex-col justify-between min-h-[350px] md:min-h-[400px] shadow-none" 
  > 
  <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" /> 
  <div className="relative z-10"> 
@@ -344,7 +344,7 @@ import { useState, useEffect, useMemo } from "react";
  <strong className="font-medium text-white opacity-70">{t("home.feature1_desc3")}</strong>. 
  </p> 
  </div> 
- <div className="relative z-10 mt-10 w-full h-32 md:h-40 border border-white/5 rounded-2xl bg-black/50 overflow-hidden flex flex-col p-4 group-hover:border-white/10 transition-all duration-500"> 
+ <div className="relative z-10 mt-10 w-full h-32 md:h-40 border border-[var(--color-border)] rounded-2xl bg-[var(--color-bg-elevated-2)] overflow-hidden flex flex-col p-4 transition-all duration-500"> 
  <div className="flex items-center gap-4 w-full opacity-40 group-hover:opacity-100 transition-opacity duration-500"> 
  <div className="flex-1 flex flex-col gap-2"> 
  <div className="w-full flex items-center justify-between"> 
@@ -464,7 +464,7 @@ import { useState, useEffect, useMemo } from "react";
  className="w-full max-w-3xl xl:max-w-4xl mx-auto mt-6 md:mt-10 z-20 relative pointer-events-auto" 
  dir={dir} 
  > 
- <div className="relative group overflow-hidden rounded-3xl bg-[#080808] border border-white/5 shadow-2xl p-5 md:p-6 lg:p-8"> 
+ <div className="relative group overflow-hidden rounded-3xl bg-[var(--color-bg-elevated-1)] border border-[var(--color-border)] shadow-none p-5 md:p-6 lg:p-8"> 
  <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/5 via-transparent to-blue-600/5 opacity-60 group-hover:opacity-100 transition-opacity duration-700" /> 
  <div className="flex flex-col md:flex-row items-center justify-between relative z-10 w-full transition-all gap-6"> 
  <div className="flex flex-col md:flex-row items-start md:items-center gap-5 w-full"> 

@@ -253,7 +253,7 @@ export const Account = () => {
               {/* Minimalist Log Out Button */}
               <button 
                  onClick={() => setIsLogoutModalOpen(true)}
-                 className="w-full p-4 bg-[#0a0a0a]/85 border border-white/5 rounded-3xl text-sm font-medium text-red-400/80 hover:text-red-300 hover:bg-red-500/[0.03] active:bg-red-500/[0.01] transition-all flex items-center justify-center gap-2"
+                 className="w-full p-4 bg-[var(--color-bg-elevated-1)] border border-[var(--color-border-subtle)] rounded-3xl text-sm font-medium text-red-400/80 hover:text-red-300 hover:bg-red-500/[0.03] active:bg-red-500/[0.01] transition-all flex items-center justify-center gap-2"
               >
                  <LogOut className="w-4 h-4 stroke-[1.5]" />
                  <span>{language === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}</span>
@@ -277,7 +277,7 @@ export const Account = () => {
               </div>
 
               {/* Minimalist Google Auth Card (Moved up) */}
-              <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-4 flex items-center justify-between opacity-40 cursor-not-allowed select-none">
+              <div className="bg-[var(--color-bg-elevated-1)] border border-[var(--color-border-subtle)] rounded-3xl p-4 flex items-center justify-between opacity-40 cursor-not-allowed select-none">
                 <div className="flex items-center gap-3">
                   <GoogleIcon />
                   <span className="text-white text-xs font-medium">{language === 'ar' ? 'المتابعة باستخدام جوجل' : 'Continue with Google'}</span>
@@ -288,7 +288,7 @@ export const Account = () => {
               </div>
 
               {/* Login/Signup Core Card */}
-              <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-6 space-y-4">
+              <div className="bg-[var(--color-bg-elevated-1)] border border-[var(--color-border-subtle)] rounded-3xl p-6 space-y-4">
                 {error && (
                   <div className="bg-red-500/10 text-red-400 text-xs p-3 rounded-2xl text-center border border-red-500/10">
                     {error}
@@ -351,7 +351,7 @@ export const Account = () => {
 
             {/* Language Switcher for Guest */}
             <div className="flex justify-center mt-6">
-              <div className="relative flex bg-[#0a0a0a]/85 border border-white/5 p-1 rounded-2xl shadow-xl w-[180px]" dir="ltr">
+              <div className="relative flex bg-[var(--color-bg-elevated-1)] border border-[var(--color-border-subtle)] p-1 rounded-2xl shadow-none w-[180px]" dir="ltr">
                 <div 
                   className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] shadow-md"
                   style={{
