@@ -308,7 +308,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
 
       {/* Modern Group Tabs Bar - Only visible in private mode */}
       {mode === 'private' && (
-        <div className="w-full bg-[var(--color-bg-base)]/95 backdrop-blur-xl sticky top-0 z-30 pt-4 pb-0 border-b border-[var(--color-border-subtle)]">
+        <div className="w-full bg-[#080808]/90 backdrop-blur-xl sticky top-0 z-30 pt-4 pb-0">
           <div className="flex items-center gap-2 xl:max-w-[1600px] mx-auto px-4 md:px-8 pb-3">
             
             {/* Scrollable Groups */}
@@ -486,7 +486,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               maxLength={25}
-              className="w-full px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated-1)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-text-secondary)] focus:border-transparent outline-none transition-all"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-700 bg-[#141414] text-white focus:ring-2 focus:ring-white/20 focus:border-white/50 outline-none transition-all"
               placeholder={t('group.name_placeholder')}
               required
               autoFocus
@@ -503,7 +503,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
               value={groupDesc}
               onChange={(e) => setGroupDesc(e.target.value)}
               maxLength={100}
-              className="w-full px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated-1)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-text-secondary)] focus:border-transparent outline-none transition-all resize-none h-24"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-700 bg-[#141414] text-white focus:ring-2 focus:ring-white/20 focus:border-white/50 outline-none transition-all resize-none h-24"
               placeholder={t('group.desc_placeholder')}
             />
           </div>

@@ -163,15 +163,15 @@ export const GroupDetails = ({
   };
 
   const activeTheme = {
-    bg: 'bg-[var(--color-bg-base)]',
-    cardBg: 'bg-[var(--color-bg-elevated-1)] border-[var(--color-border-subtle)]',
-    text: 'text-[var(--color-text-primary)]',
-    textSecondary: 'text-[var(--color-text-secondary)]',
-    accentBg: 'bg-cyan-600/10 text-cyan-500 border-cyan-600/10',
-    btnAccent: 'bg-[var(--color-text-primary)] hover:bg-[var(--color-text-secondary)] text-[var(--color-bg-base)]',
-    accentGlow: 'bg-transparent',
-    borderColor: 'border-[var(--color-border)]',
-    inputBg: 'bg-[var(--color-bg-elevated-2)] text-[var(--color-text-primary)] focus:border-cyan-500/30'
+    bg: 'bg-[#030303]',
+    cardBg: 'bg-[#090b0e]/90 border-white/5 backdrop-blur-3xl',
+    text: 'text-white',
+    textSecondary: 'text-white/40',
+    accentBg: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20',
+    btnAccent: 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_20px_rgba(6,182,212,0.15)]',
+    accentGlow: 'bg-cyan-500/5',
+    borderColor: 'border-white/5',
+    inputBg: 'bg-white/5 text-white focus:border-cyan-400/30'
   };
 
   const handleOpenSaveModal = async () => {
@@ -638,8 +638,6 @@ export const GroupDetails = ({
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const uploadedSessionFontsRef = useRef<Record<string, { localUrl: string, name: string, taskId: string }>>({});
-  // ✅ FIX: Set لتتبع الـ style nodes المُضافة — يمنع التراكم عند pagination
-  const loadedStyleIdsRef = useRef<Set<string>>(new Set());
   // ✅ FIX: ref لـ renderedCountInPage — يمنع API call عند كل scroll
   const renderedCountRef = useRef(7);
 
@@ -1000,8 +998,7 @@ export const GroupDetails = ({
         const fontUrl = anyFont.sessionLocalUrl || font.download_url;
         if (fontUrl && font.id) {
           const styleId = `style-${font.metadata?.taskId || font.id}`;
-          if (!loadedStyleIdsRef.current.has(styleId) && !document.getElementById(styleId)) {
-            loadedStyleIdsRef.current.add(styleId);
+          if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
             style.id = styleId;
             
@@ -1040,7 +1037,6 @@ export const GroupDetails = ({
   useEffect(() => {
     // Cleanup DOM style nodes and preloads when context, tag filter, or mode changes
     return () => {
-      loadedStyleIdsRef.current.clear();
       const dynamicStyles = document.querySelectorAll('style[id^="style-"]');
       dynamicStyles.forEach(el => el.remove());
       
@@ -1383,7 +1379,7 @@ export const GroupDetails = ({
             </div>
 
             {/* Consolidated Controls Container in Hashtag view */}
-            <div className="w-full bg-[var(--color-bg-elevated-1)] border border-[var(--color-border-subtle)] rounded-3xl p-4 flex flex-col md:flex-row items-stretch gap-4 hover:bg-[var(--color-bg-elevated-2)] transition-all duration-300 relative overflow-hidden group/unified">
+            <div className="w-full bg-[#141414] border border-white/5 rounded-3xl p-4 flex flex-col md:flex-row items-stretch gap-4 hover:bg-white/[0.02] transition-all duration-300 relative overflow-hidden group/unified">
               <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent" />
               
               {/* Preview input */}
@@ -1445,10 +1441,10 @@ export const GroupDetails = ({
                     max="50" 
                     value={fontSize} 
                     onChange={(e) => setFontSize(Number(e.target.value))} 
-                    className="w-full h-1 bg-[var(--color-bg-elevated-3)] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95 focus:outline-none focus:ring-0" 
+                    className="w-full h-1 bg-[#222] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95 focus:outline-none focus:ring-0" 
                     dir="ltr"
                     style={{
-                      background: `linear-gradient(to right, rgb(6, 182, 212) ${((fontSize - 20) / 30) * 100}%, var(--color-bg-elevated-3) ${((fontSize - 20) / 30) * 100}%)`
+                      background: `linear-gradient(to right, rgb(34, 211, 238) ${((fontSize - 20) / 30) * 100}%, #222 ${((fontSize - 20) / 30) * 100}%)`
                     }}
                   />
                 </div>
@@ -1504,7 +1500,7 @@ export const GroupDetails = ({
                       </span>
                     </button>
                     {/* Perfect layout-safe micro hover tooltip */}
-                    <div className="absolute top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 bg-[var(--color-bg-elevated-2)] border border-[var(--color-border)] py-1 px-2.5 rounded-xl text-[10px] text-[var(--color-text-secondary)] shadow-none whitespace-nowrap scale-95 group-hover:scale-100 font-light font-sans tracking-wide">
+                    <div className="absolute top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 bg-[#0f0f0f] border border-white/5 py-1 px-2.5 rounded-xl text-[10px] text-white/50 shadow-[0_4px_20px_rgba(0,0,0,0.5)] whitespace-nowrap scale-95 group-hover:scale-100 font-light font-sans tracking-wide">
                       {dir === 'rtl' ? 'الحد الأقصى لكل دفعة: ١٠ ملفات' : 'Batch limit: 10 files max'}
                     </div>
                   </div>
@@ -1516,7 +1512,7 @@ export const GroupDetails = ({
             {((!isPublicAllFonts && group?.description) || (isPublicAllFonts && publicTagFilters.length > 0)) && (
               <div className="space-y-2 -mt-4">
                 {!isPublicAllFonts && group?.description && (
-                  <p className="text-[var(--color-text-secondary)] font-light leading-relaxed max-w-[65ch] whitespace-pre-wrap">
+                  <p className="text-sm text-white opacity-50 font-light leading-relaxed max-w-2xl whitespace-pre-wrap">
                     {group.description}
                   </p>
                 )}
@@ -1550,7 +1546,7 @@ export const GroupDetails = ({
             )}
 
             {/* Unified Preview & Size Controls (Merged Single Card) */}
-            <div className="w-full bg-[var(--color-bg-elevated-1)] border border-[var(--color-border-subtle)] rounded-3xl p-4 flex flex-col md:flex-row items-stretch gap-4 hover:bg-[var(--color-bg-elevated-2)] transition-all duration-300 relative overflow-hidden group/unified">
+            <div className="w-full bg-[#141414] border border-white/5 rounded-3xl p-4 flex flex-col md:flex-row items-stretch gap-4 hover:bg-white/[0.02] transition-all duration-300 relative overflow-hidden group/unified">
               <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent" />
               
               {/* Preview Text part - takes up remaining space */}
@@ -1612,10 +1608,10 @@ export const GroupDetails = ({
                     max="50" 
                     value={fontSize} 
                     onChange={(e) => setFontSize(Number(e.target.value))} 
-                    className="w-full h-1 bg-[var(--color-bg-elevated-3)] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95 focus:outline-none focus:ring-0" 
+                    className="w-full h-1 bg-[#222] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95 focus:outline-none focus:ring-0" 
                     dir="ltr"
                     style={{
-                      background: `linear-gradient(to right, rgb(6, 182, 212) ${((fontSize - 20) / 30) * 100}%, var(--color-bg-elevated-3) ${((fontSize - 20) / 30) * 100}%)`
+                      background: `linear-gradient(to right, rgb(34, 211, 238) ${((fontSize - 20) / 30) * 100}%, #222 ${((fontSize - 20) / 30) * 100}%)`
                     }}
                   />
                 </div>
@@ -1639,7 +1635,7 @@ export const GroupDetails = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.15, delay: i * 0.02 }}
-              className={`group font-card-item bg-[var(--color-bg-elevated-1)] p-4 rounded-2xl border transition-all duration-300 flex flex-col gap-3 relative overflow-hidden border-[var(--color-border-subtle)] hover:border-[var(--color-border)] cursor-pointer ${pulseFontId === item.id ? 'ring-1 ring-[var(--color-text-secondary)] shadow-none' : 'ring-0 ring-transparent shadow-none'}`}
+              className={`group font-card-item bg-[#141414] p-4 rounded-2xl border transition-all duration-300 flex flex-col gap-3 relative overflow-hidden border-white/5 hover:border-white/10 cursor-pointer ${pulseFontId === item.id ? 'ring-1 ring-white/50 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'ring-0 ring-transparent shadow-none'}`}
               onClick={() => {
                 navigate(isPublicAllFonts ? `/fonts/${item.name}` : `/my-fonts/${item.id}${id ? `?group=${id}` : ''}`);
                 setSelectedFontDetail(item);
@@ -1787,7 +1783,7 @@ export const GroupDetails = ({
           </AnimatePresence>
         
           {displayFonts.length === 0 && (
-            <div className="col-span-full text-center py-20 text-[var(--color-text-disabled)] bg-[var(--color-bg-elevated-1)] rounded-[2rem] border border-[var(--color-border-subtle)] border-dashed">
+            <div className="col-span-full text-center py-20 text-white opacity-30 bg-[#141414] rounded-[2rem] border border-white/5 border-dashed">
               {t('font.no_fonts')} {isOwner && t('font.start_upload')}
             </div>
           )}
@@ -1883,7 +1879,7 @@ export const GroupDetails = ({
           {weightsModal.isOpen && (
             <div className="fixed inset-0 z-[9999] flex flex-col justify-end">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setWeightsModal(prev => ({ ...prev, isOpen: false }))} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }} className="bg-[var(--color-bg-elevated-1)] border border-[var(--color-border)] w-full max-w-lg mx-auto rounded-t-3xl p-5 pb-8 sm:pb-5 relative z-10 shadow-2xl max-h-[85vh] flex flex-col mt-auto">
+              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }} className="bg-[#141414] border border-white/10 w-full max-w-lg mx-auto rounded-t-3xl p-5 pb-8 sm:pb-5 relative z-10 shadow-2xl max-h-[85vh] flex flex-col mt-auto">
                 <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-4" />
                 
                 <div className="flex items-center justify-between mb-4">
@@ -2049,7 +2045,7 @@ export const GroupDetails = ({
                 animate={{ opacity: 1, scale: 1, y: 0 }} 
                 exit={{ opacity: 0, scale: 0.95, y: 15 }} 
                 transition={{ type: "spring", damping: 25, stiffness: 350 }} 
-                className="bg-[var(--color-bg-base)]/95 backdrop-blur-xl border border-[var(--color-border)] w-full max-w-lg rounded-3xl p-6 relative z-10 shadow-none max-h-[80vh] flex flex-col font-sans"
+                className="bg-[#0f0f0f]/95 border border-white/10 w-full max-w-lg rounded-3xl p-6 relative z-10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] max-h-[80vh] flex flex-col font-sans"
               >
                 <div className="flex items-center justify-between mb-5 border-b border-white/5 pb-4">
                   <div className="flex items-center gap-2.5">
@@ -2157,7 +2153,7 @@ export const GroupDetails = ({
                 initial={{ opacity: 0, scale: 0.95, y: 15 }} 
                 animate={{ opacity: 1, scale: 1, y: 0 }} 
                 exit={{ opacity: 0, scale: 0.95, y: 15 }} 
-                className="relative bg-[var(--color-bg-elevated-1)]/95 backdrop-blur-xl border border-[var(--color-border)] rounded-3xl p-6 w-full max-w-md shadow-none flex flex-col gap-5 z-10"
+                className="relative bg-[#0f0f0f]/95 border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-5 z-10"
               >
                 <div>
                    <h3 className="text-white font-bold text-lg mb-1 font-display">{dir === 'rtl' ? 'إدارة هاشتاغات الخط' : 'Manage Font Tags'}</h3>
@@ -2258,7 +2254,7 @@ export const GroupDetails = ({
               initial={{ opacity: 0, scale: 0.95, y: 15 }} 
               animate={{ opacity: 1, scale: 1, y: 0 }} 
               exit={{ opacity: 0, scale: 0.95, y: 15 }} 
-              className="relative bg-[var(--color-bg-elevated-1)]/95 backdrop-blur-xl border border-[var(--color-border)] rounded-3xl p-6 w-full max-w-sm shadow-none flex flex-col gap-5 z-10"
+              className="relative bg-[#0f0f0f]/95 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-5 z-10"
             >
               <div>
                  <h3 className="text-white font-bold text-lg mb-1 font-display">{dir === 'rtl' ? 'تعديل الهاشتاغ العام' : 'Edit Global Tag'}</h3>
@@ -2338,7 +2334,7 @@ export const GroupDetails = ({
             </div>
 
             {/* Top Navigation & Action Header */}
-            <header className={`flex items-center justify-between px-6 py-4 border-b transition-colors duration-300 ${isDetailScrolled ? 'border-[var(--color-border)] bg-[var(--color-bg-base)]/80' : 'border-transparent bg-transparent'} relative z-[200] backdrop-blur-md`}>
+            <header className={`flex items-center justify-between px-6 py-4 border-b transition-colors duration-300 ${isDetailScrolled ? 'border-white/20 bg-[#080808]/80' : 'border-transparent bg-transparent'} relative z-[200] backdrop-blur-md`}>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => {
@@ -2385,7 +2381,7 @@ export const GroupDetails = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className={`absolute top-[calc(100%+8px)] ${dir === 'rtl' ? 'left-0' : 'right-0'} w-[200px] bg-[var(--color-bg-elevated-2)] border border-[var(--color-border)] rounded-2xl shadow-none overflow-hidden flex flex-col z-50 p-1.5`}
+                        className={`absolute top-[calc(100%+8px)] ${dir === 'rtl' ? 'left-0' : 'right-0'} w-[200px] bg-[#1a1d24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 p-1.5`}
                       >
                         <button
                           disabled={isTransferring}
@@ -2514,7 +2510,7 @@ export const GroupDetails = ({
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -5 }}
                                 transition={{ duration: 0.15 }}
-                                className="absolute top-full left-1/2 -translate-x-1/2 min-w-[140px] md:min-w-[170px] mt-2 bg-[var(--color-bg-elevated-2)] border border-[var(--color-border)] rounded-xl shadow-none overflow-hidden flex flex-col z-[100] max-h-[160px] overflow-y-auto custom-scrollbar font-sans"
+                                className="absolute top-full left-1/2 -translate-x-1/2 min-w-[140px] md:min-w-[170px] mt-2 bg-[#1a1d24] border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col z-[100] max-h-[160px] overflow-y-auto custom-scrollbar font-sans"
                               >
                                 <button
                                   onClick={() => {
@@ -2843,13 +2839,13 @@ export const GroupDetails = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={() => setSelectedGlyphZoom(null)}
-                    className="absolute inset-0 bg-[var(--color-bg-base)]/90 backdrop-blur-md"
+                    className="absolute inset-0 bg-[#020202]/90 backdrop-blur-md"
                   />
                   <motion.div 
                     initial={{ scale: 0.9, y: 15 }}
                     animate={{ scale: 1, y: 0 }}
                     exit={{ scale: 0.9, y: 15 }}
-                    className="relative bg-[var(--color-bg-elevated-1)] border border-[var(--color-border)] rounded-[2.5rem] p-8 w-full max-w-sm shadow-none flex flex-col justify-center items-center gap-6 z-10 text-center"
+                    className="relative bg-[#0d0d0d] border border-cyan-400/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col justify-center items-center gap-6 z-10 text-center"
                   >
                     <div className="absolute top-5 right-5">
                       <button 
@@ -2961,14 +2957,14 @@ export const GroupDetails = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-[var(--color-bg-base)]/80 backdrop-blur-sm p-4 font-sans"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans"
             dir={dir}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--color-bg-elevated-2)] border border-[var(--color-border)] p-6 rounded-3xl w-full max-w-sm flex flex-col gap-5"
+              className="bg-[#0f1115] border border-white/10 p-6 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col gap-5"
             >
               <div className="flex justify-between items-center">
                 <h3 className="text-white font-bold text-lg">
@@ -2988,15 +2984,15 @@ export const GroupDetails = ({
                     {dir === 'rtl' ? 'أين تريد حفظ هذا الخط؟' : 'Where to save this font?'}
                   </label>
                   <select
-                    className="w-full bg-[var(--color-bg-elevated-3)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500/40 appearance-none cursor-pointer"
+                    className="w-full bg-[#16191f] border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400/40 appearance-none cursor-pointer"
                     value={saveToGroupId}
                     onChange={(e) => setSaveToGroupId(e.target.value)}
                   >
-                    <option value="new" className="bg-[var(--color-bg-elevated-3)] font-bold text-cyan-500">
+                    <option value="new" className="bg-[#16191f] font-bold text-cyan-400">
                       {dir === 'rtl' ? ' إنشاء مجموعة جديدة...' : ' Create new group...'}
                     </option>
                     {userGroups.map(g => (
-                      <option key={g.id} value={g.id} className="bg-[var(--color-bg-elevated-3)]">
+                      <option key={g.id} value={g.id} className="bg-[#16191f]">
                         {g.name}
                       </option>
                     ))}
@@ -3010,7 +3006,7 @@ export const GroupDetails = ({
                     </label>
                     <input
                       type="text"
-                      className="w-full bg-[var(--color-bg-elevated-3)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500/40"
+                      className="w-full bg-[#16191f] border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400/40"
                       placeholder={dir === 'rtl' ? 'مثال: خطوطي المفضلة' : 'e.g. My Favorites'}
                       value={newSaveGroupName}
                       onChange={(e) => setNewSaveGroupName(e.target.value)}

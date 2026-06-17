@@ -145,7 +145,7 @@ const PopoverColorPicker = ({ color, onChange }: { color: string, onChange: (c: 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 5 }}
             transition={{ duration: 0.12 }}
-            className="p-3 bg-[var(--color-bg-elevated-2)] border border-[var(--color-border)] rounded-2xl shadow-none flex flex-col gap-3 w-[234px]"
+            className="p-3 bg-[#111111] border border-white/10 rounded-2xl shadow-2xl flex flex-col gap-3 w-[234px]"
           >
             <HexColorPicker color={color} onChange={onChange} />
             <div className="flex bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-cyan-400/50 transition-colors">
@@ -571,7 +571,7 @@ export const Lab = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] p-4 pt-20 max-lg:landscape:pt-8 pb-32 max-lg:landscape:pb-16 mt-[-10px]">
+    <div className="min-h-screen bg-[#080808] text-white p-4 pt-20 max-lg:landscape:pt-8 pb-32 max-lg:landscape:pb-16 mt-[-10px]">
       <div className="w-full xl:max-w-[1600px] mx-auto">
         <h1 className="text-2xl font-bold mb-6 flex items-center gap-3">
           <Beaker className="w-7 h-7 text-white opacity-70" />
@@ -593,7 +593,7 @@ export const Lab = () => {
 
         {!font ? (
           <div className="space-y-6">
-            <div className="flex flex-col items-center justify-center border border-[var(--color-border)] rounded-3xl p-10 bg-[var(--color-bg-elevated-1)]">
+            <div className="flex flex-col items-center justify-center border border-white/10 rounded-3xl p-10 bg-[#141414]">
               <Upload className="w-10 h-10 mb-4 text-white" />
               <label className="bg-white text-black px-6 py-3 rounded-xl font-bold cursor-pointer hover:bg-white/90 transition-all">
                 {t('lab.upload_font')}
@@ -603,7 +603,7 @@ export const Lab = () => {
             </div>
 
             {history.length > 0 && (
-              <div className="bg-[var(--color-bg-elevated-1)] rounded-3xl p-6 border border-[var(--color-border)]">
+              <div className="bg-[#141414] rounded-3xl p-6 border border-white/10">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold flex items-center gap-2">
                     <Clock className="w-5 h-5 text-white opacity-60" />
@@ -638,7 +638,7 @@ export const Lab = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-12 gap-4">
               {/* Controls */}
-              <div className="col-span-12 lg:col-span-3 space-y-4 bg-[var(--color-bg-elevated-1)] p-4 rounded-2xl border border-[var(--color-border-subtle)] text-[var(--color-text-primary)] text-xs">
+              <div className="col-span-12 lg:col-span-3 space-y-4 bg-[#141414] p-4 rounded-2xl border border-white/5 text-xs">
                 <h2 className="text-[10px] font-bold text-white opacity-60 uppercase tracking-wider flex items-center gap-2">
                   <Settings size={12} />
                   {t('lab.font_control')}
@@ -677,7 +677,7 @@ export const Lab = () => {
                 <textarea
                   value={previewText}
                   onChange={(e) => setPreviewText(e.target.value)}
-                  className="w-full p-3 rounded-2xl bg-[var(--color-bg-elevated-1)] border border-[var(--color-border-subtle)] text-[var(--color-text-primary)] text-xs outline-none focus:border-cyan-500/50 transition-all resize-none"
+                  className="w-full p-3 rounded-2xl bg-[#141414] border border-white/5 text-white text-xs outline-none focus:border-cyan-400/50 transition-all resize-none"
                   rows={2}
                 />
                 
@@ -714,7 +714,7 @@ export const Lab = () => {
             </div>
 
             {/* Font Info & Glyphs */}
-            <div className="bg-[var(--color-bg-elevated-1)] p-6 rounded-3xl border border-[var(--color-border-subtle)]">
+            <div className="bg-[#141414] p-6 rounded-3xl border border-white/5">
               <h2 className="text-lg font-bold mb-4">{t('lab.full_info')}</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-white opacity-60 mb-6">
                 {Object.entries(font.names).map(([key, value]: any) => {
@@ -821,13 +821,13 @@ export const Lab = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedGlyphZoom(null)}
-              className="absolute inset-0 bg-[var(--color-bg-base)]/90 backdrop-blur-md"
+              className="absolute inset-0 bg-[#020202]/90 backdrop-blur-md"
             />
             <motion.div 
               initial={{ scale: 0.9, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 15 }}
-              className="relative bg-[var(--color-bg-elevated-2)] border border-[var(--color-border)] rounded-[2.5rem] p-8 w-full max-w-sm shadow-none flex flex-col justify-center items-center gap-6 z-10 text-center"
+              className="relative bg-[#0d0d0d] border border-cyan-400/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col justify-center items-center gap-6 z-10 text-center"
             >
               <div className="absolute top-5 right-5">
                 <button 
@@ -933,7 +933,7 @@ export const Lab = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[150] flex flex-col bg-[var(--color-bg-base)]"
+            className="fixed inset-0 z-[150] flex flex-col bg-[#020202]"
             style={{ backgroundColor: bgColor }}
           >
             {/* Top Toolbar overlay */}
