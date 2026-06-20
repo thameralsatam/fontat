@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts, getWeightRelationshipsForFonts } from '../services/fontService';
 import { getGroups } from '../services/groupService';
-import { Trash2, Download, X, Layers, Upload, Plus, Check, Dices, Filter, Edit3, ArrowRight, ArrowLeft, Sliders, Layout, Copy, Sparkles, BookOpen, Beaker, ExternalLink, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Download, X, Layers, Upload, Plus, Check, Filter, Edit3, ArrowRight, ArrowLeft, Sliders, Layout, Copy, Sparkles, BookOpen, Beaker, ExternalLink, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { saveFontHistory } from '../lib/db';
 // @ts-ignore
@@ -17,21 +17,7 @@ import opentype from 'opentype.js';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { formatFontName } from '../utils/text';
 
-export const RANDOM_TEXTS = [
-  "إذا بليت بظالم فكن له ظالماً، وإذا بليت بكريم فكن له كريماً",
-  `إِنَّ الأَفاعي وَإِن لانَت مَلامِسُها
-عِندَ التَقَلُّبِ في أَنيابِها العَطَبُ`,
-  `وَلا تَرجُ السَماحَةَ مِن بَخيلٍ
-فَما في النارِ لِلظَمآنِ ماءُ`,
-  `إذا نطق السفيه فلا تجبه
-فخير من إجابته السكوت
-فإن كلمته فرجت عنه
-واِن خليته كمدا يموت`,
-  `لا دارَ لِلمَرءِ بَعدَ المَوتِ يَسكُنُها
-إِلّا الَّتي كانَ قَبلَ المَوتِ بانيها`,
-  `يا من يجيب دعا المضطرّ في الظلم
-يا كاشف الضرّ والبلوى مع السقم`
-];
+
 
 // ✅ FIX: ثابت خارج الـ component — لا يتعاد إنشاؤه في كل render
 const POEMS = [
@@ -96,8 +82,8 @@ const POEMS = [
 وَالضَربُ وَالطَعنُ وَالأَقلامُ وَالكُتُبُ`
     },
     {
-      title: 'أبو الفتح البستي',
-      author: 'أبو الفتح البستي',
+      title: 'دع الايام تفعل ما تشاء',
+      author: 'الإمام الشافعي',
       text: `دَعِ الأَيّامَ تَفعَلُ ما تَشاءُ
 وَطِب نَفساً إِذا حَكَمَ القَضاءُ
 
@@ -139,7 +125,7 @@ const POEMS = [
     },
     {
       title: 'يا من يرى ما في الضمير',
-      author: '',
+      author: 'أبي القاسم السهيلي',
       text: `يا من يرَى ما في الضميرِ ويسمعُ
 أنتَ المعَدُّ لكلِّ ما يُتوقَعُ
 
@@ -187,6 +173,30 @@ const POEMS = [
 
 فَالمَرءُ يَبسُطُها وَالدَهرُ يَقبُضُها
 وَالنَفسُ تَنشُرُها وَالمَوتُ يَطويها`
+    },
+    {
+      title: 'حكم سيوفك في رقاب العذل',
+      author: 'عنترة بن شداد',
+      text: `حَكِّم سُيوفَكَ في رِقابِ العُذَّلِ
+وَإِذا نَزَلتَ بِدارِ ذُلٍّ فَاِرحَلِ
+
+وَإِذا بُليتَ بِظالِمٍ كُن ظالِماً
+وَإِذا لَقيتَ ذَوي الجَهالَةِ فَاِجهَلي
+
+وَإِذا الجَبانُ نَهاكَ يَومَ كَريهَةٍ
+خَوفاً عَلَيكَ مِنَ اِزدِحامِ الجَحفَلِ
+
+فَاِعصِ مَقالَتَهُ وَلا تَحفِل بِها
+وَاِقدِم إِذا حَقَّ اللِقا في الأَوَّلِ
+
+وَاِختَر لِنَفسِكَ مَنزِلاً تَعلو بِهِ
+أَو مُت كَريماً تَحتَ ظُلِّ القَسطَلِ
+
+فَالمَوتُ لا يُنجيكَ مِن آفاتِهِ
+حِصنٌ وَلَو شَيَّدتَهُ بِالجَندَلِ
+
+مَوتُ الفَتى في عِزَّةٍ خَيرٌ لَهُ
+مِن أَن يَبيتَ أَسيرَ طَرفٍ أَكحَلِ`
     }
   ];
 
@@ -731,12 +741,6 @@ export const GroupDetails = ({
   const [modalPulseFontId, setModalPulseFontId] = useState<string | null>(null);
   const [processedHighlightedId, setProcessedHighlightedId] = useState<number | null>(null);
   const toolbarTextareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const applyRandomText = () => {
-    const text = RANDOM_TEXTS[Math.floor(Math.random() * RANDOM_TEXTS.length)];
-    setGlobalPreviewText(text);
-    setFontPreviews({});
-  };
 
   const toolbarRef = useRef<HTMLDivElement>(null);
   const fontGridRef = useRef<HTMLDivElement>(null);
@@ -1492,13 +1496,6 @@ export const GroupDetails = ({
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.preview_text')}</span>
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={applyRandomText}
-                      className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer"
-                      title={t('toolbar.random_text') || 'Random Text'}
-                    >
-                      <Dices className="w-3.5 h-3.5" />
-                    </button>
                     <AnimatePresence>
                       {globalPreviewText && (
                         <motion.button 
@@ -1659,13 +1656,6 @@ export const GroupDetails = ({
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.preview_text')}</span>
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={applyRandomText}
-                      className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer"
-                      title={t('toolbar.random_text') || 'Random Text'}
-                    >
-                      <Dices className="w-3.5 h-3.5" />
-                    </button>
                     <AnimatePresence>
                       {globalPreviewText && (
                         <motion.button 
@@ -1747,20 +1737,21 @@ export const GroupDetails = ({
                 setActiveParentFontId(item.id);
               }}
             >
-              <div className="flex items-center justify-between w-full gap-4">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="bg-white/5 w-10 h-10 rounded-xl text-white opacity-60 group-hover:text-white group-hover:bg-white/10 transition-all shrink-0 flex items-center justify-center overflow-hidden">
+              <div className="flex items-center justify-between w-full gap-4 relative">
+                <div className="absolute inset-0 z-0 bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
+                <div className="flex items-center gap-4 min-w-0 relative z-10" title={dir === 'rtl' ? 'انقر لعرض تفاصيل الخط' : 'Click to view font details'}>
+                  <div className="bg-white/5 w-10 h-10 rounded-xl text-white opacity-60 group-hover:text-white group-hover:bg-white/15 group-hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all shrink-0 flex items-center justify-center overflow-hidden">
                     {(!item.metadata?.isUploading || item.download_url || (item as any).sessionLocalUrl) && (
                       <span style={{ fontFamily: `"${item.name}", sans-serif`, fontSize: '22px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {dir === 'rtl' ? 'ع' : 'a'}
                       </span>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 relative group/title">
                     <div className="flex items-center gap-3">
-                      <div className="font-medium text-white text-base opacity-50 flex-1 flex flex-wrap items-center gap-2 min-w-0">
+                      <div className="font-medium text-base text-white/50 group-hover:text-white flex-1 flex flex-wrap items-center gap-2 min-w-0 transition-colors duration-300">
                         <span dir="ltr" className="truncate text-left block">{formatFontName(item.name || '')}</span>
-                        {item.metadata?.status === 'success' && <Check className="w-3.5 h-3.5 text-white flex-shrink-0" />}
+                        {item.metadata?.status === 'success' && <Check className="w-3.5 h-3.5 text-white/50 group-hover:text-white flex-shrink-0 transition-colors" />}
                       </div>
                       {item.metadata?.error && <span className="text-[10px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">Failed</span>}
                     </div>
@@ -1790,7 +1781,7 @@ export const GroupDetails = ({
                 </div>
               </div>
 
-              <div className="w-full relative group/textarea">
+              <div className="w-full relative group/textarea overflow-hidden rounded-xl bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-300">
                 <textarea 
                   value={getPreviewText(item.id)} 
                   onChange={(e) => {
@@ -1816,6 +1807,22 @@ export const GroupDetails = ({
                     whiteSpace: 'nowrap'
                   }} 
                 />
+                
+                {/* Stunning Premium Interactive Hover Overlay */}
+                <div 
+                  className="absolute inset-0 bg-black/60 backdrop-blur-[3px] opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center pointer-events-none group-hover:pointer-events-auto z-20 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(isPublicAllFonts ? `/fonts/${item.name}` : `/my-fonts/${item.id}${id ? `?group=${id}` : ''}`);
+                    setSelectedFontDetail(item);
+                    setActiveParentFontId(item.id);
+                  }}
+                >
+                  <div className="bg-cyan-950/80 hover:bg-cyan-950 border border-cyan-500/40 hover:border-cyan-400 text-cyan-200 text-xs font-sans font-medium px-4 py-2 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.25)] transform translate-y-3 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-1.5 active:scale-95">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                    <span>{dir === 'rtl' ? 'انقر لعرض تفاصيل الخط وأوزانه ↗' : 'Click to view font details & weights ↗'}</span>
+                  </div>
+                </div>
               </div>
 
               {/* Bottom Hashtags & Weights Section with modern layered background (Separated & Larger) */}
