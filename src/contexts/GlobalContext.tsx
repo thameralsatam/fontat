@@ -3,7 +3,7 @@ import { uploadFontToGroup, uploadFontWeight, getGroupFonts, getFontWeights } fr
 import { useLanguage } from './LanguageContext';
 import { Group } from '../types';
 
-interface UploadTask {
+export interface UploadTask {
   id: string;
   file: File;
   groupId: string | null;
