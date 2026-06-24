@@ -10,7 +10,6 @@ import { getGroups } from '../services/groupService';
 import { AnimatePresence } from 'framer-motion';
 import { saveFontHistory } from '../lib/db';
 // @ts-ignore
-import opentype from 'opentype.js';
 
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { FontCard } from '../components/font/FontCard';
@@ -261,43 +260,31 @@ export const GroupDetails = ({
       try {
         const response = await fetch(selectedFontDetail.download_url!);
         if (!response.ok) throw new Error('Failed to fetch font file');
-        const arrayBuffer = await response.arrayBuffer();
-        const parsedFont = opentype.parse(arrayBuffer);
-        
-        const numGlyphs = parsedFont.numGlyphs || 0;
-        const unitsPerEm = parsedFont.unitsPerEm || 1000;
-        const glyphsList: { char: string; index: number; unicode?: string; colSpan?: number; name?: string; svgPath?: string; svgViewBox?: string }[] = [];
-        
-        for (let i = 0; i < numGlyphs; i++) {
-          const glyph = parsedFont.glyphs.get(i);
-          if (!glyph || (!glyph.unicode && (!glyph.unicodes || glyph.unicodes.length === 0) && glyph.name === '.notdef')) continue;
-          
-          const activeUnicode = glyph.unicode || (glyph.unicodes?.length ? glyph.unicodes[0] : null);
-          const advanceWidth = glyph.advanceWidth || unitsPerEm;
-          const widthRatio = advanceWidth / unitsPerEm;
-          
-          let colSpan = 1;
-          if (widthRatio > 1.2) colSpan = 2;
-          if (widthRatio > 2.2) colSpan = 3;
-          if (widthRatio > 3.2) colSpan = 4;
-          if (widthRatio > 4.2) colSpan = 5;
+        const fontBlob = await response.blob();
 
-          const char = activeUnicode ? String.fromCodePoint(activeUnicode) : '';
-          
-          // Generate an SVG path to render properly un-encoded text and others
-          const pathD = glyph.getPath(0, Math.round(unitsPerEm * 0.8), unitsPerEm).toPathData(2);
-          const svgViewBox = `0 0 ${Math.max(advanceWidth, unitsPerEm * 0.5)} ${unitsPerEm}`;
-          
-          glyphsList.push({
+        const formData = new FormData();
+        formData.append("font", fontBlob, "font.ttf");
+
+        const analyzeResponse = await fetch("https://font-api-0dqe.onrender.com/analyze", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!analyzeResponse.ok) throw new Error('Failed to analyze font via server');
+        const data = await analyzeResponse.json();
+        if (!data.success) throw new Error(data.error || 'Server analysis failed');
+
+        const characters = data.metadata.characters || [];
+        const glyphsList = characters.map((code: number, idx: number) => {
+          const char = String.fromCodePoint(code);
+          return {
             char,
-            index: glyph.index || i,
-            unicode: activeUnicode ? activeUnicode.toString(16).toUpperCase().padStart(4, '0') : undefined,
-            name: glyph.name,
-            colSpan,
-            svgPath: pathD,
-            svgViewBox
-          });
-        }
+            index: idx,
+            unicode: code.toString(16).toUpperCase().padStart(4, '0'),
+            name: `Glyph ${code}`,
+            colSpan: 1
+          };
+        });
         
         let hasArabic = false;
         let hasLatin = false;
@@ -336,8 +323,6 @@ export const GroupDetails = ({
           if (code >= 0xAC00 && code <= 0xD7AF) hasKorean = true;
 
           // Gather candidate chars for backdrop (skip common space, punctuation and math blocks)
-          // Rough filter: exclude < 0x0041 (spaces, numbers, punctuation)
-          // also we want letters preferably
           if (g.char && g.char.trim() !== '') {
              const isLatin = (code >= 0x0041 && code <= 0x005A) || (code >= 0x0061 && code <= 0x007A) || (code >= 0x00C0 && code <= 0x00FF);
              

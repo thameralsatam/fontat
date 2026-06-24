@@ -4,7 +4,6 @@ import { Upload, Beaker, Download, Settings, Type, Search, Clock, ArrowRight, X,
 import { motion, AnimatePresence } from 'framer-motion';
 import { HexColorPicker } from "react-colorful";
 // @ts-ignore
-import opentype from 'opentype.js';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { saveFontHistory, getFontHistoryList, getFontHistoryItem, FontHistoryItem, clearFontHistory } from '../lib/db';
@@ -314,32 +313,49 @@ export const Lab = () => {
     document.head.appendChild(style);
 
     try {
-      const parsedFont = opentype.parse(arrayBuffer);
-      const safeNames: Record<string, any> = {};
-      if (parsedFont.names) {
-        for (const key in parsedFont.names) {
-          const val = (parsedFont.names as any)[key];
-          if (typeof val === 'object' && val !== null) {
-            safeNames[key] = { ...val };
-          } else {
-            safeNames[key] = val;
-          }
-        }
-      }
+      const formData = new FormData();
+      formData.append("font", fileOrBlob, fontName || "font.ttf");
+
+      const response = await fetch("https://font-api-0dqe.onrender.com/analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Failed to analyze font via server');
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'Server analysis failed');
+
+      const serverNames = data.metadata.names || {};
+      const postScriptNameVal = serverNames.postscript_name || serverNames.full_name || fontName || 'font';
+      const fullNameVal = serverNames.full_name || serverNames.family_name || fontName || 'font';
+      const familyNameVal = serverNames.family_name || fontName || 'font';
+      const subfamilyNameVal = serverNames.subfamily_name || 'Regular';
+
+      const safeNames: Record<string, any> = {
+        fontFamily: { en: familyNameVal },
+        fontSubfamily: { en: subfamilyNameVal },
+        fullName: { en: fullNameVal },
+        postScriptName: { en: postScriptNameVal },
+        version: { en: serverNames.version || '1.0' },
+        designer: { en: serverNames.designer || '' },
+        copyright: { en: serverNames.copyright || '' }
+      };
+
+      const charCount = data.metadata.char_count || 0;
 
       setFont({
           names: safeNames,
-          numGlyphs: parsedFont.numGlyphs
+          numGlyphs: charCount
       });
       
-      // Extract axes from fvar table
-      const rawAxes = (parsedFont as any).tables.fvar?.axes || [];
-      const axesData = rawAxes.map((axis: any) => ({
+      // Extract axes
+      const serverAxes = data.metadata.axes || [];
+      const axesData = serverAxes.map((axis: any) => ({
         tag: axis.tag,
-        minValue: axis.minValue,
-        defaultValue: axis.defaultValue,
-        maxValue: axis.maxValue,
-        name: axis.name
+        minValue: axis.min,
+        defaultValue: axis.default,
+        maxValue: axis.max,
+        name: axis.name || axis.tag
       }));
       setAxes(axesData);
       
@@ -351,34 +367,32 @@ export const Lab = () => {
       });
       setAxisValues(initialValues);
 
-      // Extract all OpenType features
+      // Extract features
+      const serverFeatures = data.metadata.features || [];
       const features: Record<string, boolean> = {};
       const defaultEnabledFeatures = ['calt', 'rclt', 'rlig', 'liga', 'clig', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl', 'kern', 'blwf', 'abvf', 'half', 'pstf', 'vatu', 'cjct'];
       
-      const gsub = (parsedFont as any).tables.gsub;
-      if (gsub && gsub.features) {
-        gsub.features.forEach((f: any) => {
-          features[f.tag] = savedFeatures && savedFeatures[f.tag] !== undefined 
-            ? savedFeatures[f.tag] 
-            : defaultEnabledFeatures.includes(f.tag);
-        });
-      }
-
-      const gpos = (parsedFont as any).tables.gpos;
-      if (gpos && gpos.features) {
-        gpos.features.forEach((f: any) => {
-          features[f.tag] = savedFeatures && savedFeatures[f.tag] !== undefined 
-            ? savedFeatures[f.tag] 
-            : defaultEnabledFeatures.includes(f.tag);
-        });
-      }
+      serverFeatures.forEach((tag: string) => {
+        features[tag] = savedFeatures && savedFeatures[tag] !== undefined 
+          ? savedFeatures[tag] 
+          : defaultEnabledFeatures.includes(tag);
+      });
       
       setOpenTypeFeatures(features);
       
-      console.log("Font parsed, calling renderGlyphs...");
-      setTimeout(() => {
-        renderGlyphs(parsedFont);
-      }, 100);
+      // Generate characters list
+      const characters = data.metadata.characters || [];
+      const glyphsList = characters.map((code: number, idx: number) => {
+        const char = String.fromCodePoint(code);
+        return {
+          char,
+          index: idx,
+          unicode: code.toString(16).toUpperCase().padStart(4, '0'),
+          name: `Glyph ${code}`
+        };
+      });
+      setParsedGlyphs(glyphsList);
+      setRenderedGlyphCount(100);
 
       if (!fontId) {
         await saveFontHistory({
@@ -392,7 +406,7 @@ export const Lab = () => {
         loadHistory();
       }
     } catch (err) {
-      console.error(t('lab.error_parsing'), err);
+      console.error('Error parsing font:', err);
     }
   };
 
@@ -433,65 +447,6 @@ export const Lab = () => {
     const newFeatures = { ...openTypeFeatures, [feature]: !openTypeFeatures[feature] };
     setOpenTypeFeatures(newFeatures);
     saveCurrentSettingsToDB(axisValues, newFeatures);
-  };
-
-  const renderGlyphs = (font: any) => {
-    console.log("renderGlyphs called");
-    const container = glyphsContainerRef.current;
-    if (!container) {
-      console.error("glyphsContainerRef is null!");
-      return;
-    }
-    
-    // استخراج المحارف بطريقة آمنة
-    const numGlyphs = font.numGlyphs || 0;
-    console.log("Number of glyphs found:", numGlyphs);
-
-    if (numGlyphs === 0) {
-      console.warn("No glyphs found in font!");
-      return;
-    }
-
-    const unitsPerEm = font.unitsPerEm || 1000;
-    const glyphsList: any[] = [];
-
-    for (let i = 0; i < numGlyphs; i++) {
-      try {
-        const glyph = font.glyphs.get(i);
-        if (!glyph || (!glyph.unicode && (!glyph.unicodes || glyph.unicodes.length === 0) && glyph.name === '.notdef')) continue;
-
-        let glyphNameDisplay = 'Unnamed';
-        if (glyph.name) {
-          if (typeof glyph.name === 'object') {
-             glyphNameDisplay = (glyph.name as any).en || (glyph.name as any)['ar-AE'] || Object.values(glyph.name)[0] || 'Unnamed';
-          } else {
-             glyphNameDisplay = String(glyph.name);
-          }
-        }
-
-        const activeUnicode = glyph.unicode || (glyph.unicodes?.length ? glyph.unicodes[0] : null);
-        const char = activeUnicode ? String.fromCodePoint(activeUnicode) : '';
-        const advanceWidth = glyph.advanceWidth || unitsPerEm;
-
-        const pathD = glyph.getPath(0, Math.round(unitsPerEm * 0.8), unitsPerEm).toPathData(2);
-        const svgViewBox = `0 0 ${Math.max(advanceWidth, unitsPerEm * 0.5)} ${unitsPerEm}`;
-
-        glyphsList.push({
-          char,
-          index: glyph.index || i,
-          unicode: activeUnicode ? activeUnicode.toString(16).toUpperCase().padStart(4, '0') : undefined,
-          name: glyphNameDisplay,
-          svgPath: pathD,
-          svgViewBox
-        });
-
-      } catch (err) {
-         console.warn(`Skipping glyph at index ${i} due to parsing error`, err);
-      }
-    }
-    setParsedGlyphs(glyphsList);
-    setRenderedGlyphCount(100);
-    console.log("Glyphs parsed successfully.", glyphsList.length);
   };
 
   const getVariationSettings = () => {

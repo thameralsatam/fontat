@@ -76,17 +76,7 @@ export const FontCard: React.FC<FontCardProps> = ({
         setActiveParentFontId(item.id);
       }}
     >
-      {/* Futuristic Holographic Scan Sheen (Sweeps on hover/touch) */}
-      <div className="absolute -inset-y-12 -inset-x-0 w-1/3 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent -skew-x-[35deg] translate-x-[-150%] group-hover:translate-x-[400%] transition-transform duration-1000 ease-out pointer-events-none" />
-
-      {/* Futuristic HUD Corners (Cybernetic corner accents) */}
-      <div className="absolute top-0 left-0 w-2.5 h-2.5 border-t border-l border-white/5 group-hover:border-white/30 rounded-tl-lg transition-all duration-300 pointer-events-none group-hover:scale-110 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5" />
-      <div className="absolute top-0 right-0 w-2.5 h-2.5 border-t border-r border-white/5 group-hover:border-white/30 rounded-tr-lg transition-all duration-300 pointer-events-none group-hover:scale-110 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-      <div className="absolute bottom-0 left-0 w-2.5 h-2.5 border-b border-l border-white/5 group-hover:border-white/30 rounded-bl-lg transition-all duration-300 pointer-events-none group-hover:scale-110 group-hover:-translate-x-0.5 group-hover:translate-y-0.5" />
-      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 border-b border-r border-white/5 group-hover:border-white/30 rounded-br-lg transition-all duration-300 pointer-events-none group-hover:scale-110 group-hover:translate-x-0.5 group-hover:translate-y-0.5" />
-
       <div className="flex items-center justify-between w-full gap-4 relative">
-        <div className="absolute inset-0 z-0 bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
         <div
           className="flex items-center gap-4 min-w-0 relative z-10"
           title={dir === 'rtl' ? 'انقر لعرض تفاصيل الخط' : 'Click to view font details'}
