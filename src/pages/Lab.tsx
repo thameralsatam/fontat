@@ -743,7 +743,7 @@ export const Lab = () => {
                           <path d={glyph.svgPath} />
                         </svg>
                       ) : (
-                        <span className="text-center overflow-visible whitespace-nowrap leading-none text-[#cbd5e1]" style={font ? { fontFamily: `"${font.names?.postScriptName?.en || 'custom'}"`, fontSize: '40px' } : {}}>
+                        <span className="text-center overflow-visible whitespace-nowrap leading-none text-[#cbd5e1]" style={{ fontFamily: `'LabFont-${currentFontId}', sans-serif`, fontSize: '40px' }}>
                           {glyph.char}
                         </span>
                       )}

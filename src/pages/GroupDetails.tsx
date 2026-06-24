@@ -899,6 +899,12 @@ export const GroupDetails = ({
         fontsToLoad.push(item);
       });
 
+      if (selectedFontDetail) {
+        if (!fontsToLoad.some(f => f.id === selectedFontDetail.id)) {
+          fontsToLoad.push(selectedFontDetail);
+        }
+      }
+
       if (weightsModal.isOpen) {
         if (weightsModal.parentFont) fontsToLoad.push(weightsModal.parentFont);
         weightsModal.weights.forEach(w => {
@@ -958,7 +964,7 @@ export const GroupDetails = ({
       }
     };
     loadFonts();
-  }, [paginatedFonts, renderedCountInPage, weightsModal.isOpen, weightsModal.weights, weightsModal.parentFont]);
+  }, [paginatedFonts, renderedCountInPage, weightsModal.isOpen, weightsModal.weights, weightsModal.parentFont, selectedFontDetail]);
 
   useEffect(() => {
     // Cleanup DOM style nodes and preloads when context, tag filter, or mode changes
