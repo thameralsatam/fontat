@@ -24,10 +24,8 @@ import { FontsPagination } from '../components/font/FontsPagination';
 import { FuturisticHint } from '../components/font/FuturisticHint';
 import { GlobalTagSelectionModal } from '../components/font/GlobalTagSelectionModal';
 import { formatFontName } from '../utils/text';
-
-
-
-import { POEMS } from '../constants/poems';
+import { useFontAnalyzer } from '../components/font/useFontAnalyzer';
+import { useFontTagActions } from '../components/font/useFontTagActions';
 
 export const GroupDetails = ({ 
   groupId, 
@@ -59,20 +57,27 @@ export const GroupDetails = ({
   const [selectedFontDetail, setSelectedFontDetail] = useState<Font | null>(null);
   const [activeParentFontId, setActiveParentFontId] = useState<string | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
-  const [customPoemTexts, setCustomPoemTexts] = useState<Record<string, string>>({});
-
-  const [selectedPoemIndex, setSelectedPoemIndex] = useState(0);
+  const [selectedFontWeights, setSelectedFontWeights] = useState<any[]>([]);
+  const [isDetailScrolled, setIsDetailScrolled] = useState(false);
   const [detailLayoutMode, setDetailLayoutMode] = useState<'poem' | 'paragraph' | 'glyphs' | 'poster'>('poem');
   const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<{char?: string, name?: string, svgPath?: string, svgViewBox?: string} | null>(null);
 
-  const [backdropChars, setBackdropChars] = useState<{ char: string; className: string; fontSize?: string }[]>([]);
-  const [selectedFontWeights, setSelectedFontWeights] = useState<any[]>([]);
-  const [isDetailScrolled, setIsDetailScrolled] = useState(false);
-  const [parsedGlyphs, setParsedGlyphs] = useState<{ char: string; index: number; unicode?: string; colSpan?: number; name?: string; svgPath?: string; svgViewBox?: string }[]>([]);
-  const [renderedGlyphCount, setRenderedGlyphCount] = useState(100);
-  const [detectedLangs, setDetectedLangs] = useState<string[]>([]);
-  const [loadingGlyphs, setLoadingGlyphs] = useState(false);
-  const [glyphSearch, setGlyphSearch] = useState('');
+  const {
+    backdropChars,
+    renderedGlyphCount,
+    setRenderedGlyphCount,
+    detectedLangs,
+    loadingGlyphs,
+    glyphSearch,
+    setGlyphSearch,
+    selectedPoemIndex,
+    setSelectedPoemIndex,
+    getPoemText,
+    handlePoemChange,
+    filteredGlyphs,
+    getFontFormat,
+    getSupportedLanguages
+  } = useFontAnalyzer(selectedFontDetail, dir as 'rtl' | 'ltr' | 'auto');
   
   // Save to account modal state
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -100,11 +105,7 @@ export const GroupDetails = ({
     return () => document.removeEventListener('click', handleGlobalClick);
   }, []);
 
-  const getPoemText = (fontId: string) => customPoemTexts[`${fontId}_${selectedPoemIndex}`] || POEMS[selectedPoemIndex].text;
 
-  const handlePoemChange = (fontId: string, text: string) => {
-    setCustomPoemTexts(prev => ({ ...prev, [`${fontId}_${selectedPoemIndex}`]: text }));
-  };
 
   const activeTheme = {
     bg: 'bg-[#030303]',
@@ -237,147 +238,7 @@ export const GroupDetails = ({
     }
   }, [groupData]);
 
-  // Set random backdrop chars when selectedFontDetail opens
-  useEffect(() => {
-    if (selectedFontDetail) {
-      const CONFIG = [
-        { char: '„', className: 'absolute right-[10%] top-[20%] pointer-events-none select-none opacity-[0.03] transform rotate-12 leading-none text-white', fontSize: '280px' }
-      ];
-      setBackdropChars(CONFIG);
-    }
-  }, [selectedFontDetail]);
 
-  // Fetch and parse font for actual real glyph map
-  useEffect(() => {
-    if (!selectedFontDetail || !selectedFontDetail.download_url) {
-      setParsedGlyphs([]);
-      return;
-    }
-
-    let isCancelled = false;
-    const fetchAndParseFont = async () => {
-      setLoadingGlyphs(true);
-      try {
-        const response = await fetch(selectedFontDetail.download_url!);
-        if (!response.ok) throw new Error('Failed to fetch font file');
-        const fontBlob = await response.blob();
-
-        const formData = new FormData();
-        formData.append("font", fontBlob, "font.ttf");
-
-        const analyzeResponse = await fetch("https://font-api-0dqe.onrender.com/analyze", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!analyzeResponse.ok) throw new Error('Failed to analyze font via server');
-        const data = await analyzeResponse.json();
-        if (!data.success) throw new Error(data.error || 'Server analysis failed');
-
-        const characters = data.metadata.characters || [];
-        const glyphsList = characters.map((code: number, idx: number) => {
-          const char = String.fromCodePoint(code);
-          return {
-            char,
-            index: idx,
-            unicode: code.toString(16).toUpperCase().padStart(4, '0'),
-            name: `Glyph ${code}`,
-            colSpan: 1
-          };
-        });
-        
-        let hasArabic = false;
-        let hasLatin = false;
-        let hasChinese = false;
-        let hasCyrillic = false;
-        let hasHebrew = false;
-        let hasDevanagari = false;
-        let hasThai = false;
-        let hasJapanese = false;
-        let hasKorean = false;
-        
-        const nonLatinCandidates: string[] = [];
-        const latinCandidates: string[] = [];
-
-        // Scan for specific characters
-        for (const g of glyphsList) {
-          if (!g.unicode) continue;
-          const code = parseInt(g.unicode, 16);
-          // Check Arabic block
-          if (code >= 0x0600 && code <= 0x06FF) hasArabic = true;
-          // Check Latin block
-          if ((code >= 0x0041 && code <= 0x005A) || (code >= 0x0061 && code <= 0x007A) || (code >= 0x00C0 && code <= 0x00FF)) hasLatin = true;
-          // Check Chinese block
-          if (code >= 0x4E00 && code <= 0x9FFF) hasChinese = true;
-          // Check Cyrillic
-          if (code >= 0x0400 && code <= 0x04FF) hasCyrillic = true;
-          // Check Hebrew
-          if (code >= 0x0590 && code <= 0x05FF) hasHebrew = true;
-          // Check Devanagari
-          if (code >= 0x0900 && code <= 0x097F) hasDevanagari = true;
-          // Check Thai
-          if (code >= 0x0E00 && code <= 0x0E7F) hasThai = true;
-          // Check Japanese (Hiragana/Katakana)
-          if ((code >= 0x3040 && code <= 0x309F) || (code >= 0x30A0 && code <= 0x30FF)) hasJapanese = true;
-          // Check Korean (Hangul)
-          if (code >= 0xAC00 && code <= 0xD7AF) hasKorean = true;
-
-          // Gather candidate chars for backdrop (skip common space, punctuation and math blocks)
-          if (g.char && g.char.trim() !== '') {
-             const isLatin = (code >= 0x0041 && code <= 0x005A) || (code >= 0x0061 && code <= 0x007A) || (code >= 0x00C0 && code <= 0x00FF);
-             
-             if (!isLatin && code > 0x00BF) { // Above Basic/Latin-1 mostly
-               nonLatinCandidates.push(g.char);
-             } else if (isLatin) {
-               latinCandidates.push(g.char);
-             }
-          }
-        }
-        
-        const bestCandidates = nonLatinCandidates.length > 0 ? nonLatinCandidates : latinCandidates;
-
-        const langs = [];
-        if (hasArabic) langs.push(dir === 'rtl' ? 'العربية' : 'Arabic');
-        if (hasLatin) langs.push(dir === 'rtl' ? 'اللاتينية' : 'Latin');
-        if (hasChinese) langs.push(dir === 'rtl' ? 'الصينية' : 'Chinese');
-        if (hasCyrillic) langs.push(dir === 'rtl' ? 'السيريلية' : 'Cyrillic');
-        if (hasHebrew) langs.push(dir === 'rtl' ? 'العبرية' : 'Hebrew');
-        if (hasDevanagari) langs.push(dir === 'rtl' ? 'الديوناكرية' : 'Devanagari');
-        if (hasThai) langs.push(dir === 'rtl' ? 'التايلندية' : 'Thai');
-        if (hasJapanese) langs.push(dir === 'rtl' ? 'اليابانية' : 'Japanese');
-        if (hasKorean) langs.push(dir === 'rtl' ? 'الكورية' : 'Korean');
-        
-        if (langs.length === 0) langs.push(dir === 'rtl' ? 'غير محدد' : 'Unknown');
-        
-        if (!isCancelled) {
-          if (bestCandidates.length > 0) {
-            setBackdropChars([
-              { char: '„', className: 'absolute right-[10%] top-[20%] pointer-events-none select-none opacity-[0.03] transform rotate-12 leading-none text-white', fontSize: '280px' }
-            ]);
-          }
-          setDetectedLangs(langs);
-          setParsedGlyphs(glyphsList);
-          setRenderedGlyphCount(100);
-        }
-      } catch (err) {
-        console.error('Error parsing font in GroupDetails:', err);
-        if (!isCancelled) {
-          const fallbackChars = 'أ ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن هـ و ي لأ لإ لآ ٠ ١ ٢ ٣ ٤ ٥ ٦ ٧ ٨ ٩ 0 1 2 3 4 5 6 7 8 9 َ ُ ِ ّ ً ٌ ٍ ْ ٰ ~ ، ؛ ؟ . ! : - + = *'.split(' ');
-          setParsedGlyphs(fallbackChars.map((char, index) => ({ char, index })));
-        }
-      } finally {
-        if (!isCancelled) {
-          setLoadingGlyphs(false);
-        }
-      }
-    };
-
-    fetchAndParseFont();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [selectedFontDetail]);
 
   // Fetch weights when font selected (based on active parent)
   useEffect(() => {
@@ -396,59 +257,7 @@ export const GroupDetails = ({
     }
   }, [activeParentFontId, selectedFontDetail?.id]);
 
-  // Search filtered glyph list
-  const filteredGlyphs = useMemo(() => {
-    if (!glyphSearch.trim()) return parsedGlyphs;
-    const query = glyphSearch.toLowerCase().trim();
-    return parsedGlyphs.filter(g => 
-      g.char.toLowerCase().includes(query) || 
-      (g.unicode && g.unicode.toLowerCase().includes(query)) ||
-      String(g.index).includes(query)
-    );
-  }, [parsedGlyphs, glyphSearch]);
 
-  useEffect(() => {
-    setRenderedGlyphCount(100);
-  }, [glyphSearch, parsedGlyphs]);
-
-  // Dynamic font format extractor
-  const getFontFormat = (url?: string) => {
-    if (!url) return 'TTF';
-    const lower = url.toLowerCase();
-    if (lower.includes('.otf')) return 'OTF';
-    if (lower.includes('.woff2')) return 'WOFF2';
-    if (lower.includes('.woff')) return 'WOFF';
-    return 'TTF';
-  };
-
-  // Dynamic languages analyzer
-  const getSupportedLanguages = () => {
-    if (detectedLangs.length > 2) return dir === 'rtl' ? `${detectedLangs.length} لغات مدعومة` : `${detectedLangs.length} Languages`;
-    if (detectedLangs.length > 0) return detectedLangs.join('، ');
-    if (parsedGlyphs.length === 0) return dir === 'rtl' ? 'جاري الفحص...' : 'Detecting...';
-    
-    let hasArabic = false;
-    let hasLatin = false;
-    
-    for (const g of parsedGlyphs) {
-      if (g.unicode) {
-        const code = parseInt(g.unicode, 16);
-        if (code >= 0x0600 && code <= 0x06FF) {
-          hasArabic = true;
-        }
-        if ((code >= 0x0041 && code <= 0x005A) || (code >= 0x0061 && code <= 0x007A)) {
-          hasLatin = true;
-        }
-      }
-    }
-    
-    const langs: string[] = [];
-    if (hasArabic) langs.push(dir === 'rtl' ? 'العربية' : 'Arabic');
-    if (hasLatin) langs.push(dir === 'rtl' ? 'اللاتينية' : 'Latin');
-    
-    if (langs.length === 0) return dir === 'rtl' ? 'العربية' : 'Arabic';
-    return langs.join(' / ');
-  };
 
   const isAdmin = user?.user_metadata?.role === 'admin';
   const isOwner = isAdmin || (!isPublicAllFonts && (group?.is_owner === true || group?.user_id === user?.id));
@@ -478,27 +287,32 @@ export const GroupDetails = ({
   const weightInputRef = useRef<HTMLInputElement>(null);
   const [uploadingWeightFor, setUploadingWeightFor] = useState<string | null>(null);
 
-  // Tags Editing Modal state
-  const [tagEditModal, setTagEditModal] = useState<{ isOpen: boolean, fontId: string | null, tagsText: string }>({ isOpen: false, fontId: null, tagsText: '' });
-  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
-  const [newSingleTag, setNewSingleTag] = useState('');
-  const [tagRenameModal, setTagRenameModal] = useState<{ isOpen: boolean, oldTag: string, newTag: string }>({ isOpen: false, oldTag: '', newTag: '' });
-  const [tagDeleteGlobalModal, setTagDeleteGlobalModal] = useState<{ isOpen: boolean, tag: string }>({ isOpen: false, tag: '' });
-
-  // Extract all unique tags
-  const availableTags = useMemo(() => {
-    const tagsSet = new Set<string>();
-    dbFonts.forEach(f => {
-      if (Array.isArray(f.tags)) {
-        f.tags.forEach(t => {
-          if (t && typeof t === 'string' && t.trim()) {
-            tagsSet.add(t.trim());
-          }
-        });
-      }
-    });
-    return Array.from(tagsSet).sort();
-  }, [dbFonts]);
+  const {
+    tagEditModal,
+    setTagEditModal,
+    isTagModalOpen,
+    setIsTagModalOpen,
+    newSingleTag,
+    setNewSingleTag,
+    tagRenameModal,
+    setTagRenameModal,
+    tagDeleteGlobalModal,
+    setTagDeleteGlobalModal,
+    availableTags,
+    handleUpdateTags,
+    handleRemoveTag,
+    handleRenameHashtagGlobally,
+    handleDeleteHashtagGlobally
+  } = useFontTagActions({
+    dbFonts,
+    dir: dir as 'rtl' | 'ltr' | 'auto',
+    addNotification,
+    fetchData,
+    setLoading,
+    publicTagFilters,
+    onTagClick,
+    onClearTagFilter
+  });
   
   // Pagination State (15 items per page)
   const [currentPage, setCurrentPage] = useState(1);
@@ -600,7 +414,7 @@ export const GroupDetails = ({
     }
   }, [id, user?.id, isPublicAllFonts, publicTagFilters.join(',')]);
 
-  const fetchData = async () => {
+  async function fetchData() {
     if (isPublicAllFonts) {
       // Public mode: fetch all public fonts, ignoring group logic
       setGroup(null);
@@ -1102,136 +916,7 @@ export const GroupDetails = ({
     }
   };
 
-  const handleUpdateTags = async () => {
-    if (!tagEditModal.fontId) return;
-    try {
-      const targetFont = dbFonts.find(f => f.id === tagEditModal.fontId);
-      if (!targetFont) return;
-      
-      const cleanNewTag = newSingleTag
-        .replace(/\s+/g, '_')
-        .replace(/[^a-zA-Z0-9_\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '')
-        .trim();
 
-      if (!cleanNewTag) {
-        addNotification('error', dir === 'rtl' ? 'يرجى إدخال هاشتاغ صالح' : 'Please enter a valid tag');
-        return;
-      }
-
-      const existingTags = targetFont.tags || [];
-      if (existingTags.includes(cleanNewTag)) {
-        addNotification('error', dir === 'rtl' ? 'هذا الهاشتاغ مضاف بالفعل لهذا الخط' : 'Tag already exists for this font');
-        return;
-      }
-
-      const updatedTags = [...existingTags, cleanNewTag];
-      await import('../services/fontService').then(m => m.updateFontTags(tagEditModal.fontId!, updatedTags));
-      addNotification('success', dir === 'rtl' ? 'تم إضافة الهاشتاغ بنجاح!' : 'Tag added successfully!');
-      setNewSingleTag('');
-      fetchData(); // Automatically reflect the changes
-    } catch (e) {
-      console.error(e);
-      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء إضافة الهاشتاغ' : 'Error adding tag');
-    }
-  };
-
-  const handleRemoveTag = async (fontId: string, tagToRemove: string) => {
-    try {
-      const targetFont = dbFonts.find(f => f.id === fontId);
-      if (!targetFont) return;
-
-      const updatedTags = (targetFont.tags || []).filter(t => t !== tagToRemove);
-      await import('../services/fontService').then(m => m.updateFontTags(fontId, updatedTags));
-      addNotification('success', dir === 'rtl' ? 'تم إزالة الهاشتاغ بنجاح!' : 'Tag removed successfully!');
-      fetchData();
-    } catch (e) {
-      console.error(e);
-      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء إزالة الهاشتاغ' : 'Error removing tag');
-    }
-  };
-
-  const handleRenameHashtagGlobally = async (oldTag: string, newTag: string) => {
-    const formattedNewTag = newTag
-      .replace(/\s+/g, '_')
-      .replace(/[^a-zA-Z0-9_\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '')
-      .trim();
-
-    if (!formattedNewTag) {
-      addNotification('error', dir === 'rtl' ? 'الهاشتاغ الجديد غير صالح' : 'Invalid new tag');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      // Find all public fonts that contain this oldTag
-      const allFonts = await getPublicFonts();
-      const fontsWithOldTag = allFonts.filter(f => f.tags && f.tags.includes(oldTag));
-      
-      if (fontsWithOldTag.length === 0) {
-        addNotification('error', dir === 'rtl' ? 'لم يتم العثور على خطوط مرتبطة بهذا الهاشتاغ' : 'No fonts found with this tag');
-        setLoading(false);
-        return;
-      }
-      
-      const updatePromises = fontsWithOldTag.map(font => {
-        const updatedTags = (font.tags || [])
-          .map(t => t === oldTag ? formattedNewTag : t)
-          .filter((value, index, self) => self.indexOf(value) === index); // Deduplicate
-        return import('../services/fontService').then(m => m.updateFontTags(font.id, updatedTags));
-      });
-      
-      await Promise.all(updatePromises);
-      addNotification('success', dir === 'rtl' ? `تم تعديل الهاشتاغ من #${oldTag} إلى #${formattedNewTag} في جميع الخطوط!` : `Tag renamed from #${oldTag} to #${formattedNewTag} in all fonts!`);
-      
-      // Update public filter state in the parent if it matches oldTag
-      if (publicTagFilters.includes(oldTag) && onTagClick) {
-        onTagClick(formattedNewTag);
-        onTagClick(oldTag); // Toggle old one out
-      }
-      
-      setTagRenameModal({ isOpen: false, oldTag: '', newTag: '' });
-      await fetchData();
-    } catch (e) {
-      console.error(e);
-      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء تعديل الهاشتاغ العام' : 'Error renaming global tag');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteHashtagGlobally = async (tagToDelete: string) => {
-    try {
-      setLoading(true);
-      const allFonts = await getPublicFonts();
-      const fontsWithTag = allFonts.filter(f => f.tags && f.tags.includes(tagToDelete));
-      
-      if (fontsWithTag.length === 0) {
-        addNotification('info', dir === 'rtl' ? `تم إزالة الهاشتاغ #${tagToDelete} بنجاح!` : `Tag #${tagToDelete} removed successfully!`);
-        if (onClearTagFilter) onClearTagFilter();
-        setLoading(false);
-        return;
-      }
-
-      const updatePromises = fontsWithTag.map(font => {
-        const updatedTags = (font.tags || []).filter(t => t !== tagToDelete);
-        return import('../services/fontService').then(m => m.updateFontTags(font.id, updatedTags));
-      });
-
-      await Promise.all(updatePromises);
-      addNotification('success', dir === 'rtl' ? `تم حذف الهاشتاغ #${tagToDelete} نهائياً من جميع الخطوط المرتبطة به!` : `Tag #${tagToDelete} permanently deleted from all associated fonts!`);
-      
-      if (onClearTagFilter) {
-        onClearTagFilter();
-      }
-      setTagDeleteGlobalModal({ isOpen: false, tag: '' });
-      await fetchData();
-    } catch (e) {
-      console.error(e);
-      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء حذف الهاشتاغ عالمياً' : 'Error deleting tag globally');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) return <div className="text-center py-20 text-white opacity-40 animate-pulse">{t('common.loading')}</div>;
   if (!isPublicAllFonts && !group) return <div className="text-center py-20 text-white opacity-40">Group not found</div>;

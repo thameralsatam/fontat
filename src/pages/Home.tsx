@@ -1,198 +1,16 @@
-import { useState, useEffect, useMemo } from "react"; 
- import { useNavigate } from "react-router-dom"; 
- import { Upload, Compass, Camera, Focus, Search, ExternalLink, Check, Copy, Folder } from "lucide-react"; 
+import { useNavigate } from "react-router-dom"; 
+ import { Upload, Compass } from "lucide-react"; 
  import { motion } from "framer-motion"; 
  import { useLanguage } from "../contexts/LanguageContext"; 
 
- // ✅ FIX: ثابت خارج الـ component — مو يتعاد إنشاؤه في كل render 
- const TELEGRAM_DATA = [ 
- { 
- nameAr: "نقاشات خطوط أحمد الغريب", 
- nameEn: "AlGharib Fonts Discussions Group", 
- link: "https://t.me/ElgharibFonts", 
- username: "@ElgharibFonts", 
- image: "/telegram-images/Ahmad gareb group.webp", 
- isDesigner: false, 
- tagsAr: ["جروب", "كشف الخطوط بالصور", "مجاني", "عربي"], 
- tagsEn: ["Group", "Detect Fonts via Images", "Free", "Arabic"], 
- supportsImageSearch: true 
- }, 
- { 
- nameAr: "خطوط أحمد الغريب", 
- nameEn: "AlGharib Main Fonts", 
- link: "https://t.me/ElgharibFont", 
- username: "@ElgharibFont", 
- image: "/telegram-images/Ahmed gareb fonts.webp", 
- isDesigner: false, 
- tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"], 
- tagsEn: ["Channel", "Free", "Arabic", "Library"] 
- }, 
- { 
- nameAr: "خطوط قران", 
- nameEn: "Quranic Fonts Channel", 
- link: "https://t.me/quranfont", 
- username: "@quranfont", 
- image: "/telegram-images/quran fonts.webp", 
- isDesigner: false, 
- tagsAr: ["قناة", "مجاني", "عربي", "إنجليزي", "أيقونات", "قرآني", "مكتبة"], 
- tagsEn: ["Channel", "Free", "Arabic", "English", "Icons", "Quranic", "Library"] 
- }, 
- { 
- nameAr: "خطوط إنجليزية أحمد الغريب", 
- nameEn: "AlGharib English Fonts", 
- link: "https://t.me/ElghribFont", 
- username: "@ElghribFont", 
- image: "/telegram-images/Ahmed gareb English fonts.webp", 
- isDesigner: false, 
- tagsAr: ["قناة", "مجاني", "إنجليزي", "مكتبة"], 
- tagsEn: ["Channel", "Free", "English", "Library"] 
- }, 
- { 
- nameAr: "خطوط أيقونات أحمد الغريب", 
- nameEn: "AlGharib Icon Fonts Channel", 
- link: "https://t.me/ElghribFonts", 
- username: "@ElghribFonts", 
- image: "/telegram-images/Ahmad gareb icon fonts.webp", 
- isDesigner: false, 
- tagsAr: ["قناة", "مجاني", "عربي", "أيقونات", "مكتبة"], 
- tagsEn: ["Channel", "Free", "Arabic", "Icons", "Library"] 
- }, 
- { 
- nameAr: "المكتبة العربية للخطوط", 
- nameEn: "Arabic Fonts Library", 
- link: "https://t.me/arabicllibrary", 
- username: "@arabicllibrary", 
- image: "/telegram-images/Arabic Library of Calligraphy .webp", 
- isDesigner: false, 
- tagsAr: ["قناة", "مجاني", "عربي", "مكتبة"], 
- tagsEn: ["Channel", "Free", "Arabic", "Library"] 
- }, 
- { 
- nameAr: "Iwantype", 
- nameEn: "Iwantype", 
- link: "https://t.me/iwantype", 
- username: "@iwantype", 
- image: "/telegram-images/Iwantype.webp", 
- isDesigner: true, 
- tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"], 
- tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"] 
- }, 
- { 
- nameAr: "Medad", 
- nameEn: "Medad", 
- link: "https://t.me/MedadFonts", 
- username: "@MedadFonts", 
- image: "/telegram-images/Medad.webp", 
- isDesigner: true, 
- tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو", "مكتبة"], 
- tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio", "Library"] 
- }, 
- { 
- nameAr: "TSfonts", 
- nameEn: "TSfonts", 
- link: "https://t.me/tsfont", 
- username: "@tsfont", 
- image: "/telegram-images/TSfonts.webp", 
- isDesigner: true, 
- tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"], 
- tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"] 
- }, 
- { 
- nameAr: "Mostafa El Abasiry", 
- nameEn: "Mostafa El Abasiry", 
- link: "https://t.me/arabictypo", 
- username: "@arabictypo", 
- image: "/telegram-images/Mostafa El Abasiry.webp", 
- isDesigner: true, 
- tagsAr: ["قناة", "مجاني", "مدفوع", "عربي", "استوديو"], 
- tagsEn: ["Channel", "Free", "Paid", "Arabic", "Studio"] 
- } 
- ]; 
-
- // ✅ FIX: دالة مساعدة خارج الـ component 
- function getInitials(nameAr: string, nameEn: string, isAr: boolean): string { 
- const text = isAr ? nameAr : nameEn; 
- const clean = text.replace(/[()\[\]\-+_=?!@#$%^&*]/g, " ").trim(); 
- const words = clean.split(/\s+/).filter(Boolean); 
- if (words.length >= 2) return words[0].charAt(0) + words[1].charAt(0); 
- if (words.length === 1) return words[0].slice(0, 2); 
- return ""; 
- } 
-
- const TelegramAvatar = ({ image, nameAr, nameEn, isAr }: { image?: string; nameAr: string; nameEn: string; isAr: boolean }) => { 
- const [hasError, setHasError] = useState(!image); 
-
- useEffect(() => { 
- setHasError(!image); 
- }, [image]); 
-
- // ✅ FIX: useMemo بدل حساب في كل render 
- const initials = useMemo(() => getInitials(nameAr, nameEn, isAr), [nameAr, nameEn, isAr]); 
-
- return ( 
- <div 
- className={`relative shrink-0 select-none w-12 h-12 rounded-2xl bg-black overflow-hidden flex items-center justify-center transition-all duration-300 shadow-md ${ 
- !image || hasError ? "border border-neutral-800" : "" 
- }`} 
- > 
- {!hasError && image ? ( 
- <img 
- src={image} 
- alt={isAr ? nameAr : nameEn} 
- className="w-full h-full object-cover transition-opacity duration-300 relative z-10" 
- referrerPolicy="no-referrer" 
- onError={() => setHasError(true)} 
- /> 
- ) : ( 
- <div 
- className="absolute inset-0 flex items-center justify-center font-bold text-white/30 group-hover:text-white/60 transition-colors uppercase text-sm select-none" 
- style={{ fontFamily: "'Kufam', sans-serif" }} 
- > 
- {initials} 
- </div> 
- )} 
- </div> 
- ); 
- }; 
 
  export const Home = () => { 
  const navigate = useNavigate(); 
- const { t, dir, language } = useLanguage(); 
+ const { t, dir } = useLanguage(); 
 
- const [copiedLink, setCopiedLink] = useState<string | null>(null); 
- const [telegramSearch, setTelegramSearch] = useState(""); 
 
- useEffect(() => { 
- if (window.location.hash === "#telegram-directory") { 
- const el = document.getElementById("telegram-directory"); 
- if (el) { 
- setTimeout(() => { 
- el.scrollIntoView({ behavior: "smooth", block: "start" }); 
- }, 300); 
- } 
- } 
- }, []); 
 
- const handleCopyLink = (link: string, e: React.MouseEvent) => { 
- e.preventDefault(); 
- e.stopPropagation(); 
- navigator.clipboard.writeText(link); 
- setCopiedLink(link); 
- setTimeout(() => setCopiedLink(null), 2000); 
- }; 
 
- // ✅ FIX: useMemo للفلترة — لا تُعاد الحسبة إلا عند تغيير البحث أو اللغة 
- const filteredTelegram = useMemo(() => { 
- if (!telegramSearch.trim()) return TELEGRAM_DATA; 
- const isAr = language === 'ar'; 
- const query = telegramSearch.toLowerCase(); 
- return TELEGRAM_DATA.filter(entity => { 
- const nameMatch = isAr 
- ? entity.nameAr.toLowerCase().includes(query) 
- : entity.nameEn.toLowerCase().includes(query); 
- return nameMatch || entity.username.toLowerCase().includes(query); 
- }); 
- }, [telegramSearch, language]); 
 
  const dummyCards = [ 
  { name: "Cairo", weight: "Regular", ext: ".ttf", preview: t("home.preview_char") }, 
@@ -219,32 +37,26 @@ import { useState, useEffect, useMemo } from "react";
  className="flex flex-row items-center justify-center gap-4 mt-12" 
  dir={dir} 
  > 
- <button 
- onClick={() => navigate("/fonts")} 
- className="px-6 py-3 rounded-full bg-white text-black hover:bg-gray-200 font-bold flex items-center justify-center gap-2 transition-all text-sm shadow-[0_0_20px_rgba(255,255,255,0.15)] active:scale-95" 
- > 
- <Compass className="w-4 h-4" /> 
- {t("home.explore")} 
- </button> 
+  <motion.button 
+  onClick={() => navigate("/fonts")} 
+  whileHover={{ scale: 1.03, y: -2 }}
+  whileTap={{ scale: 0.97 }}
+  className="px-7 py-3.5 rounded-full bg-zinc-950/80 backdrop-blur-md border border-white/10 hover:border-cyan-500/50 text-white hover:text-cyan-400 font-bold flex items-center justify-center gap-2.5 transition-all text-sm shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(6,182,212,0.25)] relative overflow-hidden group cursor-pointer" 
+  > 
+  <Compass className="w-4.5 h-4.5 text-cyan-400 group-hover:rotate-180 transition-transform duration-700 ease-out" /> 
+  <span>{t("home.explore")}</span> 
+  </motion.button> 
 
- <button 
- onClick={() => navigate("/my-fonts")} 
- className="px-6 py-3 rounded-full border border-white/20 hover:bg-white/10 text-white font-bold flex items-center justify-center gap-2 transition-all text-sm active:scale-95 hidden sm:flex" 
- > 
- <Upload className="w-4 h-4 opacity-70" /> 
- {t("home.upload")} 
- </button> 
+  <motion.button 
+  onClick={() => navigate("/my-fonts")} 
+  whileHover={{ scale: 1.03, y: -2 }}
+  whileTap={{ scale: 0.97 }}
+  className="px-7 py-3.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-white font-bold flex items-center justify-center gap-2.5 transition-all text-sm active:scale-95 hidden sm:flex cursor-pointer group" 
+  > 
+  <Upload className="w-4.5 h-4.5 opacity-70 group-hover:translate-y-[-1px] transition-transform duration-300 text-white/80 group-hover:text-white" /> 
+  <span>{t("home.upload")}</span> 
+  </motion.button> 
 
- <button 
- onClick={() => { 
- const el = document.getElementById('font-finder-cta'); 
- el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
- }} 
- className="px-6 py-3 rounded-full border border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-300 font-bold flex items-center justify-center gap-2 transition-all text-sm active:scale-95" 
- > 
- <Camera className="w-4 h-4" /> 
- {language === 'ar' ? 'البحث بالصورة' : 'Find via Image'} 
- </button> 
  </motion.div> 
  </div> 
 
@@ -454,188 +266,7 @@ import { useState, useEffect, useMemo } from "react";
  </div> 
  </div> 
 
- {/* Telegram CTA */} 
- <motion.div 
- id="font-finder-cta" 
- initial={{ opacity: 0, y: 15 }} 
- whileInView={{ opacity: 1, y: 0 }} 
- viewport={{ once: true, margin: "-50px" }} 
- transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} 
- className="w-full max-w-3xl xl:max-w-4xl mx-auto mt-6 md:mt-10 z-20 relative pointer-events-auto" 
- dir={dir} 
- > 
- <div className="relative group overflow-hidden rounded-3xl bg-[#080808] border border-white/5 shadow-2xl p-5 md:p-6 lg:p-8"> 
- <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/5 via-transparent to-blue-600/5 opacity-60 group-hover:opacity-100 transition-opacity duration-700" /> 
- <div className="flex flex-col md:flex-row items-center justify-between relative z-10 w-full transition-all gap-6"> 
- <div className="flex flex-col md:flex-row items-start md:items-center gap-5 w-full"> 
- <div className="relative shrink-0 flex items-center justify-center w-14 h-14 rounded-[1.25rem] bg-gradient-to-b from-white/10 to-transparent border border-white/10 group-hover:bg-white/10 transition-all duration-300"> 
- <Focus className="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform duration-500 relative z-10" /> 
- <div className="absolute inset-0 flex items-center justify-center pointer-events-none"> 
- <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]" /> 
- </div> 
- </div> 
- <div className="text-start flex-1 max-w-lg"> 
- <h3 className="text-lg md:text-xl font-bold text-white opacity-90 mb-1.5 tracking-tight"> 
- {language === 'ar' ? 'هل تبحث عن اسم خط بصورة؟' : 'Looking for a font from an image?'} 
- </h3> 
- <p className="text-white opacity-40 text-xs md:text-sm font-light leading-relaxed group-hover:opacity-60 transition-colors"> 
- {language === 'ar' 
- ? 'أرسل صورة الخط المجهول في جروب النقاشات وسنتعرف عليه ونرسله لك فوراً.' 
- : 'Send any unknown font image in our discussions group and we will find it for you instantly.'} 
- </p> 
- </div> 
- </div> 
- <div className="shrink-0 w-full md:w-auto mt-2 md:mt-0 flex justify-end items-center"> 
- <a 
- href="#telegram-directory" 
- onClick={(e) => { 
- e.preventDefault(); 
- document.getElementById('telegram-directory')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
- }} 
- className="w-full sm:w-auto flex flex-row items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-gray-100 text-black font-bold text-xs tracking-wide shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 whitespace-nowrap cursor-pointer" 
- > 
- <span>{language === 'ar' ? 'تصفح دليل القنوات والجروبات' : 'Browse Directory'}</span> 
- <div className={`w-4 h-4 rounded-full bg-black/5 flex items-center justify-center ${dir === 'rtl' ? '-ml-1' : '-mr-1'}`}> 
- <svg className={`w-2.5 h-2.5 ${dir === 'rtl' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"> 
- <path d="M5 12h14M12 5l7 7-7 7" /> 
- </svg> 
- </div> 
- </a> 
- </div> 
- </div> 
- </div> 
- </motion.div> 
 
- {/* Telegram Directory */} 
- <div 
- id="telegram-directory" 
- className="w-full max-w-5xl xl:max-w-6xl mx-auto mt-24 mb-10 px-0 relative z-20" 
- dir={dir} 
- > 
- <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 border-b border-white/5 pb-6"> 
- <div> 
- <h2 className="text-xl md:text-3xl font-bold text-white tracking-tight"> 
- {language === 'ar' ? 'دليل قنوات ومجموعات تليجرام' : 'Telegram Channels & Groups Directory'} 
- </h2> 
- <p className="text-white opacity-50 text-xs md:text-sm mt-1 max-w-xl font-light"> 
- {language === 'ar' 
- ? 'تصفح وتابع أفضل قنوات ومجموعات تليجرام المتخصصة بنشر الخطوط العربية وملحقات التصميم.' 
- : 'Browse and follow the best Telegram channels and groups specializing in Arabic fonts and design assets.'} 
- </p> 
- </div> 
- <div className="relative w-full md:max-w-xs font-sans"> 
- <input 
- type="text" 
- value={telegramSearch} 
- onChange={(e) => setTelegramSearch(e.target.value)} 
- placeholder={language === 'ar' ? 'ابحث باسم القناة أو المعرف...' : 'Search name or user...'} 
- className="w-full pl-9 pr-9 py-2.5 bg-[#0c0c0c] border border-white/10 hover:border-white/20 rounded-xl text-white text-xs outline-none focus:border-[#2AABEE]/40 focus:bg-[#070707] transition-all" 
- /> 
- <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 ${dir === 'rtl' ? 'right-3' : 'left-3'}`} /> 
- </div> 
- </div> 
-
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"> 
- {filteredTelegram.map((entity) => { 
- const isAr = language === 'ar'; 
- const isCopied = copiedLink === entity.link; 
-
- return ( 
- <div 
- key={entity.link} 
- className="group relative overflow-hidden rounded-[1.5rem] flex flex-col justify-between shadow-[0_4px_30px_rgba(0,0,0,0.4)] transition-all duration-300 hover:translate-y-[-2px] p-5 md:p-6 bg-[#0c0c0c]/80 border border-white/[0.06] hover:border-white/15 hover:bg-[#111111]/90" 
- > 
- <div className="absolute inset-0 bg-gradient-to-br transition-opacity duration-300 pointer-events-none from-white/[0.015] via-transparent to-transparent opacity-0 group-hover:opacity-100" /> 
- <div> 
- <div className="flex items-center gap-3.5 mb-3.5"> 
- <TelegramAvatar 
- image={entity.image} 
- nameAr={entity.nameAr} 
- nameEn={entity.nameEn} 
- isAr={isAr} 
- /> 
- <div className="flex-1 min-w-0"> 
- <h3 className="text-sm md:text-[15px] font-bold tracking-tight transition-colors duration-300 leading-relaxed text-white opacity-95 group-hover:text-cyan-300 pt-1.5 pb-1 select-text truncate"> 
- {isAr ? entity.nameAr : entity.nameEn} 
- </h3> 
- <div className="mt-0.5"> 
- <a 
- href={entity.link} 
- target="_blank" 
- rel="noopener noreferrer" 
- className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#2abcfe] hover:text-[#2abcfe]/85 transition-colors" 
- > 
- <span className="font-mono">{entity.username}</span> 
- <ExternalLink className="w-3 h-3 opacity-80" /> 
- </a> 
- </div> 
- </div> 
- </div> 
-
- <div className="flex flex-wrap gap-1.5 mb-2"> 
- {(isAr ? entity.tagsAr : entity.tagsEn).map((tag) => { 
- const isGroup = tag === 'جروب' || tag === 'Group'; 
- const isChannel = tag === 'قناة' || tag === 'Channel'; 
- const isFree = tag === 'مجاني' || tag === 'Free'; 
- const isPaid = tag === 'مدفوع' || tag === 'Paid'; 
- const isDesignerTag = tag === 'مصمم خطوط' || tag === 'Font Designer' || tag === 'استوديو' || tag === 'Studio'; 
- const isImageSearch = tag === 'تحديد الخط بالصور' || tag === 'Font Identification' || tag === 'كشف الخطوط بالصور' || tag === 'Detect Fonts via Images'; 
-
- return ( 
- <span 
- key={tag} 
- className={`text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full transition-all duration-300 inline-flex items-center gap-1 ${ 
- isGroup ? 'bg-amber-500/10 text-amber-400 border border-amber-500/15' : 
- isChannel ? 'bg-[#2AABEE]/10 text-[#2AABEE] border border-[#2AABEE]/15' : 
- isFree ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15' : 
- isPaid ? 'bg-rose-500/10 text-rose-400 border border-rose-500/15' : 
- isDesignerTag ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/15' : 
- isImageSearch ? 'bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/25 animate-pulse shadow-[0_0_8px_rgba(217,70,239,0.25)]' : 
- 'bg-white/5 border border-white/5 text-white/55' 
- }`} 
- > 
- {isImageSearch && <Camera className="w-3.5 h-3.5 text-fuchsia-300 shrink-0" />} 
- {isImageSearch ? (isAr ? "كشف الخطوط بالصور" : "Verify Font via Image") : tag} 
- </span> 
- ); 
- })} 
- </div> 
- </div> 
-
- <div className="flex items-center gap-2 pt-3 border-t border-white/[0.04] z-10 w-full mt-1.5"> 
- <a 
- href={entity.link} 
- target="_blank" 
- rel="noopener noreferrer" 
- className="flex-1 py-1.5 md:py-2 px-3 md:px-4 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95 bg-white hover:bg-gray-100 text-black" 
- > 
- <span> 
- {isAr 
- ? (entity.tagsAr.includes("جروب") ? "الانتقال للجروب" : "الانتقال للقناة") 
- : (entity.tagsEn.includes("Group") || entity.tagsAr.includes("جروب") ? "Go to Group" : "Go to Channel")} 
- </span> 
- </a> 
- <button 
- onClick={(e) => handleCopyLink(entity.link, e)} 
- className={`p-2 rounded-xl border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/5 transition-all cursor-pointer ${isCopied ? 'border-green-500/20 text-green-400 bg-green-500/5' : ''}`} 
- title={isAr ? 'نسخ الرابط' : 'Copy link'} 
- > 
- {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} 
- </button> 
- </div> 
- </div> 
- ); 
- })} 
- {filteredTelegram.length === 0 && ( 
- <div className="col-span-full py-16 text-center text-white/30 flex flex-col items-center justify-center"> 
- <Folder className="w-8 h-8 mb-3 opacity-15" /> 
- <p className="text-xs font-light"> 
- {language === 'ar' ? 'لا توجد نتائج تطابق بحثك حالياً.' : 'No matching results found.'} 
- </p> 
- </div> 
- )} 
- </div> 
- </div> 
- </div> 
+  </div> 
  ); 
  }; 
