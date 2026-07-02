@@ -49,7 +49,7 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
           {/* Title and Description Grouped Together */}
           <div className="space-y-2">
             <h1 className="text-2xl md:text-3xl font-bold font-display text-white tracking-tight leading-tight">
-              {isPublicAllFonts ? 'الخطوط العامة' : group?.name}
+              {isPublicAllFonts ? t('nav.public_fonts') : group?.name}
             </h1>
             {!isPublicAllFonts && group?.description && (
               <p className="text-sm text-white opacity-50 font-light leading-relaxed max-w-3xl whitespace-pre-wrap">

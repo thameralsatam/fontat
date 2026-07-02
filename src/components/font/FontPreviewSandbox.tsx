@@ -41,7 +41,6 @@ export const FontPreviewSandbox: React.FC<FontPreviewSandboxProps> = ({
   selectedPoemIndex,
   setSelectedPoemIndex,
   getPoemText,
-  handlePoemChange,
   getPreviewText,
   handlePreviewChange,
   glyphSearch,
@@ -91,21 +90,35 @@ export const FontPreviewSandbox: React.FC<FontPreviewSandboxProps> = ({
             ))}
           </div>
 
-          {/* Main Poem Textarea Wrapper - FIXED size to 15px directly */}
-          <div className="flex-1 overflow-y-auto pr-1 min-h-[250px]">
-            <textarea
-              value={getPoemText(selectedFontDetail.id)}
-              onChange={(e) => handlePoemChange(selectedFontDetail.id, e.target.value)}
-              className={`w-full h-full min-h-[240px] bg-transparent border-none outline-none resize-none leading-loose focus:ring-0 text-center select-text font-serif ${activeTheme.text} transition-all`}
+          {/* Main Poem Scroll Wrapper with Elegant Fade Out Mask */}
+          <div className="flex-1 relative overflow-hidden min-h-[250px]">
+            <div 
+              className="absolute inset-0 overflow-y-auto pr-1 pb-16 custom-scrollbar text-center flex flex-col justify-start"
               style={{
-                fontFamily: `"${selectedFontDetail.name}", sans-serif`,
-                fontSize: '15px',
-                lineHeight: '1.9',
-                fontFeatureSettings: 'normal',
-                fontVariantLigatures: 'normal'
+                maskImage: 'linear-gradient(to bottom, black 65%, transparent 98%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 65%, transparent 98%)'
               }}
-              placeholder={dir === 'rtl' ? 'ضع أبيات قصيدتك وعش سحر الكلمة...' : 'Write your classical poetry lines here...'}
-            />
+            >
+              <div 
+                className={`whitespace-pre-wrap leading-loose text-center font-serif ${activeTheme.text} transition-all select-text pb-6`}
+                style={{
+                  fontFamily: `"${selectedFontDetail.name}", sans-serif`,
+                  fontSize: '17px',
+                  lineHeight: '2.1',
+                  fontFeatureSettings: 'normal',
+                  fontVariantLigatures: 'normal'
+                }}
+              >
+                {getPoemText(selectedFontDetail.id)}
+                
+                {/* Elegant Poetry Ending Divider */}
+                <div className="mt-8 flex items-center justify-center gap-3 opacity-25">
+                  <div className="h-[1px] w-8 bg-white/50" />
+                  <span className="text-[10px] tracking-widest font-sans">✦ ✦ ✦</span>
+                  <div className="h-[1px] w-8 bg-white/50" />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Designer seal watermark */}

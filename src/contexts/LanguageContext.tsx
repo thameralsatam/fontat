@@ -246,7 +246,7 @@ const translations: Record<Language, Record<string, string>> = {
     'login.error': 'خطأ في تسجيل الدخول',
     'nav.my_account': 'حسابي',
     'nav.home': 'الرئيسية',
-    'nav.public_fonts': 'خطوط عامة',
+    'nav.public_fonts': 'الخطوط العامة',
     'nav.my_fonts': 'خطوطي',
     'nav.lab': 'المختبر',
     'nav.account': 'حسابي',

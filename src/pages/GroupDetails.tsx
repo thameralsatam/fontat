@@ -826,8 +826,7 @@ export const GroupDetails = ({
   };
 
   const getPreviewText = (fontId: string) => {
-    const text = fontPreviews[fontId] !== undefined ? fontPreviews[fontId] : deferredGlobalPreviewText;
-    return text === '' ? 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)' : text;
+    return fontPreviews[fontId] !== undefined ? fontPreviews[fontId] : deferredGlobalPreviewText;
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

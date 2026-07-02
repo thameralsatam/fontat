@@ -171,7 +171,7 @@ const PopoverColorPicker = ({ color, onChange }: { color: string, onChange: (c: 
 };
 
 export const Lab = () => {
-  const { t, language } = useLanguage();
+  const { t, language, dir } = useLanguage();
   const { addNotification } = useGlobal();
   const [font, setFont] = useState<any>(null);
   const [originalFontBlob, setOriginalFontBlob] = useState<Blob | null>(null);
@@ -538,10 +538,19 @@ export const Lab = () => {
                 setCurrentFontId(null);
                 setOriginalFontBlob(null);
               }}
-              className="mr-auto text-sm bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg flex items-center gap-2 transition-all"
+              className={`${dir === 'rtl' ? 'mr-auto' : 'ml-auto'} text-sm bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer`}
             >
-              {t('lab.back_to_history')}
-              <ArrowRight className="w-4 h-4" />
+              {dir === 'rtl' ? (
+                <>
+                  <span>{t('lab.back_to_history')}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="w-4 h-4 rotate-180" />
+                  <span>{t('lab.back_to_history')}</span>
+                </>
+              )}
             </button>
           )}
         </h1>
