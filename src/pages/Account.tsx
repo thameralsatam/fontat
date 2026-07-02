@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LogOut, Loader2, Eye, EyeOff, Bell, ChevronDown, Key, UserCircle2 } from 'lucide-react';
+import { LogOut, Loader2, Eye, EyeOff, Bell, ChevronDown, Key } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { NotificationPreferences } from '../types';
@@ -114,7 +114,19 @@ export const Account = () => {
               {/* Profile Card */}
               <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-6 flex flex-col items-center text-center">
                  <div className="w-16 h-16 bg-white/[0.02] border border-white/10 rounded-full flex items-center justify-center text-white/60 mb-3 shadow-inner">
-                   <UserCircle2 className="w-8 h-8 opacity-75" />
+                   <svg 
+                     viewBox="0 0 24 24" 
+                     fill="none" 
+                     stroke="currentColor" 
+                     strokeWidth="1.6" 
+                     strokeLinecap="round" 
+                     strokeLinejoin="round" 
+                     className="w-8 h-8 opacity-75"
+                   >
+                     <circle cx="12" cy="12" r="10" />
+                     <circle cx="12" cy="9" r="2.5" />
+                     <path d="M7 17.5c0-2.5 2-4.5 5-4.5s5 2 5 4.5" />
+                   </svg>
                  </div>
                  <h3 className="text-lg font-medium text-white tracking-tight break-all max-w-sm mb-1">
                    {user.email || ''}
@@ -266,7 +278,19 @@ export const Account = () => {
               {/* Guest Profile Card */}
               <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-6 flex flex-col items-center text-center">
                  <div className="w-16 h-16 bg-white/[0.02] border border-white/10 rounded-full flex items-center justify-center text-white/50 mb-3 shadow-inner">
-                   <UserCircle2 className="w-8 h-8 opacity-75" />
+                   <svg 
+                     viewBox="0 0 24 24" 
+                     fill="none" 
+                     stroke="currentColor" 
+                     strokeWidth="1.6" 
+                     strokeLinecap="round" 
+                     strokeLinejoin="round" 
+                     className="w-8 h-8 opacity-75"
+                   >
+                     <circle cx="12" cy="12" r="10" />
+                     <circle cx="12" cy="9" r="2.5" />
+                     <path d="M7 17.5c0-2.5 2-4.5 5-4.5s5 2 5 4.5" />
+                   </svg>
                  </div>
                  <h3 className="text-lg font-medium text-white tracking-tight mb-1">
                    {isSignUp ? (language === 'ar' ? 'إنشاء حساب جديد' : 'Create New Account') : (language === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
@@ -277,12 +301,16 @@ export const Account = () => {
               </div>
 
               {/* Minimalist Google Auth Card (Moved up) */}
-              <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-4 flex items-center justify-between opacity-40 cursor-not-allowed select-none">
+              <div className="bg-[#0a0a0a]/85 border border-white/5 rounded-3xl p-4 flex items-center justify-between transition-all duration-300 relative group/google overflow-hidden">
                 <div className="flex items-center gap-3">
-                  <GoogleIcon />
-                  <span className="text-white text-xs font-medium">{language === 'ar' ? 'المتابعة باستخدام جوجل' : 'Continue with Google'}</span>
+                  <div className="w-9 h-9 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center transition-transform duration-300 group-hover/google:scale-105 shrink-0">
+                    <GoogleIcon />
+                  </div>
+                  <span className="text-white/80 text-xs sm:text-sm font-medium tracking-wide">
+                    {language === 'ar' ? 'المتابعة باستخدام جوجل' : 'Continue with Google'}
+                  </span>
                 </div>
-                <span className="bg-white/5 px-2 py-0.5 rounded text-[9px] text-white/45 tracking-wider font-semibold">
+                <span className="bg-white/[0.03] border border-white/5 text-white/40 px-2.5 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase">
                    {language === 'ar' ? 'قريباً' : 'SOON'}
                 </span>
               </div>

@@ -184,16 +184,40 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     setOptionsOpenGroupId(null);
   };
 
+  const cleanDescription = (desc: string): string => {
+    if (!desc) return '';
+    const lines = desc.split('\n');
+    const trimmedLines = lines.map(line => line.trimEnd());
+    const resultLines: string[] = [];
+    let emptyLineCount = 0;
+    
+    for (let i = 0; i < trimmedLines.length; i++) {
+      const line = trimmedLines[i];
+      if (line === '') {
+        emptyLineCount++;
+      } else {
+        if (emptyLineCount > 0 && resultLines.length > 0) {
+          resultLines.push('');
+        }
+        resultLines.push(line);
+        emptyLineCount = 0;
+      }
+    }
+    return resultLines.join('\n');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!groupName || !user) return;
+    
+    const cleanedDesc = cleanDescription(groupDesc);
     
     if (isEditMode && selectedGroup) {
       // Edit
       try {
         const data = await updateGroup(selectedGroup.id, {
           name: groupName,
-          description: groupDesc,
+          description: cleanedDesc,
           is_public: isPublic
         });
 
@@ -215,7 +239,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     } else {
       // Create
       try {
-        const data = await createGroupSmart(groupName, groupDesc, isPublic);
+        const data = await createGroupSmart(groupName, cleanedDesc, isPublic);
 
         fetchGroups(true);
         if (data) {
