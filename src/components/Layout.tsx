@@ -140,6 +140,57 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    // التحقق من وجود تحديثات في الخلفية عند التنقل بين الصفحات لضمان التحديث التلقائي دون إزعاج المستخدم
+    const getRunningVersion = () => {
+      const script = document.querySelector('script[src*="v="]');
+      if (script) {
+        const match = script.getAttribute('src')?.match(/[?&]v=([^&]+)/);
+        if (match) return match[1];
+      }
+      const link = document.querySelector('link[href*="v="]');
+      if (link) {
+        const match = link.getAttribute('href')?.match(/[?&]v=([^&]+)/);
+        if (match) return match[1];
+      }
+      return null;
+    };
+
+    const checkAppUpdate = async () => {
+      try {
+        const runningVersion = getRunningVersion();
+        if (!runningVersion) return; // في البيئة المحلية للتطوير لن يكون هناك v= وبالتالي لن يحدث شيء
+
+        // جلب ملف الـ index.html مع تجاوز كاش المتصفح عبر علامة زمنية فريدة
+        const res = await fetch(`/index.html?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const html = await res.text();
+
+        // استخراج رقم الإصدار من ملف index.html المجلوب حديثاً من السيرفر بشكل مرن لأي ملف أصول (Assets)
+        const match = html.match(/(?:src|href)="[^"]*?\?v=([a-zA-Z0-9._-]+)"/);
+
+        if (match && match[1]) {
+          const serverVersion = match[1];
+          if (serverVersion !== runningVersion) {
+            console.log(`[Update Checker] New version detected: ${serverVersion} (Current: ${runningVersion}). Reloading...`);
+            // إعادة تحميل الصفحة بسلاسة لتطبيق التحديث الجديد فوراً للمستخدم أثناء تنقله
+            window.location.reload();
+          }
+        }
+      } catch (err) {
+        console.error('Error checking for updates:', err);
+      }
+    };
+
+    // منع تكرار الطلب في غضون 30 ثانية لتوفير استهلاك البيانات والأداء
+    const now = Date.now();
+    const lastCheck = sessionStorage.getItem('fontat_last_update_check');
+    const lastCheckTime = lastCheck ? parseInt(lastCheck, 10) : 0;
+
+    if (now - lastCheckTime > 30000) {
+      sessionStorage.setItem('fontat_last_update_check', now.toString());
+      checkAppUpdate();
+    }
   }, [location.pathname]);
 
   useEffect(() => {

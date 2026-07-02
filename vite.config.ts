@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
-// قم بتغيير رقم الإصدار هنا عند كل تحديث لضمان تجاوز الكاش (Cache Busting)
-const APP_VERSION = '1.1.0'; 
+// يتم توليد رقم الإصدار تلقائياً بناءً على وقت البناء (Build Timestamp) ليتغير مع كل نشر (Deployment) تلقائياً على كلاود فلير دون الحاجة للتغيير اليدوي
+const APP_VERSION = '1.1.0_' + Date.now(); 
 
 export default defineConfig({
   plugins: [
