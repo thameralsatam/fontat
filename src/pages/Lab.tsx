@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Upload, Beaker, Download, Settings, Type, Search, Clock, ArrowRight, X, Copy, Sliders, ChevronDown, Palette, Layers, Info } from 'lucide-react';
+import { Upload, Beaker, Download, Video, Settings, Type, Search, Clock, ArrowRight, X, Copy, Sliders, ChevronDown, Palette, Layers, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HexColorPicker } from "react-colorful";
 // @ts-ignore
@@ -9,6 +9,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { saveFontHistory, getFontHistoryList, getFontHistoryItem, FontHistoryItem, clearFontHistory } from '../lib/db';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { formatFontName } from '../utils/text';
+import { VideoExportModal } from '../components/font/VideoExportModal';
 
 const getFeatureDescription = (tag: string, parsedFont: any, t: (key: string) => string): string => {
   if (parsedFont && parsedFont.names) {
@@ -51,7 +52,7 @@ const getFeatureDescription = (tag: string, parsedFont: any, t: (key: string) =>
   return t('lab.no_desc');
 };
 
-const DEFAULT_ENABLED_FEATURES = ['calt', 'rclt', 'rlig', 'liga', 'clig', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl', 'kern', 'blwf', 'abvf', 'half', 'pstf', 'vatu', 'cjct'];
+const DEFAULT_ENABLED_FEATURES = ['init', 'medi', 'fina', 'isol', 'rlig', 'ccmp', 'mark', 'mkmk', 'curs'];
 
 
 const PopoverColorPicker = ({ color, onChange }: { color: string, onChange: (c: string) => void }) => {
@@ -187,6 +188,7 @@ export const Lab = () => {
   const [openTypeFeatures, setOpenTypeFeatures] = useState<Record<string, boolean | undefined>>({});
   const [activeFeatureTooltip, setActiveFeatureTooltip] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isVideoExportModalOpen, setIsVideoExportModalOpen] = useState(false);
   const [glyphSearch, setGlyphSearch] = useState('');
   const [history, setHistory] = useState<Omit<FontHistoryItem, 'blob'>[]>([]);
   const [currentFontId, setCurrentFontId] = useState<string | null>(null);
@@ -1296,7 +1298,7 @@ export const Lab = () => {
                          )}
 
                           {/* Instant Download Action in Fullscreen */}
-                          <div className="pt-2 border-t border-white/5 font-sans">
+                          <div className="pt-2 border-t border-white/5 font-sans flex flex-col gap-2">
                             <button
                               onClick={async () => {
                                 if (!font || isDownloading) return;
@@ -1327,6 +1329,16 @@ export const Lab = () => {
                                 </>
                               )}
                             </button>
+                            
+                            {axes && axes.length > 0 && (
+                              <button
+                                onClick={() => setIsVideoExportModalOpen(true)}
+                                className="w-full bg-[#1a1a1a] border border-white/10 hover:bg-white/10 text-white py-2.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 select-none active:scale-95 cursor-pointer"
+                              >
+                                <Video size={13} className="text-cyan-400" />
+                                <span>Export Animation (MP4)</span>
+                              </button>
+                            )}
                           </div>
                       </div>
                     </motion.div>
@@ -1364,6 +1376,20 @@ export const Lab = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <VideoExportModal
+        isOpen={isVideoExportModalOpen}
+        onClose={() => setIsVideoExportModalOpen(false)}
+        axes={axes}
+        currentAxisValues={axisValues}
+        text={previewText}
+        fontFamily={`LabFont-${currentFontId}`}
+        openTypeFeatures={openTypeFeatures}
+        fontSize={fontSize === '' ? 80 : fontSize}
+        fontBlob={originalFontBlob}
+        textColor={textColor}
+        bgColor={bgColor}
+        lineHeight={lineHeight === '' ? 1.4 : lineHeight}
+      />
     </div>
   );
 };
