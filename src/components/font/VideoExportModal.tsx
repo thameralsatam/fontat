@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Play, Download, Loader2, AlertCircle, Sparkles, Film } from 'lucide-react';
+import { X, Play, Download, Loader2, AlertCircle, Sparkles, Film, Sliders } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import * as Mp4Muxer from 'mp4-muxer';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -61,10 +61,12 @@ export function VideoExportModal({
     reader.readAsDataURL(fontBlob);
   }, [fontBlob]);
 
+  // Clean font embed CSS without format constraint, allowing TTF, OTF, WOFF, WOFF2
   const fontEmbedCSS = fontBase64 ? `
     @font-face {
       font-family: '${fontFamily}';
-      src: url('${fontBase64}') format('truetype');
+      src: url('${fontBase64}');
+      font-display: swap;
     }
   ` : '';
 
@@ -117,38 +119,40 @@ export function VideoExportModal({
     setQuality(val);
   };
 
-  // Translation mapping directly inside the component for perfect bilingual presentation
+  // Redesigned perfect bilingual presentation translations
   const translations = {
     ar: {
       title: "تصدير حركة الخط المتغير (فيديو)",
       subtitle: "صمّم وحمّل فيديو احترافي للمحاور المتغيرة وهي تتمدد وتتحرك بسلاسة.",
-      duration: "السرعة والمدة (بالثواني)",
-      fps: "سلاسة الحركة (إطار/ثانية)",
+      duration: "السرعة والمدة",
+      fps: "سلاسة الإطارات",
       quality: "دقة وجودة الفيديو",
-      qualityLow: "دقة متوسطة (480p) - خفيف سريع",
-      qualityMedium: "دقة عالية (720p) - متوازن",
-      qualityHigh: "دقة فائقة (1080p) - جودة سينمائية",
-      startVal: "البداية (من)",
-      endVal: "النهاية (إلى)",
+      qualityLow: "دقة عادية (480p) - خفيف وسريع",
+      qualityMedium: "دقة عالية (720p) - متوازن ومناسب",
+      qualityHigh: "دقة فائقة (1080p) - جودة سينمائية كاملة",
+      startVal: "قيمة البداية",
+      endVal: "قيمة النهاية",
       staticVal: "القيمة الثابتة",
-      animateAxis: "تحريك هذا المحور",
+      animateAxis: "تفعيل حركة المحور",
       generate: "تصدير وحفظ الفيديو",
       exporting: "جاري التقاط الإطارات ومعالجة الحركة...",
-      finished: "اكتمل التصدير بنجاح!",
-      downloadVideo: "تحميل ملف الفيديو (MP4/WebM)",
+      finished: "تم تصدير الفيديو بنجاح!",
+      downloadVideo: "تحميل الفيديو الآن",
       cancel: "إلغاء",
       noAxes: "هذا الخط لا يحتوي على محاور متغيرة لتحريكها.",
       error: "حدث خطأ أثناء تصدير الفيديو",
-      engineWebCodecs: "محرك سريع فائق الجودة",
-      engineMediaRecorder: "محرك التوافقية العالية",
-      aspectRatio: "حجم إطار الفيديو",
-      livePreview: "معاينة الحركة الحية"
+      engineWebCodecs: "محرك سريع فائق الجودة (MP4)",
+      engineMediaRecorder: "محرك التوافقية العالية (WebM)",
+      aspectRatio: "أبعاد الفيديو واقتصاص الإطار",
+      livePreview: "المعاينة الحية للحركة المتغيرة",
+      axisMotionHeader: "إعدادات حركة محاور الخط",
+      secLabel: "ثواني"
     },
     en: {
       title: "Export Variable Font Animation",
       subtitle: "Design and download a smooth motion video of your variable axes animating.",
-      duration: "Duration (seconds)",
-      fps: "Framerate (FPS)",
+      duration: "Duration",
+      fps: "Framerate",
       quality: "Video Quality & Resolution",
       qualityLow: "Standard (480p) - Fast",
       qualityMedium: "High Def (720p) - Balanced",
@@ -164,10 +168,12 @@ export function VideoExportModal({
       cancel: "Cancel",
       noAxes: "This font doesn't have variable axes to animate.",
       error: "Error exporting video",
-      engineWebCodecs: "Ultra High Quality Engine",
-      engineMediaRecorder: "High Compatibility Fallback Engine",
-      aspectRatio: "Video Aspect Ratio",
-      livePreview: "Live Motion Preview"
+      engineWebCodecs: "Ultra High Quality Engine (MP4)",
+      engineMediaRecorder: "High Compatibility Engine (WebM)",
+      aspectRatio: "Video Dimensions & Aspect Ratio",
+      livePreview: "Live Variable Motion Preview",
+      axisMotionHeader: "Configure Font Axis Animation",
+      secLabel: "seconds"
     }
   };
 
@@ -192,11 +198,17 @@ export function VideoExportModal({
     }
   }, [axes, currentAxisValues]);
 
-  // Generate CSS Feature string
-  const activeFeatures = Object.entries(openTypeFeatures)
-    .filter(([_, enabled]) => enabled)
-    .map(([tag]) => `"${tag}" 1`)
-    .join(', ');
+  // Generate standardized, validated CSS font-feature-settings string
+  const getFeaturesString = () => {
+    if (Object.keys(openTypeFeatures).length === 0) return 'normal';
+    const parts: string[] = [];
+    Object.entries(openTypeFeatures).forEach(([tag, enabled]) => {
+      if (enabled !== undefined && /^[A-Za-z0-9]{4}$/.test(tag)) {
+        parts.push(`"${tag}" ${enabled ? 1 : 0}`);
+      }
+    });
+    return parts.length > 0 ? parts.join(', ') : 'normal';
+  };
 
   // Get font variation settings for a given factor t (0 to 1)
   const getFVS = (tFactor: number) => {
@@ -297,11 +309,17 @@ export function VideoExportModal({
     return { width, height, bitrate };
   };
 
-  const getPreviewAspectRatioClass = () => {
-    if (aspectRatio === '1:1') return 'aspect-square max-h-[220px] max-w-[220px]';
-    if (aspectRatio === '16:9') return 'aspect-video max-h-[200px] max-w-[320px]';
-    return 'aspect-[9/16] h-[260px] max-w-[150px]';
+  // Exact preview dimensions in UI
+  const getPreviewDimensions = () => {
+    if (aspectRatio === '1:1') return { width: 260, height: 260, className: 'w-[260px] h-[260px] aspect-square' };
+    if (aspectRatio === '16:9') return { width: 320, height: 180, className: 'w-[320px] h-[180px] aspect-video' };
+    return { width: 180, height: 320, className: 'w-[180px] h-[320px] aspect-[9/16]' };
   };
+
+  const { width: previewWidth, className: previewClass } = getPreviewDimensions();
+
+  // Scale fonts perfectly to prevent wrap mismatches between live preview and render canvas
+  const previewFontSize = fontSize * (previewWidth / 800);
 
   // Main Export Router (WebCodecs -> fallbacks to MediaRecorder)
   const handleExport = async () => {
@@ -377,24 +395,34 @@ export function VideoExportModal({
 
     const element = containerRef.current!;
     
-    // Warm up/ensure font caches are loaded
-    await htmlToImage.toCanvas(element, { width, height, fontEmbedCSS: fontEmbedCSS || undefined });
+    // Warm up font cache
+    await htmlToImage.toCanvas(element, { width, height, fontEmbedCSS: fontEmbedCSS || undefined, cacheBust: true });
 
     for (let i = 0; i < totalFrames; i++) {
       const tFactor = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+      const fvsString = getFVS(tFactor);
       
-      // Update element font settings dynamically
-      element.style.fontVariationSettings = getFVS(tFactor);
+      // Update element and child font settings dynamically using robust setProperty
+      element.style.setProperty('font-variation-settings', fvsString);
       if (textRef.current) {
-        textRef.current.style.fontVariationSettings = getFVS(tFactor);
+        textRef.current.style.setProperty('font-variation-settings', fvsString);
       }
+
+      // Force layout calculation/reflow to guarantee style recalculations before paint
+      element.offsetHeight;
+      if (textRef.current) textRef.current.offsetHeight;
+
+      // Wait a rendering tick to let browser engine execute repaint
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise(resolve => setTimeout(resolve, 20));
 
       const canvas = await htmlToImage.toCanvas(element, {
         width,
         height,
         backgroundColor: bgColor,
         style: { transform: 'none', margin: '0' },
-        fontEmbedCSS: fontEmbedCSS || undefined
+        fontEmbedCSS: fontEmbedCSS || undefined,
+        cacheBust: true // Force fresh snapshot rendering bypass cache
       });
 
       const timestamp = (i * 1_000_000) / fps; // in microseconds
@@ -467,19 +495,29 @@ export function VideoExportModal({
 
     for (let i = 0; i < totalFrames; i++) {
       const tFactor = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+      const fvsString = getFVS(tFactor);
       
-      // Update font settings
-      element.style.fontVariationSettings = getFVS(tFactor);
+      // Update font settings dynamically with robust property setter
+      element.style.setProperty('font-variation-settings', fvsString);
       if (textRef.current) {
-        textRef.current.style.fontVariationSettings = getFVS(tFactor);
+        textRef.current.style.setProperty('font-variation-settings', fvsString);
       }
+
+      // Force synchronous reflow layout cycle
+      element.offsetHeight;
+      if (textRef.current) textRef.current.offsetHeight;
+
+      // Allow browser engine layout tick 
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise(resolve => setTimeout(resolve, 20));
 
       const tempCanvas = await htmlToImage.toCanvas(element, {
         width,
         height,
         backgroundColor: bgColor,
         style: { transform: 'none', margin: '0' },
-        fontEmbedCSS: fontEmbedCSS || undefined
+        fontEmbedCSS: fontEmbedCSS || undefined,
+        cacheBust: true
       });
 
       // Render onto recorder canvas
@@ -515,25 +553,26 @@ export function VideoExportModal({
   if (!isOpen) return null;
 
   const { width: exportWidth, height: exportHeight } = getExportDimensions();
+  const scaledFontSize = fontSize * (exportWidth / 800);
 
   return (
     <div 
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto" 
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-lg overflow-y-auto" 
       style={{ direction: isAr ? 'rtl' : 'ltr', fontFamily: "'Thmanyah Sans', sans-serif" }}
     >
       <style dangerouslySetInnerHTML={{ __html: fontEmbedCSS }} />
 
-      <div className="bg-[#0b0b0b] border border-white/10 rounded-2xl w-full max-w-5xl overflow-hidden shadow-[0_0_50px_rgba(34,211,238,0.15)] flex flex-col my-8">
+      <div className="bg-[#0c0c0e] border border-white/10 rounded-3xl w-full max-w-5xl overflow-hidden shadow-[0_0_50px_rgba(34,211,238,0.15)] flex flex-col my-8">
         
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/10 bg-[#111111]/80">
+        {/* Simplified Modern Header */}
+        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-[#111115]/60">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyan-950/50 border border-cyan-500/30">
+            <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
               <Film className="text-cyan-400 w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white font-sans">{t('title')}</h2>
-              <p className="text-[10px] text-white/50 mt-0.5">{t('subtitle')}</p>
+              <h2 className="text-sm font-bold text-white tracking-tight" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('title')}</h2>
+              <p className="text-[10px] text-white/40 mt-1" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('subtitle')}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/5 transition-colors">
@@ -541,43 +580,45 @@ export function VideoExportModal({
           </button>
         </div>
 
-        {/* Two-Column Responsive Content Area */}
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 overflow-y-auto max-h-[70vh]">
+        {/* Highly Simplified Content Grid */}
+        <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 overflow-y-auto max-h-[70vh] custom-scrollbar">
           {axes.length === 0 ? (
-            <div className="col-span-12 text-center py-12 text-white/50 text-sm border border-dashed border-white/10 rounded-xl">
+            <div className="col-span-12 text-center py-12 text-white/50 text-sm border border-dashed border-white/10 rounded-xl" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
               {t('noAxes')}
             </div>
           ) : (
             <>
               {/* Left Column: Live Visual Preview and Aspect Ratio selectors */}
-              <div className="lg:col-span-5 flex flex-col gap-5">
-                <h3 className="text-[11px] uppercase tracking-wider text-cyan-400 font-bold flex items-center gap-2">
-                  <Sparkles size={12} />
-                  {t('livePreview')}
-                </h3>
+              <div className="lg:col-span-5 flex flex-col gap-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[11px] uppercase tracking-wider text-cyan-400 font-bold flex items-center gap-2" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                    <Sparkles size={12} />
+                    {t('livePreview')}
+                  </h3>
+                </div>
 
-                {/* Animated Preview Canvas Screen */}
+                {/* Animated Preview Canvas Screen matching Customize & Zoom perfectly */}
                 <div 
-                  className="flex flex-col items-center justify-center bg-[#111] p-6 rounded-xl border border-white/5 w-full min-h-[300px] relative overflow-hidden"
+                  className="flex flex-col items-center justify-center bg-[#070709] p-8 rounded-2xl border border-white/5 w-full min-h-[340px] relative overflow-hidden"
                 >
                   <div 
-                    className={`w-full relative flex items-center justify-center overflow-hidden rounded-xl transition-all duration-300 border border-white/10 shadow-2xl ${getPreviewAspectRatioClass()}`}
+                    className={`relative flex items-center justify-center overflow-hidden rounded-2xl transition-all duration-300 border border-white/10 shadow-2xl ${previewClass}`}
                     style={{ backgroundColor: bgColor }}
                   >
                     <div
                       style={{
                         fontFamily: fontFamily ? `"${fontFamily}"` : 'inherit',
-                        fontFeatureSettings: activeFeatures,
+                        fontFeatureSettings: getFeaturesString(),
                         fontVariationSettings: getFVS(previewT),
-                        fontSize: aspectRatio === '9:16' ? `${fontSize * 0.4}px` : `${fontSize * 0.55}px`,
-                        lineHeight: lineHeight,
+                        fontSize: `${previewFontSize}px`,
+                        lineHeight: lineHeight === '' ? 1.4 : lineHeight,
                         color: textColor,
                         textAlign: 'center',
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                         direction: 'rtl',
                         maxWidth: '90%',
-                        padding: '12px',
+                        padding: '16px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
@@ -589,11 +630,11 @@ export function VideoExportModal({
 
                   {/* Rendering Progress Indicator overlay */}
                   {isExporting && (
-                    <div className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10">
-                      <Loader2 size={32} className="text-cyan-400 animate-spin mb-3" />
-                      <span className="text-xs text-white/80 font-medium">{t('exporting')}</span>
-                      <span className="text-xl text-cyan-400 font-bold font-mono mt-1">{Math.round(progress * 100)}%</span>
-                      <div className="w-48 h-1.5 bg-white/5 rounded-full overflow-hidden mt-3 border border-white/10">
+                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
+                      <Loader2 size={36} className="text-cyan-400 animate-spin mb-4" />
+                      <span className="text-xs text-white/80 font-medium" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('exporting')}</span>
+                      <span className="text-2xl text-cyan-400 font-bold font-mono mt-1">{Math.round(progress * 100)}%</span>
+                      <div className="w-52 h-1.5 bg-white/5 rounded-full overflow-hidden mt-4 border border-white/10">
                         <div 
                           className="h-full bg-cyan-400 rounded-full transition-all duration-150" 
                           style={{ width: `${progress * 100}%` }}
@@ -604,16 +645,17 @@ export function VideoExportModal({
 
                   {/* Complete Action overlay */}
                   {isFinished && videoUrl && (
-                    <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-6 text-center z-10">
-                      <div className="w-12 h-12 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center mb-3">
-                        <Sparkles className="text-green-400 w-6 h-6 animate-pulse" />
+                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
+                      <div className="w-14 h-14 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center mb-4">
+                        <Sparkles className="text-green-400 w-7 h-7 animate-pulse" />
                       </div>
-                      <span className="text-sm font-bold text-white">{t('finished')}</span>
+                      <span className="text-sm font-bold text-white" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('finished')}</span>
                       <button 
                         onClick={handleDownload}
-                        className="mt-4 px-5 py-2.5 rounded-xl text-xs font-bold bg-green-500 hover:bg-green-400 text-black flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(34,197,94,0.3)] active:scale-95"
+                        className="mt-5 px-6 py-3 rounded-xl text-xs font-bold bg-green-500 hover:bg-green-400 text-black flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(34,197,94,0.3)] active:scale-95 cursor-pointer"
+                        style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                       >
-                        <Download size={13} />
+                        <Download size={14} />
                         {t('downloadVideo')}
                       </button>
                     </div>
@@ -621,13 +663,13 @@ export function VideoExportModal({
                 </div>
 
                 {/* Aspect Ratio Configuration */}
-                <div className="flex flex-col gap-2.5">
-                  <span className="text-[10px] uppercase tracking-wider text-white/50 font-semibold">{t('aspectRatio')}</span>
+                <div className="flex flex-col gap-3">
+                  <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('aspectRatio')}</span>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { id: '1:1', label: isAr ? '1:1 مربع' : '1:1 Square', desc: isAr ? 'شبكات التواصل' : 'Feed Post' },
-                      { id: '16:9', label: isAr ? '16:9 أفقي' : '16:9 Widescreen', desc: isAr ? 'يوتيوب / عرض' : 'Landscape' },
-                      { id: '9:16', label: isAr ? '9:16 ستوري' : '9:16 Portrait', desc: isAr ? 'تيك توك / قصص' : 'Stories/Reels' }
+                      { id: '1:1', label: isAr ? '1:1 مربع' : '1:1 Square', desc: isAr ? 'منشور تغذية' : 'Feed Post' },
+                      { id: '16:9', label: isAr ? '16:9 شاشة' : '16:9 Widescreen', desc: isAr ? 'يوتيوب / عرض' : 'Landscape' },
+                      { id: '9:16', label: isAr ? '9:16 طولي' : '9:16 Portrait', desc: isAr ? 'قصص / تيك توك' : 'Stories/Reels' }
                     ].map(item => (
                       <button
                         key={item.id}
@@ -636,10 +678,10 @@ export function VideoExportModal({
                           setAspectRatio(item.id as AspectRatioType);
                         }}
                         disabled={isExporting}
-                        className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${aspectRatio === item.id ? 'bg-cyan-500/10 border-cyan-400 text-cyan-300' : 'bg-[#121212] border-white/5 text-white/60 hover:border-white/10 hover:text-white'}`}
+                        className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${aspectRatio === item.id ? 'bg-cyan-500/10 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.1)]' : 'bg-[#121216] border-white/5 text-white/50 hover:border-white/10 hover:text-white'}`}
                       >
-                        <span className="text-[11px] font-bold">{item.label}</span>
-                        <span className="text-[9px] opacity-60 font-medium">{item.desc}</span>
+                        <span className="text-[11px] font-bold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{item.label}</span>
+                        <span className="text-[9px] opacity-50 font-medium" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{item.desc}</span>
                       </button>
                     ))}
                   </div>
@@ -649,11 +691,11 @@ export function VideoExportModal({
               {/* Right Column: Setting parameters & Axes sliders */}
               <div className="lg:col-span-7 flex flex-col gap-6">
                 
-                {/* Section 1: Video Config (Grid) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#111] p-4 rounded-xl border border-white/5">
+                {/* Simplified Parameter Configuration Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#111115]/80 p-4 rounded-2xl border border-white/5">
                   {/* Duration */}
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-white/50 font-semibold">{t('duration')}</span>
+                  <div className="flex flex-col gap-2 p-1.5">
+                    <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('duration')}</span>
                     <div className="flex items-center gap-2.5">
                       <input 
                         type="range" 
@@ -664,83 +706,85 @@ export function VideoExportModal({
                         disabled={isExporting}
                         className="w-full accent-cyan-400 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
                       />
-                      <span className="text-xs font-mono text-cyan-400 font-bold bg-cyan-950/30 px-2 py-0.5 rounded border border-cyan-800/20 whitespace-nowrap">{duration}s</span>
+                      <span className="text-[11px] font-mono text-cyan-400 font-bold bg-cyan-950/30 px-2 py-0.5 rounded border border-cyan-800/20 whitespace-nowrap">{duration} {isAr ? t('secLabel') : 's'}</span>
                     </div>
                   </div>
 
                   {/* FPS Selection */}
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-white/50 font-semibold">{t('fps')}</span>
+                  <div className="flex flex-col gap-2 p-1.5">
+                    <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('fps')}</span>
                     <select 
                       value={fps} 
                       onChange={(e) => handleFpsChange(Number(e.target.value))}
                       disabled={isExporting}
-                      className="bg-[#151515] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none disabled:opacity-50 font-sans"
+                      className="bg-[#15151b] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none disabled:opacity-50"
+                      style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                     >
-                      <option value="24">24 FPS (Cinema)</option>
-                      <option value="30">30 FPS (Standard)</option>
-                      <option value="60">60 FPS (Ultra Smooth)</option>
+                      <option value="24" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>24 FPS</option>
+                      <option value="30" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>30 FPS</option>
+                      <option value="60" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>60 FPS</option>
                     </select>
                   </div>
 
                   {/* Quality Selector */}
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-white/50 font-semibold">{t('quality')}</span>
+                  <div className="flex flex-col gap-2 p-1.5">
+                    <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('quality')}</span>
                     <select 
                       value={quality} 
                       onChange={(e) => handleQualityChange(e.target.value as QualityType)}
                       disabled={isExporting}
-                      className="bg-[#151515] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none disabled:opacity-50 font-sans"
+                      className="bg-[#15151b] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none disabled:opacity-50"
+                      style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                     >
-                      <option value="low">{t('qualityLow')}</option>
-                      <option value="medium">{t('qualityMedium')}</option>
-                      <option value="high">{t('qualityHigh')}</option>
+                      <option value="low" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('qualityLow')}</option>
+                      <option value="medium" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('qualityMedium')}</option>
+                      <option value="high" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('qualityHigh')}</option>
                     </select>
                   </div>
                 </div>
 
                 {/* Section 2: Axis Sliders */}
                 <div className="flex flex-col gap-3">
-                  <h3 className="text-[11px] uppercase tracking-wider text-cyan-400 font-bold flex items-center gap-2">
-                    <Sparkles size={12} />
-                    {isAr ? 'تخصيص حركة المحاور المتغيرة' : 'Configure Axis Motion'}
+                  <h3 className="text-[11px] uppercase tracking-wider text-cyan-400 font-bold flex items-center gap-2" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                    <Sliders size={12} />
+                    {t('axisMotionHeader')}
                   </h3>
                   
-                  <div className="grid gap-3.5 bg-[#111] p-4 rounded-xl border border-white/5 max-h-[260px] overflow-y-auto">
+                  <div className="grid gap-3.5 bg-[#111115]/80 p-4 rounded-2xl border border-white/5 max-h-[280px] overflow-y-auto custom-scrollbar">
                     {axes.map(axis => {
                       const cfg = axesConfig[axis.tag] || { start: axis.minValue, end: axis.maxValue, staticVal: axis.defaultValue, animated: false };
                       
                       return (
-                        <div key={axis.tag} className="flex flex-col gap-2.5 p-3 bg-[#151515] border border-white/5 rounded-lg transition-all hover:border-white/10">
+                        <div key={axis.tag} className="flex flex-col gap-3 p-3.5 bg-[#14141a]/60 border border-white/5 rounded-xl transition-all hover:border-white/10">
                           {/* Title & Animation Toggle */}
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-white">{axis.name || axis.tag}</span>
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-800/40 text-cyan-300 font-mono">{axis.tag}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{axis.name || axis.tag}</span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-800/40 text-cyan-300 font-mono font-bold">{axis.tag}</span>
                             </div>
                             
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-white/60">{t('animateAxis')}</span>
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-[10px] text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('animateAxis')}</span>
                               <div 
                                 onClick={() => {
                                   if (!isExporting) {
                                     updateAxisProp(axis.tag, 'animated', !cfg.animated);
                                   }
                                 }}
-                                className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 cursor-pointer flex items-center ${cfg.animated ? 'bg-cyan-400' : 'bg-white/15'}`}
+                                className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 cursor-pointer flex items-center ${cfg.animated ? 'bg-cyan-400' : 'bg-white/10'}`}
                               >
                                 <div className={`bg-black w-4 h-4 rounded-full shadow-md transition-all duration-200 ${cfg.animated ? (isAr ? 'translate-x-[-16px]' : 'translate-x-[16px]') : 'translate-x-0'}`} />
                               </div>
                             </div>
                           </div>
 
-                          {/* Sliders Container */}
+                          {/* Simplified Sliders */}
                           {cfg.animated ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1.5 border-t border-white/5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
                               {/* Start Slider */}
-                              <div className="flex flex-col gap-1">
+                              <div className="flex flex-col gap-1.5">
                                 <div className="flex justify-between text-[9px]">
-                                  <span className="text-white/50">{t('startVal')}</span>
+                                  <span className="text-white/40" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('startVal')}</span>
                                   <span className="text-cyan-400 font-mono font-bold">{cfg.start.toFixed(1)}</span>
                                 </div>
                                 <input 
@@ -756,9 +800,9 @@ export function VideoExportModal({
                               </div>
 
                               {/* End Slider */}
-                              <div className="flex flex-col gap-1">
+                              <div className="flex flex-col gap-1.5">
                                 <div className="flex justify-between text-[9px]">
-                                  <span className="text-white/50">{t('endVal')}</span>
+                                  <span className="text-white/40" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('endVal')}</span>
                                   <span className="text-cyan-400 font-mono font-bold">{cfg.end.toFixed(1)}</span>
                                 </div>
                                 <input 
@@ -775,10 +819,10 @@ export function VideoExportModal({
                             </div>
                           ) : (
                             /* Static Slider */
-                            <div className="flex flex-col gap-1 pt-1.5 border-t border-white/5">
+                            <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
                               <div className="flex justify-between text-[9px]">
-                                <span className="text-white/50">{t('staticVal')}</span>
-                                <span className="text-white/90 font-mono">{cfg.staticVal.toFixed(1)}</span>
+                                <span className="text-white/40" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('staticVal')}</span>
+                                <span className="text-white/80 font-mono font-bold">{cfg.staticVal.toFixed(1)}</span>
                               </div>
                               <input 
                                 type="range" 
@@ -788,7 +832,7 @@ export function VideoExportModal({
                                 value={cfg.staticVal}
                                 onChange={(e) => updateAxisProp(axis.tag, 'staticVal', Number(e.target.value))}
                                 disabled={isExporting}
-                                className="w-full accent-white/50 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
+                                className="w-full accent-white/40 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
                               />
                             </div>
                           )}
@@ -798,32 +842,42 @@ export function VideoExportModal({
                   </div>
                 </div>
 
-                {/* Section 3: Engine Description & Help */}
-                <div className="text-[10px] text-white/60 leading-relaxed bg-[#111] px-4 py-3 rounded-lg border border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 font-sans">
-                  <span>
+                {/* Redesigned Thmanyah-explicit Help Banner */}
+                <div 
+                  className="text-[10px] text-white/50 leading-relaxed bg-[#111115]/50 px-4 py-3.5 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                  style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                >
+                  <span style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
                     💡 {isAr 
                       ? "يقوم النظام آلياً باختيار أفضل وأسرع محرك متوافق مع متصفحك للحصول على أعلى جودة تصدير." 
                       : "The system automatically selects the fastest high-quality engine compatible with your browser."}
                   </span>
-                  <span className="text-[10px] font-sans font-bold text-cyan-400 shrink-0">
+                  <span 
+                    className="text-[10px] font-bold text-cyan-400 shrink-0 bg-cyan-950/30 border border-cyan-800/30 px-2.5 py-0.5 rounded-lg"
+                    style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                  >
                     {typeof VideoEncoder !== 'undefined' && window.isSecureContext ? t('engineWebCodecs') : t('engineMediaRecorder')}
                   </span>
                 </div>
 
                 {/* Section 4: Progress, error alerts & main action buttons */}
                 {error && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2.5 text-red-400 text-xs animate-shake font-sans">
+                  <div 
+                    className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2.5 text-red-400 text-xs animate-shake"
+                    style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                  >
                     <AlertCircle size={15} />
-                    <span>{error}</span>
+                    <span style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{error}</span>
                   </div>
                 )}
 
                 {/* Footer Modal Actions */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-white/5 mt-auto">
+                <div className="flex justify-end gap-3 pt-5 border-t border-white/5 mt-auto">
                   <button 
                     onClick={onClose}
                     disabled={isExporting}
-                    className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white/70 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all font-sans"
+                    className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all cursor-pointer"
+                    style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                   >
                     {t('cancel')}
                   </button>
@@ -831,7 +885,8 @@ export function VideoExportModal({
                   {isFinished && videoUrl ? (
                     <button 
                       onClick={handleDownload}
-                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-green-500 hover:bg-green-400 text-black flex items-center gap-1.5 transition-all shadow-[0_0_20px_rgba(34,197,94,0.35)] font-sans active:scale-95"
+                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-green-500 hover:bg-green-400 text-black flex items-center gap-1.5 transition-all shadow-[0_0_20px_rgba(34,197,94,0.35)] active:scale-95 cursor-pointer"
+                      style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                     >
                       <Download size={14} />
                       {t('downloadVideo')}
@@ -840,7 +895,8 @@ export function VideoExportModal({
                     <button 
                       onClick={handleExport}
                       disabled={isExporting}
-                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-cyan-400 hover:bg-cyan-300 text-black flex items-center gap-1.5 transition-all shadow-[0_0_20px_rgba(34,211,238,0.35)] disabled:opacity-40 disabled:shadow-none font-sans active:scale-95"
+                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-cyan-400 hover:bg-cyan-300 text-black flex items-center gap-1.5 transition-all shadow-[0_0_20px_rgba(34,211,238,0.35)] disabled:opacity-40 disabled:shadow-none active:scale-95 cursor-pointer"
+                      style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                     >
                       {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                       {isExporting ? t('exporting') : t('generate')}
@@ -854,7 +910,7 @@ export function VideoExportModal({
         </div>
       </div>
 
-      {/* Offscreen rendering container kept visible to browser rendering queue but clipped away from user viewport */}
+      {/* Offscreen rendering container for perfect matching with Customize & Zoom */}
       <div className="fixed top-[-9999px] left-[-9999px] pointer-events-none opacity-0 select-none overflow-hidden">
         <div 
           ref={containerRef}
@@ -873,12 +929,10 @@ export function VideoExportModal({
             ref={textRef}
             style={{
               fontFamily: fontFamily ? `"${fontFamily}"` : 'inherit',
-              fontFeatureSettings: activeFeatures,
+              fontFeatureSettings: getFeaturesString(),
               fontVariationSettings: getFVS(0), // default to start
-              fontSize: aspectRatio === '9:16' 
-                ? (quality === 'low' ? `${fontSize * 0.5}px` : quality === 'high' ? `${fontSize * 1.1}px` : `${fontSize * 0.8}px`)
-                : (quality === 'low' ? `${fontSize * 0.7}px` : quality === 'high' ? `${fontSize * 1.5}px` : `${fontSize}px`),
-              lineHeight: lineHeight,
+              fontSize: `${scaledFontSize}px`,
+              lineHeight: lineHeight === '' ? 1.4 : lineHeight,
               color: textColor,
               textAlign: 'center',
               whiteSpace: 'pre-wrap',
