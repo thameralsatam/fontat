@@ -51,6 +51,8 @@ const getFeatureDescription = (tag: string, parsedFont: any, t: (key: string) =>
   return t('lab.no_desc');
 };
 
+const DEFAULT_ENABLED_FEATURES = ['calt', 'rclt', 'rlig', 'liga', 'clig', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl', 'kern', 'blwf', 'abvf', 'half', 'pstf', 'vatu', 'cjct'];
+
 
 const PopoverColorPicker = ({ color, onChange }: { color: string, onChange: (c: string) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -182,7 +184,7 @@ export const Lab = () => {
   const [lineHeight, setLineHeight] = useState<number | ''>('');
   const [textColor, setTextColor] = useState('#ffffff');
   const [bgColor, setBgColor] = useState('#080808');
-  const [openTypeFeatures, setOpenTypeFeatures] = useState<Record<string, boolean>>({});
+  const [openTypeFeatures, setOpenTypeFeatures] = useState<Record<string, boolean | undefined>>({});
   const [activeFeatureTooltip, setActiveFeatureTooltip] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [glyphSearch, setGlyphSearch] = useState('');
@@ -200,6 +202,20 @@ export const Lab = () => {
   const isUpdatingGlyphsRef = useRef(false);
   const fullscreenToolsRef = useRef<HTMLDivElement>(null);
   const fullscreenToggleBtnRef = useRef<HTMLButtonElement>(null);
+  const fontBlobUrlRef = useRef<string | null>(null);
+  const fontStyleTagRef = useRef<HTMLStyleElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      // Cleanup URLs and style tags on unmount to prevent memory leaks
+      if (fontBlobUrlRef.current) {
+        URL.revokeObjectURL(fontBlobUrlRef.current);
+      }
+      if (fontStyleTagRef.current) {
+        fontStyleTagRef.current.remove();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Height resize not needed anymore, contentEditable handles it
@@ -285,7 +301,7 @@ export const Lab = () => {
     fileOrBlob: Blob, 
     fontName: string, 
     savedAxes?: Record<string, number>, 
-    savedFeatures?: Record<string, boolean>,
+    savedFeatures?: Record<string, boolean | undefined>,
     fontId?: string
   ) => {
     setOriginalFontBlob(fileOrBlob);
@@ -299,9 +315,19 @@ export const Lab = () => {
 
     const arrayBuffer = await fileOrBlob.arrayBuffer();
     
+    // Cleanup previous font blob to avoid memory leak
+    if (fontBlobUrlRef.current) {
+      URL.revokeObjectURL(fontBlobUrlRef.current);
+    }
+    if (fontStyleTagRef.current) {
+      fontStyleTagRef.current.remove();
+    }
+    
     // Inject font-face uniquely for Lab preview
     const blob = new Blob([arrayBuffer], { type: 'font/ttf' });
     const url = URL.createObjectURL(blob);
+    fontBlobUrlRef.current = url;
+    
     const style = document.createElement('style');
     style.textContent = `
       @font-face {
@@ -311,6 +337,7 @@ export const Lab = () => {
       }
     `;
     document.head.appendChild(style);
+    fontStyleTagRef.current = style;
 
     try {
       const formData = new FormData();
@@ -369,13 +396,12 @@ export const Lab = () => {
 
       // Extract features
       const serverFeatures = data.metadata.features || [];
-      const features: Record<string, boolean> = {};
-      const defaultEnabledFeatures = ['calt', 'rclt', 'rlig', 'liga', 'clig', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl', 'kern', 'blwf', 'abvf', 'half', 'pstf', 'vatu', 'cjct'];
+      const features: Record<string, boolean | undefined> = {};
       
       serverFeatures.forEach((tag: string) => {
         features[tag] = savedFeatures && savedFeatures[tag] !== undefined 
           ? savedFeatures[tag] 
-          : defaultEnabledFeatures.includes(tag);
+          : undefined;
       });
       
       setOpenTypeFeatures(features);
@@ -423,7 +449,7 @@ export const Lab = () => {
     }
   };
 
-  const saveCurrentSettingsToDB = async (currentAxes: Record<string, number>, currentFeatures: Record<string, boolean>) => {
+  const saveCurrentSettingsToDB = async (currentAxes: Record<string, number>, currentFeatures: Record<string, boolean | undefined>) => {
     if (!currentFontId || !originalFontBlob) return;
     const fontName = font?.names?.postScriptName?.en || 'font';
     await saveFontHistory({
@@ -444,7 +470,10 @@ export const Lab = () => {
   };
 
   const handleFeatureToggle = (feature: string) => {
-    const newFeatures = { ...openTypeFeatures, [feature]: !openTypeFeatures[feature] };
+    const currentState = openTypeFeatures[feature];
+    const isCurrentlyOn = currentState !== undefined ? currentState : DEFAULT_ENABLED_FEATURES.includes(feature);
+    
+    const newFeatures = { ...openTypeFeatures, [feature]: !isCurrentlyOn };
     setOpenTypeFeatures(newFeatures);
     saveCurrentSettingsToDB(axisValues, newFeatures);
   };
@@ -456,32 +485,28 @@ export const Lab = () => {
   };
 
   const getFontFeatures = () => {
-    const defaultEnabledFeatures = ['calt', 'rclt', 'rlig', 'liga', 'clig', 'init', 'medi', 'fina', 'isol', 'mark', 'mkmk', 'ccmp', 'curs', 'locl', 'kern', 'blwf', 'abvf', 'half', 'pstf', 'vatu', 'cjct'];
-    
     if (Object.keys(openTypeFeatures).length === 0) return 'normal';
     
     const parts: string[] = [];
     
     Object.entries(openTypeFeatures).forEach(([tag, enabled]) => {
-      const isDefaultEnabled = defaultEnabledFeatures.includes(tag);
-      if (isDefaultEnabled && !enabled) {
-        // User explicitly disabled a standard feature
-        parts.push(`"${tag}" 0`);
-      } else if (!isDefaultEnabled && enabled) {
-        // User explicitly enabled a stylistic/optional feature
-        parts.push(`"${tag}" 1`);
+      // Validate tag: OpenType tags must be exactly 4 characters (letters or numbers)
+      // This prevents invalid tags from the server from breaking the entire font-feature-settings property
+      if (enabled !== undefined && /^[A-Za-z0-9]{4}$/.test(tag)) {
+        parts.push(`"${tag}" ${enabled ? 1 : 0}`);
       }
     });
 
     return parts.length > 0 ? parts.join(', ') : 'normal';
   };
 
-  async function handleDownloadStatic(fontBlob: Blob, axes: Record<string, number>, features: Record<string, boolean>) {
+  async function handleDownloadStatic(fontBlob: Blob, axes: Record<string, number>, features: Record<string, boolean | undefined>) {
     const API_URL = "https://font-api-0dqe.onrender.com/convert";
 
     // 1. الميزات اللي المستخدم اختارها من الواجهة
+    // نستثني الميزات الأساسية لأن تجميدها عبر الخادم يفسد الخط العربي (يجعل الحروف متصلة دائماً ولا تتغير حسب السياق)
     const userSelected = Object.entries(features)
-      .filter(([_, enabled]) => enabled)
+      .filter(([tag, enabled]) => enabled === true && !DEFAULT_ENABLED_FEATURES.includes(tag))
       .map(([feature]) => feature);
 
     // 2. تجهيز البيانات (المحاور + الميزات)
@@ -1088,18 +1113,25 @@ export const Lab = () => {
                                    exit={{ height: 0, opacity: 0 }}
                                    className="overflow-hidden"
                                  >
+                                    <div className="px-4 pt-4 pb-0 border-t border-white/5 bg-white/[0.02]">
+                                      <p className="text-[10px] text-white/50 leading-relaxed text-center">
+                                        ملاحظة: الميزات تظهر بناءً على توافقها مع النص واللغة. الميزات الأساسية غير قابلة للتبديل لحماية التشكيل.
+                                      </p>
+                                    </div>
                                     <div className="p-4 border-t border-white/5 bg-white/[0.02] flex flex-col gap-4">
                                       {(() => {
-                                        const advancedFeaturesList = ['kern', 'mark', 'mkmk', 'ccmp', 'rlig', 'clig', 'locl', 'init', 'medi', 'fina', 'isol', 'curs', 'rclt', 'dist', 'blwf', 'abvf', 'half', 'pstf', 'vatu', 'cjct', 'vert', 'vrt2', 'vrtr', 'vpal', 'halt'];
-                                        const isAdvancedFeature = (tag: string) => advancedFeaturesList.includes(tag);
+                                        const isAdvancedFeature = (tag: string) => DEFAULT_ENABLED_FEATURES.includes(tag);
 
                                         const featuresObj = Object.entries(openTypeFeatures);
                                         const stylistic = featuresObj.filter(([tag]) => !isAdvancedFeature(tag));
                                         const advanced = featuresObj.filter(([tag]) => isAdvancedFeature(tag));
 
-                                        const renderFeature = ([tag, enabled]: [string, boolean]) => {
+                                        const renderFeature = ([tag, enabled]: [string, boolean | undefined]) => {
                                           const desc = getFeatureDescription(tag, font, t);
                                           const isInfoOpen = activeFeatureTooltip === tag;
+                                          const isBasic = DEFAULT_ENABLED_FEATURES.includes(tag);
+                                          const isCurrentlyOn = enabled !== undefined ? enabled : isBasic;
+                                          
                                           return (
                                             <div
                                               key={tag}
@@ -1107,11 +1139,11 @@ export const Lab = () => {
                                             >
                                               {/* Row Header */}
                                               <div
-                                                onClick={() => handleFeatureToggle(tag)}
-                                                className="flex items-center justify-between p-2.5 cursor-pointer select-none"
+                                                onClick={() => !isBasic && handleFeatureToggle(tag)}
+                                                className={`flex items-center justify-between p-2.5 select-none ${isBasic ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                                               >
                                                 <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                                                  <span className="font-mono text-[10px] font-extrabold text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 uppercase tracking-widest shrink-0">
+                                                  <span className={`font-mono text-[10px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-widest shrink-0 ${isBasic ? 'text-gray-400 bg-gray-400/10 border-gray-400/20' : 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20'}`}>
                                                     {tag}
                                                   </span>
                                                   
@@ -1135,13 +1167,15 @@ export const Lab = () => {
                                                 {/* Visual switch toggler */}
                                                 <div
                                                   className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
-                                                    enabled ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]' : 'bg-white/10'
+                                                    isCurrentlyOn 
+                                                      ? isBasic ? 'bg-gray-500/50' : 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]' 
+                                                      : 'bg-white/10'
                                                   }`}
                                                 >
                                                   <span
-                                                    className="absolute top-[2px] h-4 w-4 rounded-full bg-white shadow ring-0 transition-all duration-200 ease-in-out"
+                                                    className={`absolute top-[2px] h-4 w-4 rounded-full shadow ring-0 transition-all duration-200 ease-in-out ${isBasic ? 'bg-white/70' : 'bg-white'}`}
                                                     style={{
-                                                      [t('dir') === 'rtl' ? 'right' : 'left']: enabled ? '18px' : '2px'
+                                                      [t('dir') === 'rtl' ? 'right' : 'left']: isCurrentlyOn ? '18px' : '2px'
                                                     }}
                                                   />
                                                 </div>

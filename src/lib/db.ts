@@ -5,7 +5,7 @@ export interface FontHistoryItem {
   name: string;
   blob: Blob;
   axes: Record<string, number>;
-  features: Record<string, boolean>;
+  features: Record<string, boolean | undefined>;
   lastModified: number;
 }
 
