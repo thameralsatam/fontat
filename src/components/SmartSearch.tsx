@@ -184,7 +184,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { if (query.trim()) setIsOpen(true); }}
-          placeholder={t('search.placeholder') || "ابحث عن خط أو مجموعة..."}
+          placeholder={t('search.placeholder')}
           className={`w-full bg-[#141414] border border-white/10 rounded-full py-3 text-white placeholder-white/40 outline-none focus:border-white/20 transition-all font-light ${dir === 'rtl' ? 'pr-12 pl-12' : 'pl-12 pr-12'}`}
         />
         <div className={`absolute pointer-events-none ${dir === 'rtl' ? 'right-4' : 'left-4'}`}>
@@ -203,7 +203,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
               setResults([]);
             }}
             className={`absolute inset-y-0 flex items-center text-white opacity-40 hover:text-white transition-colors ${dir === 'rtl' ? 'left-4' : 'right-4'}`}
-            title={t('common.clear') || 'Clear'}
+            title={t('common.clear')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -217,7 +217,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
               {isHashtagSearch ? (
                 <div className="flex flex-col overflow-y-auto w-full divide-y divide-white/[0.04] p-2">
                   <div className="text-[10px] text-white/30 px-4 py-2 uppercase font-medium tracking-wider mb-1 font-sans">
-                    {dir === 'rtl' ? `الفرز بالهاشتاغات المطابقة (${tagsList.length})` : `Filter by matching tags (${tagsList.length})`}
+                    {t('search.filter_by_tags')} ({tagsList.length})
                   </div>
                   {tagsList.map((tag, idx) => (
                     <button
@@ -230,7 +230,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                         <span className="text-white text-sm font-light group-hover:text-cyan-400 transition-colors">{tag}</span>
                       </div>
                       <span className="text-xs text-white/30 group-hover:text-white/50 transition-colors font-light">
-                        {dir === 'rtl' ? 'تصفية الخطوط العامة' : 'Filter Public Fonts'}
+                        {t('search.filter_public')}
                       </span>
                     </button>
                   ))}
@@ -239,7 +239,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                 <>
                   <div className="flex flex-col overflow-y-auto w-full p-2">
                     <div className="text-[10px] text-white/30 px-4 py-2 uppercase font-medium tracking-wider mb-1 font-sans">
-                      {dir === 'rtl' ? `الخطوط المطابقة (${results.length})` : `Matching Fonts (${results.length})`}
+                      {t('search.matching_fonts')} ({results.length})
                     </div>
                     {results.map((result, idx) => (
                       <button
@@ -284,7 +284,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                   </div>
                   {additionalCount > 0 && (
                     <div className="px-5 py-2.5 text-center text-white/40 text-[11px] font-light border-t border-white/[0.03] shrink-0 bg-white/[0.01]">
-                      + {additionalCount} {dir === 'rtl' ? 'نتائج إضافية' : 'additional results'}
+                      + {additionalCount} {t('search.additional_results')}
                     </div>
                   )}
                 </>
@@ -292,7 +292,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
             </>
           ) : (
             <div className="px-5 py-6 text-center text-white opacity-40 font-light text-sm bg-transparent">
-              {dir === 'rtl' ? 'لم نعثر على نتيجة تطابق بحثك :(' : 'No matching results found :('}
+              {t('search.no_results')}
             </div>
           )}
         </div>

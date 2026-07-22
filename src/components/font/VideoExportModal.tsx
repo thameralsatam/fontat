@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Play, Download, Loader2, AlertCircle, Sparkles, Film, Sliders } from 'lucide-react';
+import { X, Play, Download, Loader2, AlertCircle, Sparkles, Film, Sliders, ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import * as Mp4Muxer from 'mp4-muxer';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -25,6 +25,8 @@ interface VideoExportModalProps {
   textColor: string;
   bgColor: string;
   lineHeight: number | string;
+  textAlign?: 'left' | 'center' | 'right';
+  letterSpacing?: number;
 }
 
 type QualityType = 'low' | 'medium' | 'high';
@@ -42,7 +44,9 @@ export function VideoExportModal({
   fontBlob,
   textColor,
   bgColor,
-  lineHeight
+  lineHeight,
+  textAlign = 'center',
+  letterSpacing = 0
 }: VideoExportModalProps) {
   const { language } = useLanguage();
   const isAr = language === 'ar';
@@ -76,6 +80,7 @@ export function VideoExportModal({
   const [fps, setFps] = useState<number>(30);
   const [quality, setQuality] = useState<QualityType>('medium');
   const [aspectRatio, setAspectRatio] = useState<AspectRatioType>('1:1');
+  const [animMode, setAnimMode] = useState<'pingpong' | 'forward'>('pingpong');
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -234,8 +239,23 @@ export function VideoExportModal({
     }));
   };
 
-  // Dynamic live preview animation oscillation
-  const [previewT, setPreviewT] = useState(0);
+  // Collapsible Accordion States (Only one section open at a time)
+  const [activeAccordion, setActiveAccordion] = useState<'specs' | 'aspect' | 'axes' | null>('specs');
+  const isAspectOpen = activeAccordion === 'aspect';
+  const isSpecsOpen = activeAccordion === 'specs';
+  const isAxesOpen = activeAccordion === 'axes';
+
+  const toggleAccordion = (section: 'specs' | 'aspect' | 'axes') => {
+    setActiveAccordion(prev => prev === section ? null : section);
+  };
+
+  // Dynamic live preview animation loop using direct DOM Ref (Zero React re-render overhead)
+  const previewTextRef = useRef<HTMLDivElement>(null);
+  const axesConfigRef = useRef(axesConfig);
+
+  useEffect(() => {
+    axesConfigRef.current = axesConfig;
+  }, [axesConfig]);
 
   useEffect(() => {
     if (!isOpen || isExporting || isFinished) return;
@@ -247,14 +267,28 @@ export function VideoExportModal({
       const elapsed = time - startTime;
       const period = duration * 1000;
       const cycle = (elapsed % period) / period;
-      const tVal = 0.5 + 0.5 * Math.sin(cycle * Math.PI * 2 - Math.PI / 2);
-      setPreviewT(tVal);
+      const tVal = animMode === 'pingpong'
+        ? 0.5 - 0.5 * Math.cos(cycle * Math.PI * 2)
+        : cycle;
+
+      if (previewTextRef.current) {
+        const fvs = Object.entries(axesConfigRef.current)
+          .map(([tag, cfg]) => {
+            const val = cfg.animated 
+              ? cfg.start + (cfg.end - cfg.start) * tVal
+              : cfg.staticVal;
+            return `"${tag}" ${val}`;
+          })
+          .join(', ');
+        previewTextRef.current.style.fontVariationSettings = fvs;
+      }
+
       animId = requestAnimationFrame(loop);
     };
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [isOpen, isExporting, isFinished, duration]);
+  }, [isOpen, isExporting, isFinished, duration, animMode]);
 
   // Determine export dimensions and bitrate
   const getExportDimensions = () => {
@@ -399,7 +433,10 @@ export function VideoExportModal({
     await htmlToImage.toCanvas(element, { width, height, fontEmbedCSS: fontEmbedCSS || undefined, cacheBust: true });
 
     for (let i = 0; i < totalFrames; i++) {
-      const tFactor = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+      const progress = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+      const tFactor = animMode === 'pingpong'
+        ? 0.5 - 0.5 * Math.cos(progress * 2 * Math.PI)
+        : progress;
       const fvsString = getFVS(tFactor);
       
       // Update element and child font settings dynamically using robust setProperty
@@ -494,7 +531,10 @@ export function VideoExportModal({
     const frameDelay = Math.max(16, 1000 / fps);
 
     for (let i = 0; i < totalFrames; i++) {
-      const tFactor = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+      const progress = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+      const tFactor = animMode === 'pingpong'
+        ? 0.5 - 0.5 * Math.cos(progress * 2 * Math.PI)
+        : progress;
       const fvsString = getFVS(tFactor);
       
       // Update font settings dynamically with robust property setter
@@ -557,71 +597,87 @@ export function VideoExportModal({
 
   return (
     <div 
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-lg overflow-y-auto" 
+      className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 pb-28 sm:pb-6 bg-black/85 backdrop-blur-xl overflow-y-auto" 
       style={{ direction: isAr ? 'rtl' : 'ltr', fontFamily: "'Thmanyah Sans', sans-serif" }}
     >
       <style dangerouslySetInnerHTML={{ __html: fontEmbedCSS }} />
 
-      <div className="bg-[#0c0c0e] border border-white/10 rounded-3xl w-full max-w-5xl overflow-hidden shadow-[0_0_50px_rgba(34,211,238,0.15)] flex flex-col my-8">
+      <div className="bg-[#0b0b0e] border border-white/10 rounded-2xl sm:rounded-3xl w-full max-w-5xl overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.8)] flex flex-col my-auto relative max-h-[85vh]">
         
-        {/* Simplified Modern Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-[#111115]/60">
+        {/* Subtle Ambient Background Glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-cyan-500/10 blur-[90px] pointer-events-none rounded-full" />
+
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-5 sm:px-8 py-4 sm:py-5 border-b border-white/10 bg-white/[0.02] relative z-10 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
-              <Film className="text-cyan-400 w-5 h-5" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.15)] shrink-0">
+              <Film className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-tight" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('title')}</h2>
-              <p className="text-[10px] text-white/40 mt-1" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('subtitle')}</p>
+              <h2 className="text-sm sm:text-base font-bold text-white tracking-tight" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('title')}</h2>
+              <p className="text-[11px] sm:text-xs text-white/40 mt-0.5" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('subtitle')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/5 transition-colors">
-            <X size={18} />
+          
+          <button 
+            onClick={onClose} 
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all cursor-pointer active:scale-95 shrink-0"
+            title={t('cancel')}
+          >
+            <X size={16} />
           </button>
         </div>
 
-        {/* Highly Simplified Content Grid */}
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 overflow-y-auto max-h-[70vh] custom-scrollbar">
+        {/* Modal Main Body */}
+        <div className="p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 overflow-y-auto max-h-[calc(85vh-75px)] custom-scrollbar relative z-10">
           {axes.length === 0 ? (
-            <div className="col-span-12 text-center py-12 text-white/50 text-sm border border-dashed border-white/10 rounded-xl" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+            <div className="col-span-12 text-center py-16 text-white/40 text-sm border border-dashed border-white/10 rounded-2xl bg-white/[0.01]" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
               {t('noAxes')}
             </div>
           ) : (
             <>
-              {/* Left Column: Live Visual Preview and Aspect Ratio selectors */}
-              <div className="lg:col-span-5 flex flex-col gap-6">
+              {/* Left Column: Live Visual Preview Canvas & Aspect Ratio Selector */}
+              <div className="lg:col-span-5 flex flex-col gap-5 sm:gap-6">
+                
+                {/* Header & Preview Label */}
                 <div className="flex items-center justify-between">
-                  <h3 className="text-[11px] uppercase tracking-wider text-cyan-400 font-bold flex items-center gap-2" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
-                    <Sparkles size={12} />
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                    <Sparkles className="w-3.5 h-3.5" />
                     {t('livePreview')}
-                  </h3>
+                  </span>
+                  
+                  <span className="text-[10px] sm:text-[11px] font-medium text-white/50 bg-white/5 px-2.5 py-1 rounded-full border border-white/5" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                    {aspectRatio}
+                  </span>
                 </div>
 
-                {/* Animated Preview Canvas Screen matching Customize & Zoom perfectly */}
-                <div 
-                  className="flex flex-col items-center justify-center bg-[#070709] p-8 rounded-2xl border border-white/5 w-full min-h-[340px] relative overflow-hidden"
-                >
+                {/* Studio Canvas Display Frame */}
+                <div className="flex flex-col items-center justify-center bg-[#050507] p-4 sm:p-8 rounded-2xl border border-white/10 w-full min-h-[280px] sm:min-h-[340px] relative overflow-hidden shadow-inner group">
+                  
+                  {/* Subtle Grid Canvas Background */}
+                  <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none opacity-40" />
+
+                  {/* Render Box */}
                   <div 
-                    className={`relative flex items-center justify-center overflow-hidden rounded-2xl transition-all duration-300 border border-white/10 shadow-2xl ${previewClass}`}
+                    className={`relative flex items-center justify-center overflow-hidden rounded-2xl transition-all duration-300 border border-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.6)] ${previewClass}`}
                     style={{ backgroundColor: bgColor }}
                   >
                     <div
+                      ref={previewTextRef}
                       style={{
                         fontFamily: fontFamily ? `"${fontFamily}"` : 'inherit',
                         fontFeatureSettings: getFeaturesString(),
-                        fontVariationSettings: getFVS(previewT),
+                        fontVariationSettings: getFVS(0),
                         fontSize: `${previewFontSize}px`,
                         lineHeight: lineHeight === '' ? 1.4 : lineHeight,
+                        letterSpacing: letterSpacing ? `${letterSpacing * (previewWidth / 800)}px` : undefined,
                         color: textColor,
-                        textAlign: 'center',
+                        textAlign: textAlign,
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                         direction: 'rtl',
-                        maxWidth: '90%',
-                        padding: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
+                        width: '90%',
+                        padding: '16px'
                       }}
                     >
                       {text}
@@ -630,278 +686,406 @@ export function VideoExportModal({
 
                   {/* Rendering Progress Indicator overlay */}
                   {isExporting && (
-                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
-                      <Loader2 size={36} className="text-cyan-400 animate-spin mb-4" />
+                    <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
+                      <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-3">
+                        <Loader2 size={24} className="text-cyan-400 animate-spin" />
+                      </div>
                       <span className="text-xs text-white/80 font-medium" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('exporting')}</span>
-                      <span className="text-2xl text-cyan-400 font-bold font-mono mt-1">{Math.round(progress * 100)}%</span>
-                      <div className="w-52 h-1.5 bg-white/5 rounded-full overflow-hidden mt-4 border border-white/10">
+                      <span className="text-2xl text-cyan-400 font-bold mt-1" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{Math.round(progress * 100)}%</span>
+                      <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden mt-4 border border-white/10">
                         <div 
-                          className="h-full bg-cyan-400 rounded-full transition-all duration-150" 
+                          className="h-full bg-gradient-to-r from-cyan-500 to-cyan-300 rounded-full transition-all duration-150" 
                           style={{ width: `${progress * 100}%` }}
                         />
                       </div>
                     </div>
                   )}
 
-                  {/* Complete Action overlay */}
+                  {/* Completion overlay */}
                   {isFinished && videoUrl && (
-                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
-                      <div className="w-14 h-14 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center mb-4">
-                        <Sparkles className="text-green-400 w-7 h-7 animate-pulse" />
+                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mb-3">
+                        <Sparkles className="text-emerald-400 w-6 h-6 animate-pulse" />
                       </div>
-                      <span className="text-sm font-bold text-white" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('finished')}</span>
+                      <span className="text-sm font-bold text-white mb-4" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('finished')}</span>
                       <button 
                         onClick={handleDownload}
-                        className="mt-5 px-6 py-3 rounded-xl text-xs font-bold bg-green-500 hover:bg-green-400 text-black flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(34,197,94,0.3)] active:scale-95 cursor-pointer"
+                        className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black flex items-center gap-2 transition-all shadow-[0_0_25px_rgba(16,185,129,0.3)] active:scale-95 cursor-pointer"
                         style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                       >
-                        <Download size={14} />
+                        <Download size={15} />
                         {t('downloadVideo')}
                       </button>
                     </div>
                   )}
                 </div>
 
-                {/* Aspect Ratio Configuration */}
-                <div className="flex flex-col gap-3">
-                  <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('aspectRatio')}</span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: '1:1', label: isAr ? '1:1 مربع' : '1:1 Square', desc: isAr ? 'منشور تغذية' : 'Feed Post' },
-                      { id: '16:9', label: isAr ? '16:9 شاشة' : '16:9 Widescreen', desc: isAr ? 'يوتيوب / عرض' : 'Landscape' },
-                      { id: '9:16', label: isAr ? '9:16 طولي' : '9:16 Portrait', desc: isAr ? 'قصص / تيك توك' : 'Stories/Reels' }
-                    ].map(item => (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          resetExport();
-                          setAspectRatio(item.id as AspectRatioType);
-                        }}
-                        disabled={isExporting}
-                        className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${aspectRatio === item.id ? 'bg-cyan-500/10 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.1)]' : 'bg-[#121216] border-white/5 text-white/50 hover:border-white/10 hover:text-white'}`}
-                      >
-                        <span className="text-[11px] font-bold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{item.label}</span>
-                        <span className="text-[9px] opacity-50 font-medium" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{item.desc}</span>
-                      </button>
-                    ))}
-                  </div>
+                {/* Aspect Ratio Collapsible Accordion Card */}
+                <div className="bg-white/[0.02] rounded-2xl border border-white/10 overflow-hidden transition-all">
+                  <button
+                    type="button"
+                    onClick={() => toggleAccordion('aspect')}
+                    className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-white/[0.03] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                        <Settings2 className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-xs font-semibold text-white/90" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                        {t('aspectRatio')}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-cyan-400 bg-cyan-950/40 px-2.5 py-0.5 rounded-full border border-cyan-500/20" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                        {aspectRatio}
+                      </span>
+                      {isAspectOpen ? <ChevronUp className="w-4 h-4 text-white/50" /> : <ChevronDown className="w-4 h-4 text-white/50" />}
+                    </div>
+                  </button>
+
+                  {isAspectOpen && (
+                    <div className="p-3 sm:p-4 pt-1 border-t border-white/5 grid grid-cols-3 gap-2 bg-black/20">
+                      {[
+                        { id: '1:1', label: isAr ? '1:1 مربع' : '1:1 Square', desc: isAr ? 'منشور' : 'Post' },
+                        { id: '16:9', label: isAr ? '16:9 شاشة' : '16:9 Wide', desc: isAr ? 'عرض' : 'Landscape' },
+                        { id: '9:16', label: isAr ? '9:16 طولي' : '9:16 Portrait', desc: isAr ? 'ستوري' : 'Stories' }
+                      ].map(item => {
+                        const isActive = aspectRatio === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              resetExport();
+                              setAspectRatio(item.id as AspectRatioType);
+                            }}
+                            disabled={isExporting}
+                            className={`p-2.5 sm:p-3 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
+                              isActive 
+                                ? 'bg-cyan-500/10 border-cyan-400/50 text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.15)] font-bold' 
+                                : 'bg-white/[0.02] border-white/5 text-white/50 hover:bg-white/[0.05] hover:text-white hover:border-white/10'
+                            }`}
+                          >
+                            <span className="text-[11px] sm:text-xs" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{item.label}</span>
+                            <span className="text-[9px] sm:text-[10px] opacity-50 mt-0.5" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{item.desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
+
               </div>
 
-              {/* Right Column: Setting parameters & Axes sliders */}
-              <div className="lg:col-span-7 flex flex-col gap-6">
+              {/* Right Column: Video Specs & Axis Animation Sliders Accordions */}
+              <div className="lg:col-span-7 flex flex-col gap-4">
                 
-                {/* Simplified Parameter Configuration Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#111115]/80 p-4 rounded-2xl border border-white/5">
-                  {/* Duration */}
-                  <div className="flex flex-col gap-2 p-1.5">
-                    <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('duration')}</span>
-                    <div className="flex items-center gap-2.5">
-                      <input 
-                        type="range" 
-                        min="1" 
-                        max="10" 
-                        value={duration} 
-                        onChange={(e) => handleDurationChange(Number(e.target.value))}
-                        disabled={isExporting}
-                        className="w-full accent-cyan-400 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
-                      />
-                      <span className="text-[11px] font-mono text-cyan-400 font-bold bg-cyan-950/30 px-2 py-0.5 rounded border border-cyan-800/20 whitespace-nowrap">{duration} {isAr ? t('secLabel') : 's'}</span>
-                    </div>
-                  </div>
-
-                  {/* FPS Selection */}
-                  <div className="flex flex-col gap-2 p-1.5">
-                    <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('fps')}</span>
-                    <select 
-                      value={fps} 
-                      onChange={(e) => handleFpsChange(Number(e.target.value))}
-                      disabled={isExporting}
-                      className="bg-[#15151b] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none disabled:opacity-50"
-                      style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
-                    >
-                      <option value="24" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>24 FPS</option>
-                      <option value="30" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>30 FPS</option>
-                      <option value="60" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>60 FPS</option>
-                    </select>
-                  </div>
-
-                  {/* Quality Selector */}
-                  <div className="flex flex-col gap-2 p-1.5">
-                    <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('quality')}</span>
-                    <select 
-                      value={quality} 
-                      onChange={(e) => handleQualityChange(e.target.value as QualityType)}
-                      disabled={isExporting}
-                      className="bg-[#15151b] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none disabled:opacity-50"
-                      style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
-                    >
-                      <option value="low" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('qualityLow')}</option>
-                      <option value="medium" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('qualityMedium')}</option>
-                      <option value="high" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('qualityHigh')}</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Section 2: Axis Sliders */}
-                <div className="flex flex-col gap-3">
-                  <h3 className="text-[11px] uppercase tracking-wider text-cyan-400 font-bold flex items-center gap-2" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
-                    <Sliders size={12} />
-                    {t('axisMotionHeader')}
-                  </h3>
-                  
-                  <div className="grid gap-3.5 bg-[#111115]/80 p-4 rounded-2xl border border-white/5 max-h-[280px] overflow-y-auto custom-scrollbar">
-                    {axes.map(axis => {
-                      const cfg = axesConfig[axis.tag] || { start: axis.minValue, end: axis.maxValue, staticVal: axis.defaultValue, animated: false };
-                      
-                      return (
-                        <div key={axis.tag} className="flex flex-col gap-3 p-3.5 bg-[#14141a]/60 border border-white/5 rounded-xl transition-all hover:border-white/10">
-                          {/* Title & Animation Toggle */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-white" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{axis.name || axis.tag}</span>
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-800/40 text-cyan-300 font-mono font-bold">{axis.tag}</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-[10px] text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('animateAxis')}</span>
-                              <div 
-                                onClick={() => {
-                                  if (!isExporting) {
-                                    updateAxisProp(axis.tag, 'animated', !cfg.animated);
-                                  }
-                                }}
-                                className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 cursor-pointer flex items-center ${cfg.animated ? 'bg-cyan-400' : 'bg-white/10'}`}
-                              >
-                                <div className={`bg-black w-4 h-4 rounded-full shadow-md transition-all duration-200 ${cfg.animated ? (isAr ? 'translate-x-[-16px]' : 'translate-x-[16px]') : 'translate-x-0'}`} />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Simplified Sliders */}
-                          {cfg.animated ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
-                              {/* Start Slider */}
-                              <div className="flex flex-col gap-1.5">
-                                <div className="flex justify-between text-[9px]">
-                                  <span className="text-white/40" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('startVal')}</span>
-                                  <span className="text-cyan-400 font-mono font-bold">{cfg.start.toFixed(1)}</span>
-                                </div>
-                                <input 
-                                  type="range" 
-                                  min={axis.minValue} 
-                                  max={axis.maxValue} 
-                                  step="0.1"
-                                  value={cfg.start}
-                                  onChange={(e) => updateAxisProp(axis.tag, 'start', Number(e.target.value))}
-                                  disabled={isExporting}
-                                  className="w-full accent-cyan-400 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
-                                />
-                              </div>
-
-                              {/* End Slider */}
-                              <div className="flex flex-col gap-1.5">
-                                <div className="flex justify-between text-[9px]">
-                                  <span className="text-white/40" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('endVal')}</span>
-                                  <span className="text-cyan-400 font-mono font-bold">{cfg.end.toFixed(1)}</span>
-                                </div>
-                                <input 
-                                  type="range" 
-                                  min={axis.minValue} 
-                                  max={axis.maxValue} 
-                                  step="0.1"
-                                  value={cfg.end}
-                                  onChange={(e) => updateAxisProp(axis.tag, 'end', Number(e.target.value))}
-                                  disabled={isExporting}
-                                  className="w-full accent-cyan-400 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            /* Static Slider */
-                            <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
-                              <div className="flex justify-between text-[9px]">
-                                <span className="text-white/40" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('staticVal')}</span>
-                                <span className="text-white/80 font-mono font-bold">{cfg.staticVal.toFixed(1)}</span>
-                              </div>
-                              <input 
-                                type="range" 
-                                min={axis.minValue} 
-                                max={axis.maxValue} 
-                                step="0.1"
-                                value={cfg.staticVal}
-                                onChange={(e) => updateAxisProp(axis.tag, 'staticVal', Number(e.target.value))}
-                                disabled={isExporting}
-                                className="w-full accent-white/40 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Redesigned Thmanyah-explicit Help Banner */}
-                <div 
-                  className="text-[10px] text-white/50 leading-relaxed bg-[#111115]/50 px-4 py-3.5 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-                  style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
-                >
-                  <span style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
-                    💡 {isAr 
-                      ? "يقوم النظام آلياً باختيار أفضل وأسرع محرك متوافق مع متصفحك للحصول على أعلى جودة تصدير." 
-                      : "The system automatically selects the fastest high-quality engine compatible with your browser."}
-                  </span>
-                  <span 
-                    className="text-[10px] font-bold text-cyan-400 shrink-0 bg-cyan-950/30 border border-cyan-800/30 px-2.5 py-0.5 rounded-lg"
-                    style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                {/* Video Specifications Collapsible Accordion Card */}
+                <div className="bg-white/[0.02] rounded-2xl border border-white/10 overflow-hidden transition-all">
+                  <button
+                    type="button"
+                    onClick={() => toggleAccordion('specs')}
+                    className="w-full px-4 sm:px-5 py-3.5 sm:py-4 flex items-center justify-between text-left hover:bg-white/[0.03] transition-colors cursor-pointer gap-2"
                   >
-                    {typeof VideoEncoder !== 'undefined' && window.isSecureContext ? t('engineWebCodecs') : t('engineMediaRecorder')}
-                  </span>
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                        <Sliders className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                      <span className="text-xs font-semibold text-white/90" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                        {isAr ? 'مواصفات إخراج الفيديو' : 'Video Output Settings'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-white/70 bg-white/5 px-2 sm:px-2.5 py-1 rounded-full border border-white/5" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                        {duration}{isAr ? ' ثوانٍ' : 's'} • {fps} FPS • {quality === 'high' ? '1080p' : quality === 'medium' ? '720p' : '480p'}
+                      </span>
+                      {isSpecsOpen ? <ChevronUp className="w-4 h-4 text-white/50" /> : <ChevronDown className="w-4 h-4 text-white/50" />}
+                    </div>
+                  </button>
+
+                  {isSpecsOpen && (
+                    <div className="p-4 sm:p-5 pt-2 border-t border-white/5 bg-black/20 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Duration Slider */}
+                      <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('duration')}</span>
+                          <span className="text-cyan-400 font-bold bg-cyan-950/40 px-2 py-0.5 rounded text-[11px] border border-cyan-500/20" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{duration} {isAr ? t('secLabel') : 's'}</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="1" 
+                          max="10" 
+                          value={duration} 
+                          onChange={(e) => handleDurationChange(Number(e.target.value))}
+                          disabled={isExporting}
+                          className="w-full accent-cyan-400 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer mt-1"
+                        />
+                      </div>
+
+                      {/* FPS Segmented Selector */}
+                      <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
+                        <span className="text-xs text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('fps')}</span>
+                        <div className="grid grid-cols-3 gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
+                          {[24, 30, 60].map(val => (
+                            <button
+                              key={val}
+                              onClick={() => handleFpsChange(val)}
+                              disabled={isExporting}
+                              className={`py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                                fps === val 
+                                  ? 'bg-cyan-500 text-black shadow-sm' 
+                                  : 'text-white/60 hover:text-white'
+                              }`}
+                              style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                            >
+                              {val}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Quality Segmented Selector */}
+                      <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
+                        <span className="text-xs text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('quality')}</span>
+                        <div className="grid grid-cols-3 gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
+                          {[
+                            { key: 'low', label: '480p' },
+                            { key: 'medium', label: '720p' },
+                            { key: 'high', label: '1080p' }
+                          ].map(q => (
+                            <button
+                              key={q.key}
+                              onClick={() => handleQualityChange(q.key as QualityType)}
+                              disabled={isExporting}
+                              className={`py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                                quality === q.key 
+                                  ? 'bg-cyan-500 text-black shadow-sm' 
+                                  : 'text-white/60 hover:text-white'
+                              }`}
+                              style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                            >
+                              {q.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Motion Animation Loop Pattern */}
+                      <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
+                        <span className="text-xs text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                          {isAr ? 'نمط الحركة' : 'Motion Pattern'}
+                        </span>
+                        <div className="grid grid-cols-2 gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => { resetExport(); setAnimMode('pingpong'); }}
+                            disabled={isExporting}
+                            className={`py-1 rounded-md text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              animMode === 'pingpong'
+                                ? 'bg-cyan-500 text-black shadow-sm'
+                                : 'text-white/60 hover:text-white'
+                            }`}
+                            style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                          >
+                            <span>↺</span>
+                            <span>{isAr ? 'تكرار' : 'Loop'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { resetExport(); setAnimMode('forward'); }}
+                            disabled={isExporting}
+                            className={`py-1 rounded-md text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              animMode === 'forward'
+                                ? 'bg-cyan-500 text-black shadow-sm'
+                                : 'text-white/60 hover:text-white'
+                            }`}
+                            style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                          >
+                            <span>➔</span>
+                            <span>{isAr ? 'مرة' : 'Once'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Section 4: Progress, error alerts & main action buttons */}
+                {/* Font Variable Axes Motion Accordion Card */}
+                <div className="bg-white/[0.02] rounded-2xl border border-white/10 overflow-hidden transition-all">
+                  <button
+                    type="button"
+                    onClick={() => toggleAccordion('axes')}
+                    className="w-full px-4 sm:px-5 py-3.5 sm:py-4 flex items-center justify-between text-left hover:bg-white/[0.03] transition-colors cursor-pointer gap-2"
+                  >
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                        <Sliders className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                      <span className="text-xs font-semibold text-white/90" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                        {t('axisMotionHeader')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-cyan-400 bg-cyan-950/40 px-2.5 py-1 rounded-full border border-cyan-500/20" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                        {Object.values(axesConfig).filter(a => a.animated).length} / {axes.length} {isAr ? 'متحرك' : 'animated'}
+                      </span>
+                      {isAxesOpen ? <ChevronUp className="w-4 h-4 text-white/50" /> : <ChevronDown className="w-4 h-4 text-white/50" />}
+                    </div>
+                  </button>
+
+                  {isAxesOpen && (
+                    <div className="p-4 sm:p-5 pt-2 border-t border-white/5 bg-black/20 flex flex-col gap-3 max-h-[300px] sm:max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
+                      {axes.map(axis => {
+                        const cfg = axesConfig[axis.tag] || { start: axis.minValue, end: axis.maxValue, staticVal: axis.defaultValue, animated: false };
+                        
+                        return (
+                          <div 
+                            key={axis.tag} 
+                            className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
+                              cfg.animated 
+                                ? 'bg-cyan-500/[0.04] border-cyan-500/30' 
+                                : 'bg-black/30 border-white/5 hover:border-white/10'
+                            }`}
+                          >
+                            {/* Axis Title & Animation Toggle */}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-xs font-bold text-white" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{axis.name || axis.tag}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-bold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                                  {axis.tag}
+                                </span>
+                              </div>
+                              
+                              <button
+                                type="button"
+                                onClick={() => !isExporting && updateAxisProp(axis.tag, 'animated', !cfg.animated)}
+                                className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer border ${
+                                  cfg.animated 
+                                    ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.2)]' 
+                                    : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                                }`}
+                                style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                              >
+                                <span style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('animateAxis')}</span>
+                                <div className={`w-3 h-3 rounded-full transition-all ${cfg.animated ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-white/20'}`} />
+                              </button>
+                            </div>
+
+                            {/* Sliders Area */}
+                            {cfg.animated ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2 border-t border-white/10">
+                                {/* Start Value */}
+                                <div className="flex flex-col gap-1.5">
+                                  <div className="flex justify-between text-[11px]">
+                                    <span className="text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('startVal')}</span>
+                                    <span className="text-cyan-400 font-bold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{cfg.start.toFixed(1)}</span>
+                                  </div>
+                                  <input 
+                                    type="range" 
+                                    min={axis.minValue} 
+                                    max={axis.maxValue} 
+                                    step="0.1"
+                                    value={cfg.start}
+                                    onChange={(e) => updateAxisProp(axis.tag, 'start', Number(e.target.value))}
+                                    disabled={isExporting}
+                                    className="w-full accent-cyan-400 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                                  />
+                                </div>
+
+                                {/* End Value */}
+                                <div className="flex flex-col gap-1.5">
+                                  <div className="flex justify-between text-[11px]">
+                                    <span className="text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('endVal')}</span>
+                                    <span className="text-cyan-400 font-bold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{cfg.end.toFixed(1)}</span>
+                                  </div>
+                                  <input 
+                                    type="range" 
+                                    min={axis.minValue} 
+                                    max={axis.maxValue} 
+                                    step="0.1"
+                                    value={cfg.end}
+                                    onChange={(e) => updateAxisProp(axis.tag, 'end', Number(e.target.value))}
+                                    disabled={isExporting}
+                                    className="w-full accent-cyan-400 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              /* Static Value Slider */
+                              <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+                                <div className="flex justify-between text-[11px]">
+                                  <span className="text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('staticVal')}</span>
+                                  <span className="text-white/80 font-bold" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{cfg.staticVal.toFixed(1)}</span>
+                                </div>
+                                <input 
+                                  type="range" 
+                                  min={axis.minValue} 
+                                  max={axis.maxValue} 
+                                  step="0.1"
+                                  value={cfg.staticVal}
+                                  onChange={(e) => updateAxisProp(axis.tag, 'staticVal', Number(e.target.value))}
+                                  disabled={isExporting}
+                                  className="w-full accent-white/50 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Error Alert */}
                 {error && (
                   <div 
-                    className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2.5 text-red-400 text-xs animate-shake"
+                    className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2.5 text-red-400 text-xs"
                     style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                   >
-                    <AlertCircle size={15} />
+                    <AlertCircle size={16} />
                     <span style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{error}</span>
                   </div>
                 )}
 
                 {/* Footer Modal Actions */}
-                <div className="flex justify-end gap-3 pt-5 border-t border-white/5 mt-auto">
-                  <button 
-                    onClick={onClose}
-                    disabled={isExporting}
-                    className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all cursor-pointer"
-                    style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
-                  >
-                    {t('cancel')}
-                  </button>
-                  
-                  {isFinished && videoUrl ? (
+                <div className="flex items-center justify-between pt-4 border-t border-white/10 mt-auto gap-4">
+                  <span className="text-[11px] text-white/40 hidden sm:inline-block" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                    {typeof VideoEncoder !== 'undefined' && window.isSecureContext ? t('engineWebCodecs') : t('engineMediaRecorder')}
+                  </span>
+
+                  <div className="flex items-center gap-3 ms-auto">
                     <button 
-                      onClick={handleDownload}
-                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-green-500 hover:bg-green-400 text-black flex items-center gap-1.5 transition-all shadow-[0_0_20px_rgba(34,197,94,0.35)] active:scale-95 cursor-pointer"
-                      style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
-                    >
-                      <Download size={14} />
-                      {t('downloadVideo')}
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={handleExport}
+                      onClick={onClose}
                       disabled={isExporting}
-                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-cyan-400 hover:bg-cyan-300 text-black flex items-center gap-1.5 transition-all shadow-[0_0_20px_rgba(34,211,238,0.35)] disabled:opacity-40 disabled:shadow-none active:scale-95 cursor-pointer"
+                      className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all cursor-pointer"
                       style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                     >
-                      {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                      {isExporting ? t('exporting') : t('generate')}
+                      {t('cancel')}
                     </button>
-                  )}
+                    
+                    {isFinished && videoUrl ? (
+                      <button 
+                        onClick={handleDownload}
+                        className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.35)] active:scale-95 cursor-pointer"
+                        style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                      >
+                        <Download size={15} />
+                        {t('downloadVideo')}
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        className="px-6 py-2.5 rounded-xl text-xs font-bold bg-cyan-400 hover:bg-cyan-300 text-black flex items-center gap-2 transition-all shadow-[0_0_25px_rgba(34,211,238,0.35)] disabled:opacity-40 disabled:shadow-none active:scale-95 cursor-pointer"
+                        style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                      >
+                        {isExporting ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} className="fill-current" />}
+                        {isExporting ? t('exporting') : t('generate')}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
               </div>
@@ -933,15 +1117,13 @@ export function VideoExportModal({
               fontVariationSettings: getFVS(0), // default to start
               fontSize: `${scaledFontSize}px`,
               lineHeight: lineHeight === '' ? 1.4 : lineHeight,
+              letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
               color: textColor,
-              textAlign: 'center',
+              textAlign: textAlign,
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
               direction: 'rtl',
-              maxWidth: '90%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              width: '90%'
             }}
           >
             {text}

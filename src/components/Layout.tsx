@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Link, useLocation } from 'react-router-dom';
-import { Upload, AlertTriangle, Info, Check, X, LogIn } from 'lucide-react';
+import { Upload, AlertTriangle, Info, Check, X, LogIn, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,7 +13,7 @@ import { NotificationsDropdown } from './ui/NotificationsDropdown';
 import { Notification } from '../types';
 
 const NotificationItem = ({ notification, onRemove }: { notification: any, onRemove: () => void }) => {
-  const { dir } = useLanguage();
+  const { t } = useLanguage();
   return (
     <motion.div
       layout
@@ -40,10 +40,10 @@ const NotificationItem = ({ notification, onRemove }: { notification: any, onRem
             {notification.type === 'error' && <X className="w-3.5 h-3.5" />}
           </div>
           <span className="capitalize font-heading">
-            {notification.type === 'upload' ? (dir === 'rtl' ? 'جاري الرفع' : 'Uploading') : 
-             notification.type === 'warning' ? (dir === 'rtl' ? 'تنبيه' : 'Warning') : 
-             notification.type === 'success' ? (dir === 'rtl' ? 'تم بنجاح' : 'Success') :
-             notification.type === 'error' ? (dir === 'rtl' ? 'خطأ' : 'Error') : (dir === 'rtl' ? 'معلومة' : 'Info')}
+            {notification.type === 'upload' ? t('notif.uploading') : 
+             notification.type === 'warning' ? t('notif.warning') : 
+             notification.type === 'success' ? t('notif.success') :
+             notification.type === 'error' ? t('notif.error') : t('notif.info')}
           </span>
         </div>
         <button 
@@ -69,7 +69,7 @@ const NotificationItem = ({ notification, onRemove }: { notification: any, onRem
 };
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { dir, t } = useLanguage();
+  const { dir, t, language, setLanguage } = useLanguage();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const { notifications, removeNotification } = useGlobal();
@@ -221,73 +221,102 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
          </AnimatePresence>
        </div>
 
-      {/* Header - Minimal & Centered */}
-      {!location.pathname.startsWith('/account') && (
-        <header 
-          className={`fixed top-0 left-0 right-0 z-[100] h-24 px-6 flex items-center justify-between transition-colors duration-300 bg-[#080808] border-b ${
-            isScrolled ? 'border-white/20' : 'border-transparent'
-          }`}
-        >
-          {/* Left Container (Logo + Login) */}
-          <div className="flex-1 flex items-center justify-start gap-4 lg:gap-6 pointer-events-none">
-            {/* Desktop Logo */}
-            <div className="hidden lg:block">
-              <Link to="/" className="block relative z-[10] pointer-events-auto">
-                <div className="w-[130px] h-fit flex items-center justify-center">
-                  <Logo className="w-full h-auto text-white" />
-                </div>
-              </Link>
-            </div>
-
-            {/* Login Button */}
-            {!user && (
-              <div className="pointer-events-auto">
-                <Link 
-                  to="/account" 
-                  className="flex items-center justify-center sm:px-4 sm:py-2 gap-2 text-xs font-medium text-white hover:bg-white hover:text-black transition-all w-9 h-9 sm:w-auto sm:h-auto rounded-full bg-black/50 sm:bg-black border border-white/10 sm:border-white/20 hover:border-white"
-                >
-                  <LogIn className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                  <span className="hidden sm:block">{dir === 'rtl' ? 'دخول' : 'Login'}</span>
-                </Link>
+      {/* Header - Fixed Glass Header with Desktop Floating Dock */}
+      <header 
+        className={`fixed top-0 left-0 right-0 z-[100] h-20 px-6 sm:px-8 flex items-center justify-between transition-all duration-300 bg-[#080808]/90 backdrop-blur-xl border-b ${
+          isScrolled ? 'border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.6)]' : 'border-transparent'
+        }`}
+      >
+        {/* Left Container (Logo + Login) */}
+        <div className="flex-1 flex items-center justify-start gap-4 lg:gap-6 pointer-events-none">
+          {/* Desktop Logo */}
+          <div className="hidden lg:block">
+            <Link to="/" className="block relative z-[10] pointer-events-auto transition-transform hover:scale-105 active:scale-95">
+              <div className="w-[125px] h-fit flex items-center justify-center">
+                <Logo className="w-full h-auto text-white" />
               </div>
-            )}
+            </Link>
           </div>
 
-          {/* Center Container (Mobile Logo / Desktop Nav) */}
-          <div className="flex items-center justify-center pointer-events-none lg:pointer-events-auto shrink-0 px-4">
-            {/* Mobile Logo */}
-            <div className="lg:hidden">
-              <Link to="/" className="block relative z-[10] pointer-events-auto">
-                <div className="w-[130px] h-fit flex items-center justify-center">
-                  <Logo className="w-full h-auto text-white" />
-                </div>
+          {/* Login Button */}
+          {!user && (
+            <div className="pointer-events-auto">
+              <Link 
+                to="/account" 
+                className="flex items-center justify-center sm:px-4 sm:py-2 gap-2 text-xs font-semibold text-white hover:bg-white hover:text-black transition-all w-9 h-9 sm:w-auto sm:h-auto rounded-full bg-white/5 hover:bg-white border border-white/15 shadow-sm"
+              >
+                <LogIn className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="hidden sm:block">{dir === 'rtl' ? 'دخول' : 'Login'}</span>
               </Link>
             </div>
+          )}
+        </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-8">
-              <Link to="/" className={`text-sm font-medium transition-colors ${location.pathname === '/' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.home')}</Link>
-              <Link to="/fonts" className={`text-sm font-medium transition-colors ${location.pathname === '/fonts' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.public_fonts')}</Link>
-              <Link to="/lab" className={`text-sm font-medium transition-colors ${location.pathname === '/lab' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.lab')}</Link>
-              <Link to="/my-fonts" className={`text-sm font-medium transition-colors ${location.pathname === '/my-fonts' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.my_fonts')}</Link>
-              <Link to="/account" className={`text-sm font-medium transition-colors ${location.pathname === '/account' ? 'text-white' : 'text-white opacity-50 hover:text-white'}`}>{t('nav.account')}</Link>
-            </div>
+        {/* Center Container (Mobile Logo / Desktop Nav Dock) */}
+        <div className="flex items-center justify-center pointer-events-none lg:pointer-events-auto shrink-0 px-2">
+          {/* Mobile Logo */}
+          <div className="lg:hidden">
+            <Link to="/" className="block relative z-[10] pointer-events-auto">
+              <div className="w-[120px] h-fit flex items-center justify-center">
+                <Logo className="w-full h-auto text-white" />
+              </div>
+            </Link>
           </div>
 
-          {/* Right Container (Notifications) */}
-          <div className="flex-1 flex justify-end items-center gap-2 pointer-events-auto">
-            <NotificationsDropdown 
-               isAdmin={isAdmin} 
-               onOpenNotification={(n) => setSelectedAppNotification(n)} 
-               onOpenAdminPanel={() => setIsAdminModalOpen(true)}
-            />
-          </div>
-        </header>
-      )}
+          {/* Desktop Navigation Floating Dock */}
+          <nav className="hidden lg:flex items-center p-1.5 rounded-full bg-[#121217]/85 border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] gap-1 relative">
+            {navItems.map(({ id, label, icon }) => {
+              const isActive = location.pathname === id;
+              return (
+                <Link
+                  key={id}
+                  to={id}
+                  className={`relative px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all duration-200 select-none group ${
+                    isActive
+                      ? 'text-white font-semibold'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="desktop-active-pill"
+                      transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                      className="absolute inset-0 bg-white/10 border border-white/20 rounded-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+                    {icon(isActive)}
+                  </span>
+                  <span className="relative z-10 whitespace-nowrap">{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Right Container (Language Switcher + Notifications) */}
+        <div className="flex-1 flex justify-end items-center gap-3 pointer-events-auto">
+          {/* Language Toggle Button */}
+          <button
+            onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-white/25 hover:bg-white/10 text-xs font-medium text-white/80 hover:text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+            title={language === 'ar' ? 'Switch to English' : 'التحويل إلى العربية'}
+          >
+            <Globe className="w-3.5 h-3.5 text-cyan-400" />
+            <span>{language === 'ar' ? 'EN' : 'عربي'}</span>
+          </button>
+
+          <NotificationsDropdown 
+             isAdmin={isAdmin} 
+             onOpenNotification={(n) => setSelectedAppNotification(n)} 
+             onOpenAdminPanel={() => setIsAdminModalOpen(true)}
+          />
+        </div>
+      </header>
       
       {/* Main Content */}
       <main 
-        className={`flex-1 ${location.pathname.startsWith('/account') ? 'pt-8' : 'pt-32'} pb-12 w-full ${dir === 'rtl' ? 'max-lg:landscape:pr-[56px]' : 'max-lg:landscape:pl-[56px]'}`}
+        className={`flex-1 pt-28 pb-12 w-full ${dir === 'rtl' ? 'max-lg:landscape:pr-[56px]' : 'max-lg:landscape:pl-[56px]'}`}
       >
         {children}
       </main>
@@ -297,7 +326,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         <div className="mx-auto px-6 w-full max-w-4xl flex flex-col items-center text-center">
 
           <p className="text-white opacity-40 text-sm font-light leading-relaxed max-w-xl mb-8 mt-2">
-            {dir === 'rtl' ? 'مبادرة رقمية تهدف لتوفير أدوات وخطوط عربية أصيلة لتعزيز المحتوى العربي باحترافية وسهولة.' : 'A digital initiative aiming to provide authentic Arabic tools and fonts to enhance Arabic content professionally and easily.'}
+            {t('layout.initiative_desc')}
           </p>
 
           <div className="flex items-center justify-center w-full max-w-[240px] mb-8 opacity-20">
@@ -307,15 +336,15 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 text-sm text-white opacity-50 mb-10">
-            <Link to="/about" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'عن مبادرة فونتات' : 'About Fontat'}</Link>
+            <Link to="/about" className="hover:text-white hover:opacity-100 transition-colors">{t('layout.about_initiative')}</Link>
             <div className="hidden sm:block w-1 h-1 rounded-full bg-white/20"></div>
-            <Link to="/terms" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'شروط الاستخدام' : 'Terms of Service'}</Link>
+            <Link to="/terms" className="hover:text-white hover:opacity-100 transition-colors">{t('layout.terms')}</Link>
             <div className="hidden sm:block w-1 h-1 rounded-full bg-white/20"></div>
-            <Link to="/privacy" className="hover:text-white hover:opacity-100 transition-colors">{dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy Policy'}</Link>
+            <Link to="/privacy" className="hover:text-white hover:opacity-100 transition-colors">{t('layout.privacy')}</Link>
           </div>
 
           <p className="text-white opacity-30 text-xs font-light">
-            <span dir="ltr">© {new Date().getFullYear()} FONTAT.</span> {dir === 'rtl' ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
+            <span dir="ltr">© {new Date().getFullYear()} FONTAT.</span> {t('layout.rights')}
           </p>
         </div>
       </footer>

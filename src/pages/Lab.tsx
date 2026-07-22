@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Upload, Beaker, Download, Video, Settings, Type, Search, Clock, ArrowRight, X, Copy, Sliders, ChevronDown, Palette, Layers, Info } from 'lucide-react';
+import { Upload, Beaker, Download, Video, Settings, Type, Search, Clock, ArrowRight, X, Copy, Sliders, ChevronDown, Palette, Layers, Info, SlidersHorizontal, AlignLeft, AlignCenter, AlignRight, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HexColorPicker } from "react-colorful";
 // @ts-ignore
@@ -183,8 +183,29 @@ export const Lab = () => {
   const [previewText, setPreviewText] = useState(t('lab.preview_placeholder'));
   const [fontSize, setFontSize] = useState<number | ''>(80);
   const [lineHeight, setLineHeight] = useState<number | ''>('');
+  const [letterSpacing, setLetterSpacing] = useState<number>(0);
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
   const [textColor, setTextColor] = useState('#ffffff');
   const [bgColor, setBgColor] = useState('#080808');
+
+  const handleResetSettings = () => {
+    setFontSize(80);
+    setLineHeight('');
+    setLetterSpacing(0);
+    setTextAlign('center');
+    setTextColor('#ffffff');
+    setBgColor('#080808');
+    if (axes && axes.length > 0) {
+      const defaultVals: Record<string, number> = {};
+      axes.forEach(axis => {
+        defaultVals[axis.tag] = axis.defaultValue;
+      });
+      setAxisValues(defaultVals);
+    } else {
+      setAxisValues({});
+    }
+    setOpenTypeFeatures({});
+  };
   const [openTypeFeatures, setOpenTypeFeatures] = useState<Record<string, boolean | undefined>>({});
   const [activeFeatureTooltip, setActiveFeatureTooltip] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -627,79 +648,61 @@ export const Lab = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-12 gap-4">
-              {/* Controls */}
-              <div className="col-span-12 lg:col-span-3 space-y-4 bg-[#141414] p-4 rounded-2xl border border-white/5 text-xs">
-                <h2 className="text-[10px] font-bold text-white opacity-60 uppercase tracking-wider flex items-center gap-2">
-                  <Settings size={12} />
-                  {t('lab.font_control')}
-                </h2>
-                
-                {/* Simplified Controls: Font Size */}
-                <div className="space-y-4 pt-1">
-                  <div className="flex justify-between text-[11px] text-white opacity-85">
-                    <span className="font-medium">{t('lab.font_size')}</span>
-                    <span className="text-cyan-400 font-mono font-bold text-xs">{fontSize || 80}px</span>
+            {/* Full-width Interactive Specimen Canvas */}
+            <div 
+              onClick={() => {
+                setIsFullscreenPreview(true);
+                setShowFullscreenTools(true);
+              }}
+              className="group relative w-full rounded-3xl border border-white/10 hover:border-cyan-500/40 bg-[#12131c] hover:bg-[#151724] p-6 sm:p-10 min-h-[440px] flex flex-col justify-between transition-all duration-300 cursor-pointer overflow-hidden shadow-2xl hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_0_25px_rgba(34,211,238,0.08)]"
+              style={{ backgroundColor: bgColor }}
+            >
+              {/* Studio Canvas Framing Accents on Hover */}
+              <div className="absolute top-3 left-3 w-3 h-3 border-t-2 border-l-2 border-cyan-400/0 group-hover:border-cyan-400/50 transition-all duration-300 pointer-events-none" />
+              <div className="absolute top-3 right-3 w-3 h-3 border-t-2 border-r-2 border-cyan-400/0 group-hover:border-cyan-400/50 transition-all duration-300 pointer-events-none" />
+              <div className="absolute bottom-3 left-3 w-3 h-3 border-b-2 border-l-2 border-cyan-400/0 group-hover:border-cyan-400/50 transition-all duration-300 pointer-events-none" />
+              <div className="absolute bottom-3 right-3 w-3 h-3 border-b-2 border-r-2 border-cyan-400/0 group-hover:border-cyan-400/50 transition-all duration-300 pointer-events-none" />
+
+              {/* Top Header Bar inside Stage */}
+              <div className="flex items-center justify-between w-full z-20 gap-3">
+                {/* Refined Font Name Capsule with generous breathing room and elegant styling */}
+                <div 
+                  className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-black/70 border border-white/12 hover:border-cyan-500/35 backdrop-blur-xl text-xs sm:text-sm text-white/95 font-medium shadow-lg transition-all group/capsule max-w-[85%] sm:max-w-[70%] md:max-w-[600px] shrink-0"
+                  title={font.names.fullName.en}
+                >
+                  <div className="w-5 h-5 rounded-full bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-400 shrink-0">
+                    <Type size={11} />
                   </div>
-                  <input
-                    type="range"
-                    min="8"
-                    max="400"
-                    value={fontSize || 80}
-                    onChange={(e) => setFontSize(Number(e.target.value))}
-                    className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-400 hover:accent-cyan-300 transition-colors"
-                  />
+                  <span className="truncate tracking-wide font-sans text-white/90">{font.names.fullName.en}</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/80 shrink-0 group-hover/capsule:shadow-[0_0_10px_rgba(34,211,238,0.9)] transition-all ml-auto" />
                 </div>
 
-                {/* Visual helper */}
-                <p className="text-[10px] text-white/30 leading-relaxed text-center mt-1 select-none" dir={t('dir')}>
-                  {t('dir') === 'rtl' 
-                    ? 'الألوان والخصائص المتقدمة والتحميل متوفرة بالكامل داخل شاشة التكبير والتخصيص.' 
-                    : 'Colors, advanced tuning and download are fully available inside customize & zoom screen.'}
-                </p>
+                {/* Subtle Hover Customization Hint Badge */}
+                <div 
+                  className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 backdrop-blur-md text-[11px] font-medium shadow-md pointer-events-none"
+                  style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                >
+                  <SlidersHorizontal className="w-3 h-3 text-cyan-400 shrink-0" />
+                  <span>{t('lab.customize_zoom')}</span>
+                </div>
               </div>
 
-              {/* Preview */}
-              <div className="col-span-12 lg:col-span-9 space-y-3">
-                <div className="flex items-center gap-2 text-[10px] text-white opacity-60 mb-1">
-                  <Type size={12} />
-                  <span>{t('lab.font_preview')}: {font.names.fullName.en}</span>
-                </div>
-                <textarea
-                  value={previewText}
-                  onChange={(e) => setPreviewText(e.target.value)}
-                  className="w-full p-3 rounded-2xl bg-[#141414] border border-white/5 text-white text-xs outline-none focus:border-cyan-400/50 transition-all resize-none"
-                  rows={2}
-                />
-                
-                <div 
-                  className="relative p-6 md:p-12 rounded-2xl border border-white/5 overflow-visible flex flex-col items-center justify-center min-h-[460px] h-auto"
-                  style={{ backgroundColor: bgColor }}
+              {/* Center Specimen Text Display */}
+              <div className="my-auto py-10 text-center w-full whitespace-pre-wrap break-words leading-normal select-none z-10 transition-transform duration-300 group-hover:scale-[1.01]">
+                <div
+                  className="preview-text transition-colors duration-300"
+                  style={{
+                    fontFamily: `'LabFont-${currentFontId}', sans-serif`,
+                    fontSize: fontSize === '' ? undefined : `${fontSize}px`,
+                    lineHeight: lineHeight === '' ? undefined : lineHeight,
+                    letterSpacing: `${letterSpacing}px`,
+                    textAlign: textAlign,
+                    color: textColor,
+                    fontVariationSettings: getVariationSettings(),
+                    fontFeatureSettings: getFontFeatures(),
+                  }}
                 >
-                  <button
-                    onClick={() => {
-                      setIsFullscreenPreview(true);
-                      setShowFullscreenTools(true);
-                    }}
-                    className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/75 text-white/60 hover:text-cyan-400 rounded-full border border-white/10 hover:border-cyan-500/25 transition-all text-[11px] font-medium tracking-wide shadow-xl active:scale-95 cursor-pointer backdrop-blur-md group z-20"
-                    title={t('dir') === 'rtl' ? 'فتح لوحة التعديل والتكبير' : 'Open customization and zoom'}
-                  >
-                    <Sliders size={11} className="text-white/40 group-hover:text-cyan-400 transition-colors" />
-                    <span>{t('dir') === 'rtl' ? 'تخصيص وتكبير المعاينة ↗' : 'Customize & Zoom ↗'}</span>
-                  </button>
-                  <div
-                    className="preview-text text-center w-full whitespace-pre-wrap break-words leading-normal select-text relative z-10"
-                    style={{
-                      fontFamily: `'LabFont-${currentFontId}', sans-serif`,
-                      fontSize: fontSize === '' ? undefined : `${fontSize}px`,
-                      lineHeight: lineHeight === '' ? undefined : lineHeight,
-                      color: textColor,
-                      fontVariationSettings: getVariationSettings(),
-                      fontFeatureSettings: getFontFeatures(),
-                    }}
-                  >
-                    {previewText}
-                  </div>
+                  {previewText}
                 </div>
               </div>
             </div>
@@ -830,14 +833,14 @@ export const Lab = () => {
               </div>
 
               <div className="text-[10px] uppercase font-bold tracking-widest text-[#cbd5e1]/30 font-sans">
-                {t('dir') === 'rtl' ? 'معاينة هندسية مكبرة' : 'Macro Geometry Preview'}
+                {t('lab.macro_geometry')}
               </div>
 
               {/* Character display styling with loaded dynamic font if present */}
               {selectedGlyphZoom.svgPath ? (
                 <div 
                   className="min-h-[140px] flex justify-center items-center py-6 w-full max-w-[200px] mx-auto"
-                  title="اسحب أو انسخ الحرف"
+                  title={t('lab.drag_or_copy')}
                 >
                   <svg viewBox={selectedGlyphZoom.svgViewBox} className="w-full h-auto fill-current text-white max-h-[180px]">
                     <path d={selectedGlyphZoom.svgPath} />
@@ -849,14 +852,14 @@ export const Lab = () => {
                   style={{
                     fontFamily: `'LabFont-${currentFontId}', sans-serif`,
                   }}
-                  title="اسحب أو انسخ الحرف"
+                  title={t('lab.drag_or_copy')}
                 >
                   {selectedGlyphZoom.char}
                 </div>
               ) : (
                 <div 
                   className="text-[110px] select-all leading-none py-10 text-white select-text font-serif font-extrabold min-h-[140px] flex items-center justify-center"
-                  title="اسحب أو انسخ الحرف"
+                  title={t('lab.drag_or_copy')}
                 >
                   {selectedGlyphZoom.char}
                 </div>
@@ -876,13 +879,13 @@ export const Lab = () => {
                     onClick={() => {
                       if (selectedGlyphZoom.char) {
                         navigator.clipboard.writeText(selectedGlyphZoom.char);
-                        addNotification('success', t('dir') === 'rtl' ? 'تم نسخ المحرف للحافظة!' : 'Copied to clipboard!');
+                        addNotification('success', t('lab.char_copied'));
                       }
                     }}
                     className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
                   >
                     <Copy className="w-4 h-4" />
-                    <span>{t('dir') === 'rtl' ? 'نسخ هذا المحرف كـ نص' : 'Copy Character Text'}</span>
+                    <span>{t('lab.copy_char_text')}</span>
                   </button>
                 )}
 
@@ -892,14 +895,14 @@ export const Lab = () => {
                     onClick={() => {
                       if (selectedGlyphZoom.char) {
                         setPreviewText(prev => prev + selectedGlyphZoom.char);
-                        addNotification('success', t('dir') === 'rtl' ? 'تمت إضافة المحرف للمحرر!' : 'Added character to editor!');
+                        addNotification('success', t('lab.char_added'));
                         setSelectedGlyphZoom(null);
                       }
                     }}
                     className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/5"
                   >
                     <ArrowRight className={`w-4 h-4 ${t('dir') === 'rtl' ? 'rotate-180' : ''}`} />
-                    <span>{t('dir') === 'rtl' ? 'إدراج في مساحة التجربة' : 'Insert into Sandbox editor'}</span>
+                    <span>{t('lab.insert_sandbox')}</span>
                   </button>
                 )}
               </div>
@@ -949,7 +952,7 @@ export const Lab = () => {
                 >
                   <Palette className="w-4 h-4 cursor-pointer" />
                   <span className="text-[11px] font-bold tracking-wide">
-                    {t('dir') === 'rtl' ? 'أدوات التعديل والتخصيص' : 'Advanced Tools'}
+                    {t('lab.advanced_tools')}
                   </span>
                 </button>
 
@@ -964,7 +967,7 @@ export const Lab = () => {
                       className="bg-[#141414]/95 backdrop-blur-xl border border-white/10 p-2.5 rounded-2xl w-[240px] shadow-2xl pointer-events-auto flex flex-col gap-2 mt-2"
                     >
                       <div className="flex items-center justify-between border-b border-white/5 pb-1.5 px-1">
-                         <span className="text-[10px] tracking-wider font-bold text-white/50 uppercase">{t('dir') === 'rtl' ? 'أدوات العرض' : 'Preview Tools'}</span>
+                         <span className="text-[10px] tracking-wider font-bold text-white/50 uppercase">{t('lab.preview_tools')}</span>
                       </div>
 
                       <div className="space-y-2 max-h-[75vh] overflow-y-auto custom-scrollbar pr-1">
@@ -976,7 +979,7 @@ export const Lab = () => {
                            >
                              <div className="flex items-center gap-2">
                                <Type className="w-3.5 h-3.5 text-cyan-400" />
-                               <span className="text-[11px] font-bold text-white">{t('dir') === 'rtl' ? 'الخط والحجم' : 'Typography'}</span>
+                               <span className="text-[11px] font-bold text-white">{t('lab.typography')}</span>
                              </div>
                              <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${expandedSection === 'size' ? 'rotate-180' : ''}`} />
                            </button>
@@ -1020,6 +1023,67 @@ export const Lab = () => {
                                        className="w-full accent-cyan-400 cursor-pointer"
                                      />
                                    </div>
+
+                                   {/* Text Alignment Option */}
+                                   <div className="space-y-2 pt-1 border-t border-white/5">
+                                     <div className="flex justify-between text-xs text-white/60">
+                                       <span>{t('lab.letter_spacing')}</span>
+                                       <span>{letterSpacing}px</span>
+                                      </div>
+                                      <input
+                                        type="range"
+                                        min="-10"
+                                        max="40"
+                                        value={letterSpacing}
+                                        onChange={(e) => setLetterSpacing(Number(e.target.value))}
+                                        className="w-full accent-cyan-400 cursor-pointer"
+                                      />
+                                    </div>
+
+                                    {/* Text Alignment Option */}
+                                    <div className="space-y-2 pt-1 border-t border-white/5">
+                                      <div className="flex justify-between text-xs text-white/60">
+                                       <span>{t('lab.text_align')}</span>
+                                     </div>
+                                     <div className="grid grid-cols-3 gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
+                                       <button
+                                         type="button"
+                                         onClick={() => setTextAlign('right')}
+                                         className={`py-1.5 rounded-lg flex items-center justify-center transition-all ${
+                                           textAlign === 'right'
+                                             ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold'
+                                             : 'text-white/50 hover:text-white hover:bg-white/5'
+                                         }`}
+                                         title={t('lab.align_right')}
+                                       >
+                                         <AlignRight size={14} />
+                                       </button>
+                                       <button
+                                         type="button"
+                                         onClick={() => setTextAlign('center')}
+                                         className={`py-1.5 rounded-lg flex items-center justify-center transition-all ${
+                                           textAlign === 'center'
+                                             ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold'
+                                             : 'text-white/50 hover:text-white hover:bg-white/5'
+                                         }`}
+                                         title={t('lab.align_center')}
+                                       >
+                                         <AlignCenter size={14} />
+                                       </button>
+                                       <button
+                                         type="button"
+                                         onClick={() => setTextAlign('left')}
+                                         className={`py-1.5 rounded-lg flex items-center justify-center transition-all ${
+                                           textAlign === 'left'
+                                             ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold'
+                                             : 'text-white/50 hover:text-white hover:bg-white/5'
+                                         }`}
+                                         title={t('lab.align_left')}
+                                       >
+                                         <AlignLeft size={14} />
+                                       </button>
+                                     </div>
+                                   </div>
                                  </div>
                                </motion.div>
                              )}
@@ -1034,7 +1098,7 @@ export const Lab = () => {
                            >
                              <div className="flex items-center gap-2">
                                <Palette className="w-4 h-4 text-red-400" />
-                               <span className="text-xs font-bold text-white">{t('dir') === 'rtl' ? 'الألوان' : 'Colors'}</span>
+                               <span className="text-xs font-bold text-white">{t('lab.colors')}</span>
                              </div>
                              <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${expandedSection === 'colors' ? 'rotate-180' : ''}`} />
                            </button>
@@ -1297,8 +1361,18 @@ export const Lab = () => {
                            </div>
                          )}
 
-                          {/* Instant Download Action in Fullscreen */}
+                          {/* Action Buttons in Fullscreen Tools */}
                           <div className="pt-2 border-t border-white/5 font-sans flex flex-col gap-2">
+                            {/* Reset Settings Action Button (Moved above download & export) */}
+                            <button
+                              type="button"
+                              onClick={handleResetSettings}
+                              className="w-full bg-white/5 border border-white/10 hover:bg-red-500/10 hover:border-red-500/30 text-white/70 hover:text-red-300 py-2.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 select-none active:scale-95 cursor-pointer group mb-1"
+                            >
+                              <RotateCcw size={13} className="text-cyan-400 group-hover:text-red-400 transition-colors" />
+                              <span>{t('lab.reset_settings')}</span>
+                            </button>
+
                             <button
                               onClick={async () => {
                                 if (!font || isDownloading) return;
@@ -1336,7 +1410,7 @@ export const Lab = () => {
                                 className="w-full bg-[#1a1a1a] border border-white/10 hover:bg-white/10 text-white py-2.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 select-none active:scale-95 cursor-pointer"
                               >
                                 <Video size={13} className="text-cyan-400" />
-                                <span>Export Animation (MP4)</span>
+                                <span>{t('lab.export_animation')}</span>
                               </button>
                             )}
                           </div>
@@ -1347,9 +1421,9 @@ export const Lab = () => {
               </div>
             </div>
 
-            {/* Main content layer */}
-            <div className="flex-1 flex overflow-y-auto custom-scrollbar w-full h-full p-6 md:p-12 pointer-events-auto items-start justify-center">
-              <div className="w-full max-w-7xl flex flex-col items-center justify-start min-h-max py-24 md:py-32">
+            {/* Main content layer with maximized writing space & minimal edge dead margins */}
+            <div className="flex-1 flex overflow-y-auto custom-scrollbar w-full h-full p-3 sm:p-5 md:p-6 pointer-events-auto items-stretch justify-center">
+              <div className="w-full max-w-7xl flex flex-col items-center justify-center min-h-[calc(100vh-80px)] pt-16 sm:pt-20 pb-6">
                 <div
                   contentEditable
                   suppressContentEditableWarning
@@ -1357,15 +1431,17 @@ export const Lab = () => {
                   onInput={() => {
                     // Update state silently without re-triggering render loop on every keystroke
                   }}
-                  className="w-full outline-none bg-transparent overflow-visible text-center break-words whitespace-pre-wrap"
+                  className="w-full outline-none bg-transparent overflow-visible break-words whitespace-pre-wrap transition-all duration-200"
                   style={{
                     color: textColor,
                     fontFamily: `'LabFont-${currentFontId}', sans-serif`,
                     fontSize: fontSize === '' ? '80px' : `${fontSize}px`,
                     lineHeight: lineHeight === '' ? '1.5' : lineHeight,
+                    letterSpacing: `${letterSpacing}px`,
+                    textAlign: textAlign,
                     fontVariationSettings: getVariationSettings(),
                     fontFeatureSettings: getFontFeatures(),
-                    minHeight: '1em',
+                    minHeight: '2em',
                   }}
                   spellCheck={false}
                 >
@@ -1389,6 +1465,8 @@ export const Lab = () => {
         textColor={textColor}
         bgColor={bgColor}
         lineHeight={lineHeight === '' ? 1.4 : lineHeight}
+        textAlign={textAlign}
+        letterSpacing={letterSpacing}
       />
     </div>
   );

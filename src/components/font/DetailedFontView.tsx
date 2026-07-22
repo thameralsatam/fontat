@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Download, ExternalLink, Beaker, Copy, Layout, BookOpen, Edit3, Sliders, Sparkles, ChevronDown, Plus, X, Dices } from 'lucide-react';
 import { FontPreviewSandbox } from './FontPreviewSandbox';
 import { Font } from '../../types';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface DetailedFontViewProps {
   selectedFontDetail: Font | null;
@@ -107,6 +108,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
   truncateTwoDots,
   formatFontName
 }) => {
+  const { t } = useLanguage();
   if (!selectedFontDetail) return null;
 
   return (
@@ -232,16 +234,16 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
               <div className="flex items-center gap-2 border-b border-white/[0.03] pb-2.5">
                 <Layout className="w-4 h-4 text-white/80" />
                 <span className={`text-[11px] uppercase tracking-wider font-bold ${activeTheme.textSecondary}`}>
-                  {dir === 'rtl' ? 'نمط المعاينة البصرية' : 'Preview Layout Mode'}
+                  {t('font_detail.preview_layout_mode')}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: 'poem', label: dir === 'rtl' ? 'أبيات الشعر' : 'Classical Poem', icon: BookOpen },
-                  { id: 'paragraph', label: dir === 'rtl' ? 'محتوى مقالي' : 'Extended Text', icon: Edit3 },
-                  { id: 'glyphs', label: dir === 'rtl' ? 'خريطة المحارف' : 'Glyph Explorer', icon: Sliders },
-                  { id: 'poster', label: dir === 'rtl' ? 'عرض إبداعي' : 'Artistic Poster', icon: Sparkles }
+                  { id: 'poem', label: t('font_detail.classical_poem'), icon: BookOpen },
+                  { id: 'paragraph', label: t('font_detail.extended_text'), icon: Edit3 },
+                  { id: 'glyphs', label: t('font_detail.glyph_explorer'), icon: Sliders },
+                  { id: 'poster', label: t('font_detail.artistic_poster'), icon: Sparkles }
                 ].map(mode => {
                   const Icon = mode.icon;
                   const isActive = detailLayoutMode === mode.id;
@@ -266,18 +268,18 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
             {/* 2. SPEC SHEET & METADATA info */}
             <div className={`${activeTheme.cardBg} rounded-3xl p-5 border ${activeTheme.borderColor} flex flex-col gap-3.5 relative z-30`}>
               <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest text-[#cbd5e1]/30 pb-1.5 border-b border-white/[0.03] font-display">
-                <span>{dir === 'rtl' ? 'المواصفات الفنية للخط' : 'Technical Font Specifications'}</span>
+                <span>{t('font_detail.tech_specs')}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-[11px]">
                 <div className="flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center">
-                  <span className={activeTheme.textSecondary}>{dir === 'rtl' ? 'الصيغة' : 'Format'}</span>
+                  <span className={activeTheme.textSecondary}>{t('font_detail.format')}</span>
                   <span className={`${activeTheme.text} font-bold font-mono mt-1 uppercase`}>
                     {getFontFormat(selectedFontDetail.download_url)}
                   </span>
                 </div>
                 <div className={`flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center relative group/weights weights-menu-container ${isWeightsMenuOpen ? 'z-50' : 'z-10'}`}>
-                  <span className={activeTheme.textSecondary}>{dir === 'rtl' ? 'الأوزان' : 'Weights'}</span>
+                  <span className={activeTheme.textSecondary}>{t('font_detail.weights')}</span>
                   
                   {selectedFontWeights.length > 0 ? (
                     <div className="relative mt-1">
@@ -290,7 +292,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                       >
                         <span className="flex-1 text-center font-mono">
                           {selectedFontDetail?.id === activeParentFontId 
-                            ? (dir === 'rtl' ? 'أساسي' : 'Base')
+                            ? t('font_detail.base')
                             : truncateTwoDots(formatFontName(selectedFontWeights.find(w => w.child_font_id === selectedFontDetail?.id)?.child_font?.name || selectedFontDetail?.name || ''), 10)}
                         </span>
                         <ChevronDown className="w-3 h-3 shrink-0" />
@@ -313,7 +315,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                               }}
                               className={`w-full text-center px-3 py-2 text-[10px] font-bold transition-colors ${selectedFontDetail?.id === activeParentFontId ? 'bg-cyan-500/20 text-cyan-400 font-mono' : 'text-white/80 hover:bg-white/10 font-mono'}`}
                             >
-                              {dir === 'rtl' ? 'أساسي' : 'Base'}
+                              {t('font_detail.base')}
                             </button>
                             {selectedFontWeights.map(w => (
                               <button
@@ -355,7 +357,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                   )}
                 </div>
                 <div className="flex flex-col bg-white/[0.01] border border-white/5 p-2 rounded-xl text-center">
-                  <span className={activeTheme.textSecondary}>{dir === 'rtl' ? 'اللغات' : 'Languages'}</span>
+                  <span className={activeTheme.textSecondary}>{t('font_detail.languages')}</span>
                   <span className={`${activeTheme.text} font-bold mt-1 truncate`} title={detectedLangs.length > 0 ? detectedLangs.join(', ') : getSupportedLanguages()}>
                     {getSupportedLanguages()}
                   </span>
@@ -365,19 +367,19 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
               {/* Isolated Tag view within details */}
               <div className="flex flex-col gap-1.5 mt-1 border-t border-white/[0.03] pt-3">
                 <div className="flex items-center justify-between">
-                  <span className={`${activeTheme.textSecondary} text-[11px] font-bold`}>{dir === 'rtl' ? 'الهاشتاغات' : 'Tags'}</span>
+                  <span className={`${activeTheme.textSecondary} text-[11px] font-bold`}>{t('font_detail.tags')}</span>
                   {isOwner && baseFontForMetadata && (
                     <button 
                       onClick={() => setTagEditModal({ isOpen: true, fontId: baseFontForMetadata.id, tagsText: baseFontForMetadata.tags?.join(', ') || '' })}
                       className="hover:bg-white/10 p-1 rounded transition-colors text-white/50 hover:text-white"
-                      title={dir === 'rtl' ? 'تعديل الهاشتاغات' : 'Edit Tags'}
+                      title={t('font_detail.edit_tags')}
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
                 {(!baseFontForMetadata?.tags || baseFontForMetadata.tags.length === 0) ? (
-                  <span className={`font-light ${activeTheme.textSecondary} opacity-40 text-xs`}>{dir === 'rtl' ? 'لا يوجد هاشتاغات' : 'No tags found'}</span>
+                  <span className={`font-light ${activeTheme.textSecondary} opacity-40 text-xs`}>{t('font_detail.no_tags')}</span>
                 ) : (
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {baseFontForMetadata.tags.map(tag => (
@@ -454,7 +456,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                 </div>
 
                 <div className="text-[10px] uppercase font-bold tracking-widest text-[#cbd5e1]/30">
-                  {dir === 'rtl' ? 'معاينة هندسية مكبرة' : 'Macro Geometry Preview'}
+                  {t('lab.macro_geometry')}
                 </div>
 
                 {/* Character Lens display */}
@@ -463,7 +465,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                   style={{
                     fontFamily: `"${selectedFontDetail.name}", sans-serif`
                   }}
-                  title="اسحب أو انسخ الحرف"
+                  title={t('lab.drag_or_copy')}
                 >
                   {selectedGlyphZoom?.svgPath ? (
                     <svg viewBox={selectedGlyphZoom.svgViewBox} className="w-[120px] h-[120px] fill-current">
@@ -485,13 +487,13 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                       onClick={() => {
                         if (selectedGlyphZoom?.char) {
                           navigator.clipboard.writeText(selectedGlyphZoom.char);
-                          addNotification('success', dir === 'rtl' ? 'تم نسخ المحرف للحافظة!' : 'Copied to clipboard!');
+                          addNotification('success', t('lab.char_copied'));
                         }
                       }}
                       className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
                     >
                       <Copy className="w-4 h-4" />
-                      <span>{dir === 'rtl' ? 'نسخ هذا المحرف كـ نص' : 'Copy Character Text'}</span>
+                      <span>{t('lab.copy_char_text')}</span>
                     </button>
                   )}
                 </div>
@@ -530,7 +532,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-2xl font-bold tracking-tight text-white font-display">
-                    {dir === 'rtl' ? 'رقمنة الخط ونقله لمختبر الـ UI...' : 'Digitizing and Transferring to Lab...'}
+                    {t('font_detail.digitizing')}
                   </h2>
                   <p className="text-[#94a3b8] text-sm font-light leading-relaxed max-w-sm mx-auto">
                     {dir === 'rtl' 
