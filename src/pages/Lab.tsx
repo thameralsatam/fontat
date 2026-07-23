@@ -9,6 +9,8 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { saveFontHistory, getFontHistoryList, getFontHistoryItem, FontHistoryItem, clearFontHistory } from '../lib/db';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { formatFontName } from '../utils/text';
+import { downloadGlyphAsSvg } from '../utils/svgExport';
+import * as opentype from 'opentype.js';
 import { VideoExportModal } from '../components/font/VideoExportModal';
 
 const getFeatureDescription = (tag: string, parsedFont: any, t: (key: string) => string): string => {
@@ -195,8 +197,8 @@ export const Lab = () => {
     setTextAlign('center');
     setTextColor('#ffffff');
     setBgColor('#080808');
+    const defaultVals: Record<string, number> = {};
     if (axes && axes.length > 0) {
-      const defaultVals: Record<string, number> = {};
       axes.forEach(axis => {
         defaultVals[axis.tag] = axis.defaultValue;
       });
@@ -205,6 +207,14 @@ export const Lab = () => {
       setAxisValues({});
     }
     setOpenTypeFeatures({});
+    saveCurrentSettingsToDB(defaultVals, {}, {
+      fontSize: 80,
+      lineHeight: '',
+      letterSpacing: 0,
+      textAlign: 'center',
+      textColor: '#ffffff',
+      bgColor: '#080808'
+    });
   };
   const [openTypeFeatures, setOpenTypeFeatures] = useState<Record<string, boolean | undefined>>({});
   const [activeFeatureTooltip, setActiveFeatureTooltip] = useState<string | null>(null);
@@ -237,8 +247,19 @@ export const Lab = () => {
       if (fontStyleTagRef.current) {
         fontStyleTagRef.current.remove();
       }
+      document.body.classList.remove('hide-nav');
+      window.dispatchEvent(new Event('nav-toggle'));
     };
   }, []);
+
+  useEffect(() => {
+    if (font !== null || isFullscreenPreview || isVideoExportModalOpen) {
+      document.body.classList.add('hide-nav');
+    } else {
+      document.body.classList.remove('hide-nav');
+    }
+    window.dispatchEvent(new Event('nav-toggle'));
+  }, [font, isFullscreenPreview, isVideoExportModalOpen]);
 
   useEffect(() => {
     // Height resize not needed anymore, contentEditable handles it
@@ -430,14 +451,50 @@ export const Lab = () => {
       setOpenTypeFeatures(features);
       
       // Generate characters list
+      let otFont: opentype.Font | null = null;
+      try {
+        otFont = opentype.parse(arrayBuffer.slice(0));
+      } catch (e) {
+        console.warn('Opentype parse in Lab failed', e);
+      }
+
       const characters = data.metadata.characters || [];
+      const unitsPerEm = otFont?.unitsPerEm || 1000;
+      const ascender = otFont?.ascender || 800;
+
       const glyphsList = characters.map((code: number, idx: number) => {
         const char = String.fromCodePoint(code);
+        let svgPath: string | undefined;
+        let svgViewBox: string | undefined;
+
+        if (otFont) {
+          try {
+            const g = otFont.charToGlyph(char);
+            if (g && g.path) {
+              const p = g.getPath(0, ascender, unitsPerEm);
+              const pData = p.toPathData(2);
+              if (pData && pData.trim()) {
+                svgPath = pData;
+                const bbox = g.getBoundingBox();
+                const padX = (bbox.x2 - bbox.x1) * 0.08;
+                const padY = (bbox.y2 - bbox.y1) * 0.08;
+                const xMin = bbox.x1 - padX;
+                const yMin = (ascender - bbox.y2) - padY;
+                const w = (bbox.x2 - bbox.x1) + padX * 2 || 1000;
+                const h = (bbox.y2 - bbox.y1) + padY * 2 || 1000;
+                svgViewBox = `${xMin.toFixed(1)} ${yMin.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`;
+              }
+            }
+          } catch {}
+        }
+
         return {
           char,
           index: idx,
           unicode: code.toString(16).toUpperCase().padStart(4, '0'),
-          name: `Glyph ${code}`
+          name: `Glyph ${code}`,
+          svgPath,
+          svgViewBox
         };
       });
       setParsedGlyphs(glyphsList);
@@ -450,7 +507,14 @@ export const Lab = () => {
           blob: fileOrBlob,
           axes: initialValues,
           features: features,
-          lastModified: Date.now()
+          lastModified: Date.now(),
+          textColor,
+          bgColor,
+          fontSize,
+          lineHeight,
+          letterSpacing,
+          textAlign,
+          previewText
         });
         loadHistory();
       }
@@ -468,23 +532,54 @@ export const Lab = () => {
   const handleLoadHistoryItem = async (id: string) => {
     const item = await getFontHistoryItem(id);
     if (item) {
+      if (item.textColor !== undefined) setTextColor(item.textColor);
+      if (item.bgColor !== undefined) setBgColor(item.bgColor);
+      if (item.fontSize !== undefined) setFontSize(item.fontSize);
+      if (item.lineHeight !== undefined) setLineHeight(item.lineHeight);
+      if (item.letterSpacing !== undefined) setLetterSpacing(item.letterSpacing);
+      if (item.textAlign !== undefined) setTextAlign(item.textAlign);
+      if (item.previewText !== undefined) setPreviewText(item.previewText);
       loadFontIntoUI(item.blob, item.name, item.axes, item.features, item.id);
     }
   };
 
-  const saveCurrentSettingsToDB = async (currentAxes: Record<string, number>, currentFeatures: Record<string, boolean | undefined>) => {
+  const saveCurrentSettingsToDB = async (
+    currentAxes?: Record<string, number>, 
+    currentFeatures?: Record<string, boolean | undefined>,
+    overrides?: Partial<FontHistoryItem>
+  ) => {
     if (!currentFontId || !originalFontBlob) return;
     const fontName = font?.names?.postScriptName?.en || 'font';
+    const axesToSave = currentAxes || axisValues;
+    const featuresToSave = currentFeatures || openTypeFeatures;
+
     await saveFontHistory({
       id: currentFontId,
       name: fontName,
       blob: originalFontBlob,
-      axes: currentAxes,
-      features: currentFeatures,
-      lastModified: Date.now()
+      axes: axesToSave,
+      features: featuresToSave,
+      lastModified: Date.now(),
+      textColor: overrides?.textColor !== undefined ? overrides.textColor : textColor,
+      bgColor: overrides?.bgColor !== undefined ? overrides.bgColor : bgColor,
+      fontSize: overrides?.fontSize !== undefined ? overrides.fontSize : fontSize,
+      lineHeight: overrides?.lineHeight !== undefined ? overrides.lineHeight : lineHeight,
+      letterSpacing: overrides?.letterSpacing !== undefined ? overrides.letterSpacing : letterSpacing,
+      textAlign: overrides?.textAlign !== undefined ? overrides.textAlign : textAlign,
+      previewText: overrides?.previewText !== undefined ? overrides.previewText : previewText,
     });
     loadHistory();
   };
+
+  // Auto-save settings on color/text/layout changes
+  useEffect(() => {
+    if (font && currentFontId && originalFontBlob) {
+      const timer = setTimeout(() => {
+        saveCurrentSettingsToDB();
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [textColor, bgColor, fontSize, lineHeight, letterSpacing, textAlign, previewText]);
 
   const handleAxisChange = (tag: string, value: number) => {
     const newAxes = { ...axisValues, [tag]: value };
@@ -768,9 +863,6 @@ export const Lab = () => {
                   <div
                     key={`${glyph.unicode || idx}-${glyph.index}`}
                     onClick={() => {
-                      if (glyph.char) {
-                        setPreviewText(prev => prev + glyph.char);
-                      }
                       setSelectedGlyphZoom({ char: glyph.char, name: glyph.name, svgPath: glyph.svgPath, svgViewBox: glyph.svgViewBox });
                     }}
                     className="gl-cell flex flex-col items-center justify-between p-2 cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors h-full"
@@ -905,6 +997,23 @@ export const Lab = () => {
                     <span>{t('lab.insert_sandbox')}</span>
                   </button>
                 )}
+
+                {/* 3. Export as SVG */}
+                {(selectedGlyphZoom.char || selectedGlyphZoom.svgPath) && (
+                  <button
+                    onClick={async () => {
+                      const fontName = font?.names?.fullName?.en || font?.names?.postScriptName?.en || 'font';
+                      const success = await downloadGlyphAsSvg(selectedGlyphZoom, fontName, originalFontBlob);
+                      if (success) {
+                        addNotification('success', t('lab.svg_exported'));
+                      }
+                    }}
+                    className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/10"
+                  >
+                    <Download className="w-4 h-4 text-cyan-400" />
+                    <span>{t('lab.export_svg')}</span>
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -927,7 +1036,7 @@ export const Lab = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[150] flex flex-col bg-[#020202]"
+            className="fixed inset-0 z-[1050] flex flex-col bg-[#020202]"
             style={{ backgroundColor: bgColor }}
           >
             {/* Top Toolbar overlay */}
@@ -964,13 +1073,13 @@ export const Lab = () => {
                       initial={{ opacity: 0, scale: 0.95, transformOrigin: 'top right' }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-[#141414]/95 backdrop-blur-xl border border-white/10 p-2.5 rounded-2xl w-[240px] shadow-2xl pointer-events-auto flex flex-col gap-2 mt-2"
+                      className="bg-[#141414]/95 backdrop-blur-xl border border-white/10 p-2.5 rounded-2xl w-[260px] sm:w-[280px] max-w-[calc(100vw-32px)] shadow-2xl pointer-events-auto flex flex-col gap-2 mt-2"
                     >
                       <div className="flex items-center justify-between border-b border-white/5 pb-1.5 px-1">
                          <span className="text-[10px] tracking-wider font-bold text-white/50 uppercase">{t('lab.preview_tools')}</span>
                       </div>
 
-                      <div className="space-y-2 max-h-[75vh] overflow-y-auto custom-scrollbar pr-1">
+                      <div className="space-y-2 max-h-[calc(100vh-180px)] lg:max-h-[80vh] overflow-y-auto custom-scrollbar pr-1 pb-10">
                          {/* Typography Section */}
                          <div className="bg-black/20 border border-white/5 rounded-xl overflow-hidden">
                            <button 

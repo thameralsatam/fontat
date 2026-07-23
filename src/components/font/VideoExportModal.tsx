@@ -90,6 +90,13 @@ export function VideoExportModal({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  const isCancelledRef = useRef(false);
+
+  const handleCancelExport = () => {
+    isCancelledRef.current = true;
+    setIsExporting(false);
+    setProgress(0);
+  };
 
   const resetExport = () => {
     if (videoUrl) {
@@ -378,6 +385,7 @@ export function VideoExportModal({
   const handleExport = async () => {
     if (!containerRef.current) return;
 
+    isCancelledRef.current = false;
     setIsExporting(true);
     setProgress(0);
     setError(null);
@@ -478,6 +486,13 @@ export function VideoExportModal({
     await htmlToImage.toCanvas(element, { width, height, fontEmbedCSS: fontEmbedCSS || undefined, cacheBust: true });
 
     for (let i = 0; i < totalFrames; i++) {
+      if (isCancelledRef.current) {
+        try { videoEncoder.close(); } catch(e) {}
+        setIsExporting(false);
+        setProgress(0);
+        return;
+      }
+
       const progress = totalFrames > 1 ? i / (totalFrames - 1) : 0;
       const tFactor = animMode === 'pingpong'
         ? 0.5 - 0.5 * Math.cos(progress * 2 * Math.PI)
@@ -577,6 +592,13 @@ export function VideoExportModal({
     const frameDelay = Math.max(16, 1000 / fps);
 
     for (let i = 0; i < totalFrames; i++) {
+      if (isCancelledRef.current) {
+        try { mediaRecorder.stop(); } catch(e) {}
+        setIsExporting(false);
+        setProgress(0);
+        return;
+      }
+
       const progress = totalFrames > 1 ? i / (totalFrames - 1) : 0;
       const tFactor = animMode === 'pingpong'
         ? 0.5 - 0.5 * Math.cos(progress * 2 * Math.PI)
@@ -643,7 +665,7 @@ export function VideoExportModal({
 
   return (
     <div 
-      className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 pb-28 sm:pb-6 bg-black/85 backdrop-blur-xl overflow-y-auto" 
+      className="fixed inset-0 z-[2000] flex items-center justify-center p-3 sm:p-6 pb-28 sm:pb-6 bg-black/85 backdrop-blur-xl overflow-y-auto" 
       style={{ direction: isAr ? 'rtl' : 'ltr', fontFamily: "'Thmanyah Sans', sans-serif" }}
     >
       <style dangerouslySetInnerHTML={{ __html: fontEmbedCSS }} />
@@ -666,7 +688,7 @@ export function VideoExportModal({
           </div>
           
           <button 
-            onClick={onClose} 
+            onClick={isExporting ? handleCancelExport : onClose} 
             className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all cursor-pointer active:scale-95 shrink-0"
             title={t('cancel')}
           >
@@ -744,6 +766,15 @@ export function VideoExportModal({
                           style={{ width: `${progress * 100}%` }}
                         />
                       </div>
+
+                      <button
+                        onClick={handleCancelExport}
+                        className="mt-6 px-5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 font-bold text-xs flex items-center gap-2 transition-all active:scale-95 cursor-pointer shadow-lg"
+                        style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
+                      >
+                        <X size={14} />
+                        <span>{language === 'ar' ? 'إلغاء المعالجة' : 'Cancel Processing'}</span>
+                      </button>
                     </div>
                   )}
 
@@ -1106,9 +1137,8 @@ export function VideoExportModal({
 
                   <div className="flex items-center gap-3 ms-auto">
                     <button 
-                      onClick={onClose}
-                      disabled={isExporting}
-                      className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all cursor-pointer"
+                      onClick={isExporting ? handleCancelExport : onClose}
+                      className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white/60 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
                       style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}
                     >
                       {t('cancel')}

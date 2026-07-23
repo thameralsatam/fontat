@@ -4,6 +4,7 @@ import { ArrowRight, ArrowLeft, Download, ExternalLink, Beaker, Copy, Layout, Bo
 import { FontPreviewSandbox } from './FontPreviewSandbox';
 import { Font } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { downloadGlyphAsSvg } from '../../utils/svgExport';
 
 interface DetailedFontViewProps {
   selectedFontDetail: Font | null;
@@ -476,12 +477,13 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                   )}
                 </div>
 
-                {/* Metadata detail & Copy Action */}
-                <div className="w-full flex flex-col gap-3 pb-2 mt-4">
+                {/* Metadata detail & Copy / Insert / Export Actions */}
+                <div className="w-full flex flex-col gap-2.5 pb-2 mt-4 font-sans">
                   {selectedGlyphZoom?.name && (
                     <div className="text-white/40 text-xs font-mono">{selectedGlyphZoom.name}</div>
                   )}
                   
+                  {/* 1. Copy character string */}
                   {selectedGlyphZoom?.char && (
                     <button
                       onClick={() => {
@@ -494,6 +496,40 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                     >
                       <Copy className="w-4 h-4" />
                       <span>{t('lab.copy_char_text')}</span>
+                    </button>
+                  )}
+
+                  {/* 2. Add to preview */}
+                  {selectedGlyphZoom?.char && (
+                    <button
+                      onClick={() => {
+                        if (selectedGlyphZoom?.char && selectedFontDetail) {
+                          const currentText = getPreviewText(selectedFontDetail.id);
+                          handlePreviewChange(selectedFontDetail.id, currentText + selectedGlyphZoom.char);
+                          addNotification('success', t('lab.char_added'));
+                          setSelectedGlyphZoom(null);
+                        }
+                      }}
+                      className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/5"
+                    >
+                      <Plus className="w-4 h-4 text-cyan-400" />
+                      <span>{t('lab.add_to_preview')}</span>
+                    </button>
+                  )}
+
+                  {/* 3. Export as SVG */}
+                  {(selectedGlyphZoom?.char || selectedGlyphZoom?.svgPath) && (
+                    <button
+                      onClick={async () => {
+                        const success = await downloadGlyphAsSvg(selectedGlyphZoom, selectedFontDetail?.name || 'font', selectedFontDetail?.download_url);
+                        if (success) {
+                          addNotification('success', t('lab.svg_exported'));
+                        }
+                      }}
+                      className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/10"
+                    >
+                      <Download className="w-4 h-4 text-cyan-400" />
+                      <span>{t('lab.export_svg')}</span>
                     </button>
                   )}
                 </div>

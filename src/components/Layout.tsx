@@ -80,6 +80,23 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [selectedAppNotification, setSelectedAppNotification] = useState<Notification | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const isAdmin = user?.user_metadata?.role === 'admin';
+  const [isNavHidden, setIsNavHidden] = useState(false);
+
+  useEffect(() => {
+    const checkNavState = () => {
+      setIsNavHidden(document.body.classList.contains('hide-nav'));
+    };
+    checkNavState();
+
+    const observer = new MutationObserver(checkNavState);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    window.addEventListener('nav-toggle', checkNavState);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('nav-toggle', checkNavState);
+    };
+  }, []);
 
   const WHITE = "#ffffff";
   const DIM = "rgba(255,255,255,0.28)";
@@ -225,7 +242,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <header 
         className={`fixed top-0 left-0 right-0 z-[100] h-20 px-6 sm:px-8 flex items-center justify-between transition-all duration-300 bg-[#080808]/90 backdrop-blur-xl border-b ${
           isScrolled ? 'border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.6)]' : 'border-transparent'
-        }`}
+        } ${isNavHidden ? 'hidden' : ''}`}
       >
         {/* Left Container (Logo + Login) */}
         <div className="flex-1 flex items-center justify-start gap-4 lg:gap-6 pointer-events-none">
@@ -401,93 +418,97 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
        `}</style>
       
       {/* ── NAV WRAPPER ──────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 h-[60px] bg-gradient-to-t from-[#080808] to-transparent z-[999] pointer-events-none lg:hidden"></div>
-      <div 
-        className="fixed z-[1000] lg:hidden left-1/2 -translate-x-1/2 w-full max-w-[420px] landscape:max-w-[480px] transition-all duration-300 outline-none px-4 pb-4 landscape:pb-1.5 bottom-0"
-        style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
-        dir={dir}
-      >
-        <div style={{ position: "relative", overflow: "visible" }}>
+      {!isNavHidden && (
+        <>
+          <div className="fixed bottom-0 left-0 right-0 h-[60px] bg-gradient-to-t from-[#080808] to-transparent z-[999] pointer-events-none lg:hidden"></div>
+          <div 
+            className="fixed z-[1000] lg:hidden left-1/2 -translate-x-1/2 w-full max-w-[420px] landscape:max-w-[480px] transition-all duration-300 outline-none px-4 pb-4 landscape:pb-1.5 bottom-0"
+            style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
+            dir={dir}
+          >
+            <div style={{ position: "relative", overflow: "visible" }}>
 
-          {/* ── Bar liquid glass background ── */}
-          <div className="bn-liquid-glass" />
+              {/* ── Bar liquid glass background ── */}
+              <div className="bn-liquid-glass" />
 
-          {/* ── Tabs row ── */}
-          <div style={{
-            position: "relative",
-            display:  "flex",
-            padding:  "8px 6px",
-          }}>
-            {navItems.map(({ id, icon, label }) => {
-              const isActive  = location.pathname === id;
+              {/* ── Tabs row ── */}
+              <div style={{
+                position: "relative",
+                display:  "flex",
+                padding:  "8px 6px",
+              }}>
+                {navItems.map(({ id, icon, label }) => {
+                  const isActive  = location.pathname === id;
 
-              return (
-                <Link
-                  to={id}
-                  key={id}
-                  style={{
-                    flex: 1,
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 4px 6px",
-                    borderRadius: "9999px",
-                    position: "relative",
-                  }}
-                  className="group outline-none"
-                >
-                  {/* Active bg glow */}
-                  {isActive && (
-                    <div style={{
-                      position: "absolute",
-                      inset: "2px",
-                      borderRadius: "9999px",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      animation: "bn-active-bg-in 0.4s cubic-bezier(0.34,1.4,0.64,1) forwards",
-                    }} />
-                  )}
+                  return (
+                    <Link
+                      to={id}
+                      key={id}
+                      style={{
+                        flex: 1,
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        padding: "8px 4px 6px",
+                        borderRadius: "9999px",
+                        position: "relative",
+                      }}
+                      className="group outline-none"
+                    >
+                      {/* Active bg glow */}
+                      {isActive && (
+                        <div style={{
+                          position: "absolute",
+                          inset: "2px",
+                          borderRadius: "9999px",
+                          background: "rgba(255, 255, 255, 0.08)",
+                          animation: "bn-active-bg-in 0.4s cubic-bezier(0.34,1.4,0.64,1) forwards",
+                        }} />
+                      )}
 
-                  {/* Icon */}
-                  <div style={{
-                    position: "relative", zIndex: 1,
-                    filter: isActive
-                      ? `drop-shadow(0 0 7px rgba(255,255,255,0.35))`
-                      : "none",
-                    transition: "filter 0.3s ease",
-                    animation: isActive
-                      ? "bn-icon-enter 0.42s cubic-bezier(0.34,1.4,0.64,1)"
-                      : undefined,
-                  }}>
-                    {icon(isActive)}
-                  </div>
+                      {/* Icon */}
+                      <div style={{
+                        position: "relative", zIndex: 1,
+                        filter: isActive
+                          ? `drop-shadow(0 0 7px rgba(255,255,255,0.35))`
+                          : "none",
+                        transition: "filter 0.3s ease",
+                        animation: isActive
+                          ? "bn-icon-enter 0.42s cubic-bezier(0.34,1.4,0.64,1)"
+                          : undefined,
+                      }}>
+                        {icon(isActive)}
+                      </div>
 
-                  {/* White indicator dot */}
-                  <div style={{
-                    height: "3px",
-                    borderRadius: "2px",
-                    background: isActive ? WHITE : "transparent",
-                    boxShadow: isActive
-                      ? `0 0 6px ${WHITE}, 0 0 14px rgba(255,255,255,0.35)`
-                      : "none",
-                    transition: "background 0.3s ease, box-shadow 0.3s ease",
-                    animation: isActive ? "bn-dot-expand 0.42s cubic-bezier(0.34,1.4,0.64,1) forwards" : undefined,
-                    width: isActive ? "16px" : "0px",
-                  }} />
-                  
-                  {/* Hidden label for accessibility / semantics */}
-                  <span className="sr-only">{label}</span>
-                </Link>
-              );
-            })}
+                      {/* White indicator dot */}
+                      <div style={{
+                        height: "3px",
+                        borderRadius: "2px",
+                        background: isActive ? WHITE : "transparent",
+                        boxShadow: isActive
+                          ? `0 0 6px ${WHITE}, 0 0 14px rgba(255,255,255,0.35)`
+                          : "none",
+                        transition: "background 0.3s ease, box-shadow 0.3s ease",
+                        animation: isActive ? "bn-dot-expand 0.42s cubic-bezier(0.34,1.4,0.64,1) forwards" : undefined,
+                        width: isActive ? "16px" : "0px",
+                      }} />
+                      
+                      {/* Hidden label for accessibility / semantics */}
+                      <span className="sr-only">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+
+            </div>
           </div>
-
-        </div>
-      </div>
+        </>
+      )}
       {/* ─────────────────────────────────────────────────────── */}
 
       {/* App Notification view modal */}

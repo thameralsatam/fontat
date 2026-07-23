@@ -7,6 +7,13 @@ export interface FontHistoryItem {
   axes: Record<string, number>;
   features: Record<string, boolean | undefined>;
   lastModified: number;
+  textColor?: string;
+  bgColor?: string;
+  fontSize?: number | '';
+  lineHeight?: number | '';
+  letterSpacing?: number;
+  textAlign?: 'left' | 'center' | 'right';
+  previewText?: string;
 }
 
 interface FontLabDB extends DBSchema {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import * as opentype from 'opentype.js';
 import { Font } from '../../types';
 import { POEMS } from '../../constants/poems';
 
@@ -55,15 +56,52 @@ export function useFontAnalyzer(selectedFontDetail: Font | null, dir: 'rtl' | 'l
         const data = await analyzeResponse.json();
         if (!data.success) throw new Error(data.error || 'Server analysis failed');
 
+        let otFont: opentype.Font | null = null;
+        try {
+          const ab = await fontBlob.arrayBuffer();
+          otFont = opentype.parse(ab);
+        } catch (e) {
+          console.warn('Opentype parse in useFontAnalyzer failed', e);
+        }
+
         const characters = data.metadata.characters || [];
+        const unitsPerEm = otFont?.unitsPerEm || 1000;
+        const ascender = otFont?.ascender || 800;
+
         const glyphsList = characters.map((code: number, idx: number) => {
           const char = String.fromCodePoint(code);
+          let svgPath: string | undefined;
+          let svgViewBox: string | undefined;
+
+          if (otFont) {
+            try {
+              const g = otFont.charToGlyph(char);
+              if (g && g.path) {
+                const p = g.getPath(0, ascender, unitsPerEm);
+                const pData = p.toPathData(2);
+                if (pData && pData.trim()) {
+                  svgPath = pData;
+                  const bbox = g.getBoundingBox();
+                  const padX = (bbox.x2 - bbox.x1) * 0.08;
+                  const padY = (bbox.y2 - bbox.y1) * 0.08;
+                  const xMin = bbox.x1 - padX;
+                  const yMin = (ascender - bbox.y2) - padY;
+                  const w = (bbox.x2 - bbox.x1) + padX * 2 || 1000;
+                  const h = (bbox.y2 - bbox.y1) + padY * 2 || 1000;
+                  svgViewBox = `${xMin.toFixed(1)} ${yMin.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`;
+                }
+              }
+            } catch {}
+          }
+
           return {
             char,
             index: idx,
             unicode: code.toString(16).toUpperCase().padStart(4, '0'),
             name: `Glyph ${code}`,
-            colSpan: 1
+            colSpan: 1,
+            svgPath,
+            svgViewBox
           };
         });
         
