@@ -29,7 +29,7 @@ interface VideoExportModalProps {
   letterSpacing?: number;
 }
 
-type QualityType = 'low' | 'medium' | 'high';
+type QualityType = 'low' | 'medium' | 'high' | '2k';
 type AspectRatioType = '1:1' | '16:9' | '9:16';
 
 export function VideoExportModal({
@@ -122,6 +122,9 @@ export function VideoExportModal({
   const handleQualityChange = (val: QualityType) => {
     resetExport();
     setQuality(val);
+    if (val === '2k' && duration > 5) {
+      setDuration(5);
+    }
   };
 
   // Redesigned perfect bilingual presentation translations
@@ -294,51 +297,67 @@ export function VideoExportModal({
   const getExportDimensions = () => {
     let width = 1280;
     let height = 720;
-    let bitrate = 4_000_000;
+    let baseBitrate = 6_000_000;
 
     if (aspectRatio === '1:1') {
       if (quality === 'low') {
         width = 600;
         height = 600;
-        bitrate = 1_500_000;
+        baseBitrate = 2_500_000;
       } else if (quality === 'medium') {
         width = 800;
         height = 800;
-        bitrate = 3_500_000;
-      } else {
+        baseBitrate = 6_000_000;
+      } else if (quality === 'high') {
         width = 1080;
         height = 1080;
-        bitrate = 7_000_000;
+        baseBitrate = 12_000_000;
+      } else { // 2k
+        width = 2048;
+        height = 2048;
+        baseBitrate = 24_000_000;
       }
     } else if (aspectRatio === '16:9') {
       if (quality === 'low') {
         width = 854;
         height = 480;
-        bitrate = 1_500_000;
+        baseBitrate = 2_500_000;
       } else if (quality === 'medium') {
         width = 1280;
         height = 720;
-        bitrate = 4_000_000;
-      } else {
+        baseBitrate = 6_000_000;
+      } else if (quality === 'high') {
         width = 1920;
         height = 1080;
-        bitrate = 8_000_000;
+        baseBitrate = 12_000_000;
+      } else { // 2k
+        width = 2560;
+        height = 1440;
+        baseBitrate = 24_000_000;
       }
     } else if (aspectRatio === '9:16') {
       if (quality === 'low') {
         width = 480;
         height = 854;
-        bitrate = 1_500_000;
+        baseBitrate = 2_500_000;
       } else if (quality === 'medium') {
         width = 720;
         height = 1280;
-        bitrate = 4_000_000;
-      } else {
+        baseBitrate = 6_000_000;
+      } else if (quality === 'high') {
         width = 1080;
         height = 1920;
-        bitrate = 8_000_000;
+        baseBitrate = 12_000_000;
+      } else { // 2k
+        width = 1440;
+        height = 2560;
+        baseBitrate = 24_000_000;
       }
     }
+
+    // Scale bitrate dynamically based on frame rate to prevent compression artifacts/dots around text at high FPS
+    const fpsMultiplier = Math.max(1, fps / 30);
+    const bitrate = Math.round(baseBitrate * fpsMultiplier);
 
     return { width, height, bitrate };
   };
@@ -419,12 +438,38 @@ export function VideoExportModal({
       },
     });
 
+    // Select appropriate AVC codec level based on frame area (2K/4K require Level 5.1+)
+    let codec = 'avc1.4d002a'; // Main profile Level 4.2 (up to 1080p)
+    if (width * height > 2_200_000) {
+      codec = 'avc1.4d0033'; // Main profile Level 5.1 (up to 2048x2048 / 2560x1440)
+    }
+
+    if (typeof VideoEncoder.isConfigSupported === 'function') {
+      const testConfig = { codec, width, height, bitrate, framerate: fps };
+      try {
+        const support = await VideoEncoder.isConfigSupported(testConfig);
+        if (!support.supported) {
+          const altCodecs = ['avc1.640033', 'avc1.4d0034', 'avc1.420033', 'avc1.4d002a'];
+          for (const alt of altCodecs) {
+            const altSupport = await VideoEncoder.isConfigSupported({ ...testConfig, codec: alt });
+            if (altSupport.supported) {
+              codec = alt;
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("VideoEncoder.isConfigSupported check failed, using codec:", codec, e);
+      }
+    }
+
     videoEncoder.configure({
-      codec: 'avc1.4d002a', // Main profile, Level 4.2
+      codec,
       width,
       height,
       bitrate,
       framerate: fps,
+      bitrateMode: 'variable',
     });
 
     const element = containerRef.current!;
@@ -462,8 +507,9 @@ export function VideoExportModal({
         cacheBust: true // Force fresh snapshot rendering bypass cache
       });
 
-      const timestamp = (i * 1_000_000) / fps; // in microseconds
-      const frame = new VideoFrame(canvas, { timestamp });
+      const frameDuration = 1_000_000 / fps; // in microseconds
+      const timestamp = i * frameDuration;
+      const frame = new VideoFrame(canvas, { timestamp, duration: frameDuration });
 
       videoEncoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
       frame.close();
@@ -798,7 +844,7 @@ export function VideoExportModal({
 
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[10px] sm:text-[11px] font-bold text-white/70 bg-white/5 px-2 sm:px-2.5 py-1 rounded-full border border-white/5" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
-                        {duration}{isAr ? ' ثوانٍ' : 's'} • {fps} FPS • {quality === 'high' ? '1080p' : quality === 'medium' ? '720p' : '480p'}
+                        {duration}{isAr ? ' ثوانٍ' : 's'} • {fps} FPS • {quality === '2k' ? '2K' : quality === 'high' ? '1080p' : quality === 'medium' ? '720p' : '480p'}
                       </span>
                       {isSpecsOpen ? <ChevronUp className="w-4 h-4 text-white/50" /> : <ChevronDown className="w-4 h-4 text-white/50" />}
                     </div>
@@ -810,12 +856,14 @@ export function VideoExportModal({
                       <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('duration')}</span>
-                          <span className="text-cyan-400 font-bold bg-cyan-950/40 px-2 py-0.5 rounded text-[11px] border border-cyan-500/20" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{duration} {isAr ? t('secLabel') : 's'}</span>
+                          <span className="text-cyan-400 font-bold bg-cyan-950/40 px-2 py-0.5 rounded text-[11px] border border-cyan-500/20" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>
+                            {duration} {isAr ? t('secLabel') : 's'} {quality === '2k' && (isAr ? '(أقصى حد لـ 2K هو 5 ثوانٍ)' : '(Max 5s for 2K)')}
+                          </span>
                         </div>
                         <input 
                           type="range" 
                           min="1" 
-                          max="10" 
+                          max={quality === '2k' ? 5 : 10} 
                           value={duration} 
                           onChange={(e) => handleDurationChange(Number(e.target.value))}
                           disabled={isExporting}
@@ -826,8 +874,8 @@ export function VideoExportModal({
                       {/* FPS Segmented Selector */}
                       <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
                         <span className="text-xs text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('fps')}</span>
-                        <div className="grid grid-cols-3 gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
-                          {[24, 30, 60].map(val => (
+                        <div className="grid grid-cols-4 gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
+                          {[24, 30, 60, 120].map(val => (
                             <button
                               key={val}
                               onClick={() => handleFpsChange(val)}
@@ -848,11 +896,12 @@ export function VideoExportModal({
                       {/* Quality Segmented Selector */}
                       <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
                         <span className="text-xs text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('quality')}</span>
-                        <div className="grid grid-cols-3 gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
+                        <div className="grid grid-cols-4 gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
                           {[
                             { key: 'low', label: '480p' },
                             { key: 'medium', label: '720p' },
-                            { key: 'high', label: '1080p' }
+                            { key: 'high', label: '1080p' },
+                            { key: '2k', label: '2K' }
                           ].map(q => (
                             <button
                               key={q.key}
@@ -1106,7 +1155,10 @@ export function VideoExportModal({
             alignItems: 'center',
             justifyContent: 'center',
             padding: aspectRatio === '9:16' ? '120px 60px' : '60px',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            WebkitFontSmoothing: 'antialiased',
+            MozOsxFontSmoothing: 'grayscale',
+            textRendering: 'optimizeLegibility'
           }}
         >
           <div
@@ -1123,7 +1175,10 @@ export function VideoExportModal({
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
               direction: 'rtl',
-              width: '90%'
+              width: '90%',
+              WebkitFontSmoothing: 'antialiased',
+              MozOsxFontSmoothing: 'grayscale',
+              textRendering: 'optimizeLegibility'
             }}
           >
             {text}
