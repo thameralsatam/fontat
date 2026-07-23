@@ -316,7 +316,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       
       {/* Main Content */}
       <main 
-        className={`flex-1 pt-28 pb-12 w-full ${dir === 'rtl' ? 'max-lg:landscape:pr-[56px]' : 'max-lg:landscape:pl-[56px]'}`}
+        className="flex-1 pt-28 pb-24 w-full"
       >
         {children}
       </main>
@@ -401,10 +401,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
        `}</style>
       
       {/* ── NAV WRAPPER ──────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 h-[60px] bg-gradient-to-t from-[#080808] to-transparent z-[999] pointer-events-none lg:hidden landscape:hidden"></div>
+      <div className="fixed bottom-0 left-0 right-0 h-[60px] bg-gradient-to-t from-[#080808] to-transparent z-[999] pointer-events-none lg:hidden"></div>
       <div 
-        className="fixed z-[1000] lg:hidden left-1/2 -translate-x-1/2 w-full max-w-[420px] landscape:hidden transition-all duration-300 outline-none"
-        style={{ bottom: "env(safe-area-inset-bottom)", padding: "0 16px 26px" }}
+        className="fixed z-[1000] lg:hidden left-1/2 -translate-x-1/2 w-full max-w-[420px] landscape:max-w-[480px] transition-all duration-300 outline-none px-4 pb-4 landscape:pb-1.5 bottom-0"
+        style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
         dir={dir}
       >
         <div style={{ position: "relative", overflow: "visible" }}>
