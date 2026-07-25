@@ -7,6 +7,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { Layout } from './components/Layout';
 import { AnimatePresence } from 'framer-motion';
 import { SplashScreen } from './components/SplashScreen';
+import { AutoUpdateChecker } from './components/AutoUpdateChecker';
 import { Login } from './pages/Login';
 import { FontsPage } from './pages/FontsPage';
 import { GroupDetails } from './pages/GroupDetails';
@@ -118,6 +119,7 @@ function AppContent() {
       <NotificationProvider>
         <GlobalProvider>
           <BrowserRouter>
+            <AutoUpdateChecker />
             <AppRoutes />
             <AnimatePresence>
               {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
