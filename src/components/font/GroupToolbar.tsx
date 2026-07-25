@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Upload, X } from 'lucide-react';
+import { Filter, Upload, X, ArrowUpDown, Check, ChevronDown } from 'lucide-react';
 import { Group } from '../../types';
+import { SortOption, SortOptionList } from '../../utils/sortUtils';
 
 interface GroupToolbarProps {
   isPublicAllFonts: boolean;
@@ -21,6 +22,8 @@ interface GroupToolbarProps {
   fontSize: number;
   setFontSize: (size: number) => void;
   t: (key: string) => string;
+  sortBy: SortOption;
+  setSortBy: (option: SortOption) => void;
 }
 
 export const GroupToolbar: React.FC<GroupToolbarProps> = ({
@@ -40,8 +43,23 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
   setFontPreviews,
   fontSize,
   setFontSize,
-  t
+  t,
+  sortBy,
+  setSortBy
 }) => {
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
+        setIsSortOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <div className="pb-8 pt-4 px-4 md:px-8 w-full xl:max-w-[1600px] mx-auto font-sans">
       <div className="flex flex-col gap-6">
@@ -92,13 +110,13 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
               )}
             </div>
 
-            {/* Buttons (Tags Filter & Upload) */}
+            {/* Buttons (Tags Filter, Sort & Upload) */}
             <div className="flex items-center gap-3 shrink-0">
               {isPublicAllFonts && (
                 <button 
                   onClick={() => setIsTagModalOpen(true)}
                   className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 backdrop-blur-md relative cursor-pointer
-                    ${publicTagFilters.length > 0 ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] scale-105' : 'bg-white/5 text-white/70 border-white/10 hover:border-white/30 hover:text-white'}
+                    ${publicTagFilters.length > 0 ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] scale-105' : 'bg-[#080808] text-white/80 border-white/20 hover:border-white/40 hover:text-white hover:bg-[#121212]'}
                   `}
                   title={publicTagFilters.length > 0 ? (dir === 'rtl' ? `مصنف حسب: #${publicTagFilters.join(', #')}` : `Filtered by: #${publicTagFilters.join(', #')}`) : (dir === 'rtl' ? 'تصنيف بالهاشتاغات' : 'Filter by Tags')}
                 >
@@ -110,6 +128,63 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
                   )}
                 </button>
               )}
+
+              {/* Sort Dropdown */}
+              <div className="relative" ref={sortDropdownRef}>
+                <button 
+                  onClick={() => setIsSortOpen(!isSortOpen)}
+                  className="h-10 px-4 rounded-full border border-white/20 hover:border-white/40 bg-[#080808] hover:bg-[#121212] text-white/80 hover:text-white flex items-center gap-2 text-xs font-semibold transition-all duration-300 backdrop-blur-md cursor-pointer active:scale-95"
+                  title={dir === 'rtl' ? 'ترتيب الخطوط' : 'Sort Fonts'}
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="hidden sm:inline">
+                    {dir === 'rtl' 
+                      ? (sortBy === 'oldest_first' ? 'الأقدم للأحدث' : sortBy === 'newest_first' ? 'الأحدث للأقدم' : sortBy === 'alpha_az' ? 'A - Z' : 'Z - A')
+                      : (sortBy === 'oldest_first' ? 'Oldest' : sortBy === 'newest_first' ? 'Newest' : sortBy === 'alpha_az' ? 'A - Z' : 'Z - A')
+                    }
+                  </span>
+                  <span className="sm:hidden">{dir === 'rtl' ? 'ترتيب' : 'Sort'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 opacity-70 ${isSortOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {isSortOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className={`absolute top-12 z-50 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-[#121214] border border-white/15 rounded-2xl shadow-2xl p-2 backdrop-blur-xl ${
+                        dir === 'rtl' ? 'right-0 sm:right-auto sm:left-0' : 'right-0'
+                      }`}
+                    >
+                      <div className="text-[11px] font-semibold text-white/40 px-3 py-1.5 uppercase tracking-wider">
+                        {dir === 'rtl' ? 'ترتيب الخطوط' : 'Sort Fonts'}
+                      </div>
+                      {SortOptionList.OPTIONS.map(opt => {
+                        const isSelected = sortBy === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            onClick={() => {
+                              setSortBy(opt.id);
+                              setIsSortOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all text-start cursor-pointer my-0.5 ${
+                              isSelected 
+                                ? 'bg-cyan-500/15 text-cyan-400 font-bold border border-cyan-500/20' 
+                                : 'text-white/80 hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            <span className="leading-relaxed">{dir === 'rtl' ? opt.labelAr : opt.labelEn}</span>
+                            {isSelected && <Check className="w-4 h-4 text-cyan-400 shrink-0 ms-2" />}
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {isOwner && (
                 <div className="relative flex items-center shrink-0 group">

@@ -26,6 +26,7 @@ import { GlobalTagSelectionModal } from '../components/font/GlobalTagSelectionMo
 import { formatFontName } from '../utils/text';
 import { useFontAnalyzer } from '../components/font/useFontAnalyzer';
 import { useFontTagActions } from '../components/font/useFontTagActions';
+import { SortOption, sortFonts } from '../utils/sortUtils';
 
 export const GroupDetails = ({ 
   groupId, 
@@ -314,15 +315,16 @@ export const GroupDetails = ({
     onClearTagFilter
   });
   
-  // Pagination State (15 items per page)
+  // Pagination & Sorting State (15 items per page)
   const [currentPage, setCurrentPage] = useState(1);
   const [renderedCountInPage, setRenderedCountInPage] = useState(7);
+  const [sortBy, setSortBy] = useState<SortOption>('oldest_first');
 
   useEffect(() => {
-    // Reset page of fonts and rendered count when switching contexts or tags
+    // Reset page of fonts and rendered count when switching contexts, tags, or sort order
     setCurrentPage(1);
     setRenderedCountInPage(7);
-  }, [id, isPublicAllFonts, publicTagFilters.join(',')]);
+  }, [id, isPublicAllFonts, publicTagFilters.join(','), sortBy]);
 
   useEffect(() => {
     // Reset renderedCountInPage when manually turning pages
@@ -550,11 +552,11 @@ export const GroupDetails = ({
 
     const allFonts = [...mappedDbFonts, ...filteredOptimisticItems].filter(f => !childFontIds.has(f.id));
 
-    // ترتيب الخطوط بحيث الأقدم يظهر أولاً (أو في الأعلى)
-    allFonts.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+    // Sort fonts according to selected sortBy rule (default: oldest to newest)
+    const sortedFonts = sortFonts(allFonts, sortBy);
 
     if (isPublicAllFonts && publicTagFilters.length > 0) {
-      let filtered = allFonts.filter(f => f.tags && publicTagFilters.some(tag => f.tags!.includes(tag)));
+      let filtered = sortedFonts.filter(f => f.tags && publicTagFilters.some(tag => f.tags!.includes(tag)));
       
       // Sort fonts: those missing fewer of the selected tags (i.e. having more matching tags) come first
       filtered.sort((a, b) => {
@@ -564,14 +566,14 @@ export const GroupDetails = ({
         if (aMatches !== bMatches) {
           return bMatches - aMatches; // Highest matches first
         }
-        return 0; // Fallback to existing date order
+        return 0; // Fallback to current sort order
       });
 
       return filtered;
     }
 
-    return allFonts;
-  }, [dbFonts, uploadQueue, id, user, childFontIds, isPublicAllFonts, publicTagFilters.join(',')]);
+    return sortedFonts;
+  }, [dbFonts, uploadQueue, id, user, childFontIds, isPublicAllFonts, publicTagFilters.join(','), sortBy]);
 
   const ITEMS_PER_PAGE = 15;
   const paginatedFonts = useMemo(() => {
@@ -938,6 +940,8 @@ export const GroupDetails = ({
           toolbarTextareaRef={toolbarTextareaRef as any}
           dir={dir as 'ltr' | 'rtl' | 'auto'}
           t={t}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
         />
       ) : (
         <GroupToolbar
@@ -958,6 +962,8 @@ export const GroupDetails = ({
           fontSize={fontSize}
           setFontSize={setFontSize}
           t={t}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
         />
       )}
 

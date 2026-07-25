@@ -63,7 +63,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const isDesktop = windowWidth >= 1024;
   const isRTL = typeof document !== 'undefined' ? document.documentElement.dir === 'rtl' || document.body.dir === 'rtl' || document.querySelector('[dir="rtl"]') !== null : true;
   
-  const fallbackX = isDesktop ? (isRTL ? windowWidth - 110 : 110) : windowWidth / 2;
+  const fallbackX = isRTL ? (isDesktop ? windowWidth - 110 : windowWidth / 2) : 110;
   const fallbackY = 40;
   const fallbackWidth = isDesktop ? 125 : 120;
 
