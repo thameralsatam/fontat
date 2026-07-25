@@ -250,7 +250,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="hidden lg:block">
             <Link to="/" className="block relative z-[10] pointer-events-auto transition-transform hover:scale-105 active:scale-95">
               <div className="w-[125px] h-fit flex items-center justify-center">
-                <Logo className="w-full h-auto text-white" />
+                <Logo className="w-full h-auto text-white" id="header-logo-desktop" />
               </div>
             </Link>
           </div>
@@ -260,9 +260,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <div className="pointer-events-auto">
               <Link 
                 to="/account" 
-                className="flex items-center justify-center sm:px-4 sm:py-2 gap-2 text-xs font-semibold text-white hover:bg-white hover:text-black transition-all w-9 h-9 sm:w-auto sm:h-auto rounded-full bg-white/5 hover:bg-white border border-white/15 shadow-sm"
+                className="flex items-center justify-center h-10 w-10 sm:w-auto sm:px-4 gap-2 text-xs font-semibold text-white bg-[#080808] hover:bg-[#121212] border border-white/20 hover:border-white/40 rounded-full transition-all duration-300 backdrop-blur-sm shadow-sm active:scale-95"
               >
-                <LogIn className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <LogIn className="w-4 h-4" />
                 <span className="hidden sm:block">{dir === 'rtl' ? 'دخول' : 'Login'}</span>
               </Link>
             </div>
@@ -275,7 +275,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="lg:hidden">
             <Link to="/" className="block relative z-[10] pointer-events-auto">
               <div className="w-[120px] h-fit flex items-center justify-center">
-                <Logo className="w-full h-auto text-white" />
+                <Logo className="w-full h-auto text-white" id="header-logo-mobile" />
               </div>
             </Link>
           </div>
@@ -316,7 +316,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           {/* Language Toggle Button */}
           <button
             onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-white/25 hover:bg-white/10 text-xs font-medium text-white/80 hover:text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+            className="hidden sm:flex items-center justify-center h-10 px-3.5 gap-1.5 rounded-full bg-[#080808] hover:bg-[#121212] border border-white/20 hover:border-white/40 text-xs font-medium text-white/90 hover:text-white transition-all duration-300 cursor-pointer active:scale-95 shadow-sm backdrop-blur-sm"
             title={language === 'ar' ? 'Switch to English' : 'التحويل إلى العربية'}
           >
             <Globe className="w-3.5 h-3.5 text-cyan-400" />

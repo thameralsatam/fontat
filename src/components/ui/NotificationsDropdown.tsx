@@ -194,7 +194,7 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
           setIsOpen(!isOpen);
           if (!isOpen && unreadCount > 0) markAllAsRead();
         }}
-        className="relative w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white hover:text-black hover:border-transparent transition-all duration-300 group focus:outline-none bg-black/50 backdrop-blur-sm"
+        className="relative w-10 h-10 rounded-full border border-white/20 hover:border-white/40 bg-[#080808] hover:bg-[#121212] transition-all duration-300 flex items-center justify-center text-white focus:outline-none backdrop-blur-sm shadow-sm active:scale-95 group"
       >
         <Bell className="w-4 h-4 stroke-[1.5] transition-transform duration-300 group-hover:scale-110" />
         {unreadCount > 0 && (
