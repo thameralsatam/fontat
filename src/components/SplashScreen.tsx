@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Logo } from './Logo';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SplashScreenProps {
   onComplete: () => void;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
+  const { dir } = useLanguage();
+  const isRTL = dir === 'rtl';
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const [targetRect, setTargetRect] = useState<{ x: number; y: number; width: number } | null>(null);
 
@@ -61,7 +64,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
   // Fallback defaults if targetRect is not computed yet
   const isDesktop = windowWidth >= 1024;
-  const isRTL = typeof document !== 'undefined' ? document.documentElement.dir === 'rtl' || document.body.dir === 'rtl' || document.querySelector('[dir="rtl"]') !== null : true;
   
   const fallbackX = isDesktop ? (isRTL ? windowWidth - 110 : 110) : windowWidth / 2;
   const fallbackY = 40;
@@ -111,9 +113,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           {/* Logo under the cover */}
           <Logo className="w-full h-auto text-white" />
           
-          {/* Cover sliding right to left to reveal logo */}
+          {/* Cover sliding to reveal logo (Right-to-Left for RTL, Left-to-Right for LTR) */}
           <motion.div 
-            className="absolute inset-0 bg-[#080808] origin-left"
+            className={`absolute inset-0 bg-[#080808] ${isRTL ? 'origin-left' : 'origin-right'}`}
             initial={{ scaleX: 1 }}
             animate={{ scaleX: 0 }}
             transition={{ delay: 0.2, duration: 1.7, ease: [0.76, 0, 0.24, 1] }}
