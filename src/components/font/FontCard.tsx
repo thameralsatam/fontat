@@ -179,8 +179,7 @@ export const FontCard: React.FC<FontCardProps> = ({
       </div>
 
       {/* Bottom Hashtags & Weights Section */}
-      {((isPublicAllFonts && (item.tags?.length || isAdmin)) ||
-        ((parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading)) && (
+      {!item.metadata?.isUploading && (
         <div
           className="mt-auto pt-2 bg-transparent flex items-center gap-1 relative z-20 border-t border-white/[0.02]"
           onClick={(e) => e.stopPropagation()}
@@ -193,20 +192,19 @@ export const FontCard: React.FC<FontCardProps> = ({
                   dir === 'rtl' ? 'pl-8' : 'pr-8'
                 }`}
               >
-                {isPublicAllFonts &&
-                  item.tags?.map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTagClick?.(tag);
-                      }}
-                      className="text-[10px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 px-2.5 py-1 rounded-lg text-white/60 cursor-pointer transition-all duration-300 flex items-center gap-1 font-sans font-light shrink-0"
-                    >
-                      <span className="text-cyan-400 opacity-50 font-mono">#</span>
-                      <span>{tag}</span>
-                    </button>
-                  ))}
+                {item.tags?.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTagClick?.(tag);
+                    }}
+                    className="text-[10px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 px-2.5 py-1 rounded-lg text-white/60 cursor-pointer transition-all duration-300 flex items-center gap-1 font-sans font-light shrink-0"
+                  >
+                    <span className="text-cyan-400 opacity-50 font-mono">#</span>
+                    <span>{tag}</span>
+                  </button>
+                ))}
                 {isPublicAllFonts && isAdmin && (
                   <button
                     onClick={(e) => {
@@ -221,13 +219,9 @@ export const FontCard: React.FC<FontCardProps> = ({
                 )}
               </div>
 
-              {/* Elegant Fade Mask */}
+              {/* Fade Mask */}
               <div
-                className={`absolute top-0 bottom-0 pointer-events-none z-10 ${
-                  (parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading
-                    ? 'w-16'
-                    : 'w-8'
-                } ${
+                className={`absolute top-0 bottom-0 pointer-events-none z-10 w-8 ${
                   dir === 'rtl'
                     ? 'left-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent'
                     : 'right-0 bg-gradient-to-l from-black/80 via-black/50 to-transparent'
@@ -235,29 +229,26 @@ export const FontCard: React.FC<FontCardProps> = ({
               />
 
               {/* Weights action */}
-              {(parentFontIds.has(item.id) || isOwner) && !item.metadata?.isUploading && (
-                <div
-                  className={`absolute z-20 top-1/2 -translate-y-1/2 px-1.5 ${
-                    dir === 'rtl' ? 'left-0' : 'right-0'
+              <div
+                className={`absolute z-20 top-1/2 -translate-y-1/2 px-1.5 ${
+                  dir === 'rtl' ? 'left-0' : 'right-0'
+                }`}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openWeightsModal(item);
+                  }}
+                  className={`w-6 h-6 cursor-pointer transition-all duration-300 flex items-center justify-center rounded-lg shrink-0 ${
+                    parentFontIds.has(item.id)
+                      ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/40 text-cyan-300 hover:scale-110 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                      : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white'
                   }`}
+                  title={dir === 'rtl' ? 'أوزان الخط' : 'Font Weights'}
                 >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openWeightsModal(item);
-                    }}
-                    className={`w-6 h-6 cursor-pointer transition-all duration-300 flex items-center justify-center rounded-lg shrink-0 
-                      ${
-                        parentFontIds.has(item.id)
-                          ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/40 text-cyan-300 hover:scale-110 shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-[pulse_1.8s_infinite]'
-                          : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white'
-                      }`}
-                    title={dir === 'rtl' ? 'أوزان الخط' : 'Font Weights'}
-                  >
-                    <Layers className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
+                  <Layers className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

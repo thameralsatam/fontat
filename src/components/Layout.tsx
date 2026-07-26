@@ -246,8 +246,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       >
         {/* Left Container (Logo + Login) */}
         <div className="flex-1 flex items-center justify-start gap-4 lg:gap-6 pointer-events-none">
-          {/* Logo - Always shown on desktop, and shown on mobile when in LTR */}
-          <div className={dir === 'ltr' ? 'block' : 'hidden lg:block'}>
+          {/* Desktop Logo */}
+          <div className="hidden lg:block">
             <Link to="/" className="block relative z-[10] pointer-events-auto transition-transform hover:scale-105 active:scale-95">
               <div className="w-[125px] h-fit flex items-center justify-center">
                 <Logo className="w-full h-auto text-white" id="header-logo-desktop" />
@@ -271,8 +271,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
         {/* Center Container (Mobile Logo / Desktop Nav Dock) */}
         <div className="flex items-center justify-center pointer-events-none lg:pointer-events-auto shrink-0 px-2">
-          {/* Mobile Logo (Only shown in RTL layout) */}
-          <div className={`lg:hidden ${dir === 'ltr' ? 'hidden' : 'block'}`}>
+          {/* Mobile Logo */}
+          <div className="lg:hidden">
             <Link to="/" className="block relative z-[10] pointer-events-auto">
               <div className="w-[120px] h-fit flex items-center justify-center">
                 <Logo className="w-full h-auto text-white" id="header-logo-mobile" />

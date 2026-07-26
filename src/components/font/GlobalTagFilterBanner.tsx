@@ -101,7 +101,7 @@ export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
                     exit={{ opacity: 0, y: 8, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
                     className={`absolute top-12 z-50 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-[#121214] border border-white/15 rounded-2xl shadow-2xl p-2 backdrop-blur-xl ${
-                      dir === 'rtl' ? 'right-0 sm:right-auto sm:left-0' : 'right-0'
+                      dir === 'rtl' ? 'left-0' : 'right-0'
                     }`}
                   >
                     <div className="text-[11px] font-semibold text-white/40 px-3 py-1.5 uppercase tracking-wider">

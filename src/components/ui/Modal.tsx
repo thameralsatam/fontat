@@ -37,7 +37,7 @@ export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
             transition={{ duration: 0.2 }}
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-[100000] p-4"
           >
-            <div className="bg-white dark:bg-[#141414] rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden">
+            <div className="bg-white dark:bg-[#141414] rounded-2xl shadow-2xl border border-gray-200 dark:border-white/5 overflow-hidden">
               <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-white/5">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
                 <button
