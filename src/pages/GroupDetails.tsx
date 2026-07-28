@@ -573,12 +573,17 @@ export const GroupDetails = ({
     const sortedFonts = sortFonts(allFonts, sortBy);
 
     if (isPublicAllFonts && publicTagFilters.length > 0) {
-      let filtered = sortedFonts.filter(f => f.tags && publicTagFilters.some(tag => f.tags!.includes(tag)));
+      let filtered = sortedFonts.filter(f => {
+        const fontTags = f.tags || f.metadata?.tags || [];
+        return publicTagFilters.some(tag => fontTags.includes(tag));
+      });
       
       // Sort fonts: those missing fewer of the selected tags (i.e. having more matching tags) come first
       filtered.sort((a, b) => {
-        const aMatches = a.tags!.filter(t => publicTagFilters.includes(t)).length;
-        const bMatches = b.tags!.filter(t => publicTagFilters.includes(t)).length;
+        const aTags = a.tags || a.metadata?.tags || [];
+        const bTags = b.tags || b.metadata?.tags || [];
+        const aMatches = aTags.filter(t => publicTagFilters.includes(t)).length;
+        const bMatches = bTags.filter(t => publicTagFilters.includes(t)).length;
         
         if (aMatches !== bMatches) {
           return bMatches - aMatches; // Highest matches first

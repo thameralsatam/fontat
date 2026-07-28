@@ -164,8 +164,9 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
   const uniqueTags = new Set<string>();
   if (mode === 'public' && isHashtagSearch) {
     results.forEach(result => {
-      if (Array.isArray(result.tags)) {
-        result.tags.forEach(tag => {
+      const resultTags = Array.isArray(result.tags) ? result.tags : (result.metadata?.tags || []);
+      if (Array.isArray(resultTags)) {
+        resultTags.forEach(tag => {
           if (tag && typeof tag === 'string') {
             const cleanedTag = tag.trim();
             if (!hashtagSearchTerm || cleanedTag.toLowerCase().includes(hashtagSearchTerm)) {

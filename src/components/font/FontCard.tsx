@@ -192,7 +192,7 @@ export const FontCard: React.FC<FontCardProps> = ({
                   dir === 'rtl' ? 'pl-8' : 'pr-8'
                 }`}
               >
-                {item.tags?.map((tag) => (
+                {(item.tags || item.metadata?.tags || []).map((tag) => (
                   <button
                     key={tag}
                     onClick={(e) => {
@@ -205,7 +205,7 @@ export const FontCard: React.FC<FontCardProps> = ({
                     <span>{tag}</span>
                   </button>
                 ))}
-                {isPublicAllFonts && isAdmin && (
+                {(isOwner || (isPublicAllFonts && isAdmin)) && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

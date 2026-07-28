@@ -148,19 +148,33 @@ export const getGroupFonts = async (groupId: string | null): Promise<Font[]> => 
   if (error) throw error;
   if (!data) return [];
   
-  const mappedFonts = data.map((item: any) => ({
-    id: item.font_id,
-    group_id: item.group_id,
-    asset_id: item.asset_id,
-    name: item.name,
-    metadata: item.metadata,
-    download_url: item.download_url,
-    size: item.size,
-    created_at: item.created_at,
-    hash: item.font_hash
-  }));
+  const mappedFonts = data.map((item: any) => {
+    const fontTags = extractTags(item.metadata, item.tags);
+    return {
+      id: item.font_id,
+      group_id: item.group_id,
+      asset_id: item.asset_id,
+      name: item.name,
+      metadata: item.metadata ? { ...item.metadata, tags: fontTags } : { tags: fontTags },
+      tags: fontTags,
+      download_url: item.download_url,
+      size: item.size,
+      created_at: item.created_at,
+      hash: item.font_hash
+    };
+  });
 
   return Array.from(new Map(mappedFonts.map((f: any) => [f.id, f])).values()) as Font[];
+};
+
+const extractTags = (metadata: any, rawTags: any): string[] => {
+  if (Array.isArray(rawTags)) {
+    return rawTags.map((t: any) => String(t).trim()).filter(Boolean);
+  }
+  if (metadata && typeof metadata === 'object' && Array.isArray(metadata.tags)) {
+    return metadata.tags.map((t: any) => String(t).trim()).filter(Boolean);
+  }
+  return [];
 };
 
 export const getPublicFonts = async (): Promise<Font[]> => {
@@ -169,14 +183,18 @@ export const getPublicFonts = async (): Promise<Font[]> => {
   if (error) throw error;
   if (!data) return [];
   
-  const mappedFonts = data.map((item: any) => ({
-    id: item.font_id,
-    name: item.font_name,
-    download_url: item.download_url,
-    size: item.size,
-    created_at: item.created_at,
-    metadata: { tags: item.tags || [] },
-  }));
+  const mappedFonts = data.map((item: any) => {
+    const fontTags = extractTags(item.metadata, item.tags);
+    return {
+      id: item.font_id,
+      name: item.font_name,
+      download_url: item.download_url,
+      size: item.size,
+      created_at: item.created_at,
+      metadata: item.metadata ? { ...item.metadata, tags: fontTags } : { tags: fontTags },
+      tags: fontTags,
+    };
+  });
 
   return Array.from(new Map(mappedFonts.map((f: any) => [f.id, f])).values()) as Font[];
 };
@@ -241,24 +259,28 @@ export const getFontWeights = async (parentFontId: string): Promise<FontWeight[]
   if (error) throw error;
   if (!data) return [];
   
-  const mappedWeights: FontWeight[] = data.map((item: any) => ({
-    id: `${parentFontId}-${item.font_id}`,
-    parent_font_id: parentFontId,
-    child_font_id: item.font_id,
-    created_at: new Date().toISOString(),
-    child_font: {
-       id: item.font_id,
-       name: item.name,
-       download_url: item.download_url,
-       hash: item.font_hash,
-       size: item.size,
-       metadata: item.metadata,
-       user_id: '',
-       group_id: '',
-       asset_id: '',
-       created_at: ''
-    }
-  }));
+  const mappedWeights: FontWeight[] = data.map((item: any) => {
+    const fontTags = extractTags(item.metadata, item.tags);
+    return {
+      id: `${parentFontId}-${item.font_id}`,
+      parent_font_id: parentFontId,
+      child_font_id: item.font_id,
+      created_at: new Date().toISOString(),
+      child_font: {
+        id: item.font_id,
+        name: item.name,
+        download_url: item.download_url,
+        hash: item.font_hash,
+        size: item.size,
+        metadata: item.metadata ? { ...item.metadata, tags: fontTags } : { tags: fontTags },
+        tags: fontTags,
+        user_id: '',
+        group_id: '',
+        asset_id: '',
+        created_at: ''
+      }
+    };
+  });
 
   return Array.from(new Map(mappedWeights.map((w: FontWeight) => [w.id, w])).values());
 };

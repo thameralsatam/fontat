@@ -31,8 +31,9 @@ export function useFontTagActions({
   const availableTags = useMemo(() => {
     const tagsSet = new Set<string>();
     dbFonts.forEach(f => {
-      if (Array.isArray(f.tags)) {
-        f.tags.forEach(t => {
+      const fontTags = f.tags || f.metadata?.tags || [];
+      if (Array.isArray(fontTags)) {
+        fontTags.forEach(t => {
           if (t && typeof t === 'string' && t.trim()) {
             tagsSet.add(t.trim());
           }
@@ -58,7 +59,7 @@ export function useFontTagActions({
         return;
       }
 
-      const existingTags = targetFont.tags || [];
+      const existingTags = targetFont.tags || targetFont.metadata?.tags || [];
       if (existingTags.includes(cleanNewTag)) {
         addNotification('error', dir === 'rtl' ? 'هذا الهاشتاغ مضاف بالفعل لهذا الخط' : 'Tag already exists for this font');
         return;
@@ -80,7 +81,8 @@ export function useFontTagActions({
       const targetFont = dbFonts.find(f => f.id === fontId);
       if (!targetFont) return;
 
-      const updatedTags = (targetFont.tags || []).filter(t => t !== tagToRemove);
+      const existingTags = targetFont.tags || targetFont.metadata?.tags || [];
+      const updatedTags = existingTags.filter(t => t !== tagToRemove);
       await import('../../services/fontService').then(m => m.updateFontTags(fontId, updatedTags));
       addNotification('success', dir === 'rtl' ? 'تم إزالة الهاشتاغ بنجاح!' : 'Tag removed successfully!');
       fetchData();
