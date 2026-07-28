@@ -28,6 +28,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   const [highlightedFont, setHighlightedFont] = useState<{id: string, ts: number} | undefined>();
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
   
   // Confirmation Modal State
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; groupId: string | null }>({
@@ -173,6 +174,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     setSelectedGroup(group);
     setGroupName(group.name);
     setGroupDesc(group.description || '');
+    setIsPublic(group.is_public);
     setIsEditMode(true);
     setIsModalOpen(true);
     setOptionsOpenGroupId(null);
@@ -188,6 +190,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     setIsEditMode(false);
     setGroupName('');
     setGroupDesc('');
+    setIsPublic(mode === 'public');
     setIsModalOpen(true);
     setOptionsOpenGroupId(null);
   };
@@ -225,12 +228,16 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       try {
         const data = await updateGroup(selectedGroup.id, {
           name: groupName,
-          description: cleanedDesc
+          description: cleanedDesc,
+          is_public: isPublic
         });
 
         fetchGroups(true);
         if (data) {
           setGroups(prev => prev.map(g => g.id === data.id ? data : g));
+          if ((mode === 'public' && !data.is_public) || (mode === 'private' && data.is_public)) {
+            setViewingGroupId(null);
+          }
         }
         setIsModalOpen(false);
         setGroupName('');
@@ -243,7 +250,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     } else {
       // Create
       try {
-        const data = await createGroupSmart(groupName, cleanedDesc);
+        const data = await createGroupSmart(groupName, cleanedDesc, isPublic);
 
         fetchGroups(true);
         if (data) {
@@ -278,8 +285,12 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     }
   };
 
-  // Groups list for display
-  const displayedGroups = groups;
+  // Filter groups for Chips
+  const displayedGroups = groups.filter(g => {
+    if (mode === 'public') return g.is_public;
+    if (mode === 'private') return true;
+    return false;
+  });
 
   return (
     <div className="pb-32 max-lg:landscape:pb-16 pt-0">
@@ -330,7 +341,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
 
       {/* Modern Group Tabs Bar - Only visible in private mode when logged in */}
       {mode === 'private' && user && (
-        <div className="w-full pt-4 pb-0">
+        <div className="w-full pt-2 pb-3">
           <div className="flex items-center gap-2 xl:max-w-[1600px] mx-auto px-4 md:px-8 pb-3">
             
             {/* Scrollable Groups */}

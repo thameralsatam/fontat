@@ -11,6 +11,7 @@ export const getGroups = async (): Promise<Group[]> => {
     user_id: item.user_id,
     name: item.name,
     description: item.description,
+    is_public: item.is_public,
     created_at: item.created_at,
     updated_at: item.updated_at,
   }));
@@ -20,46 +21,43 @@ export const getGroups = async (): Promise<Group[]> => {
 };
 
 export const updateGroup = async (groupId: string, updates: Partial<Group>) => {
-  const { data: response, error } = await supabase.rpc('manage_group_smart', {
+  const { error } = await supabase.rpc('manage_group_smart', {
     p_group_id: groupId,
     p_action: 'update',
     p_name: updates.name,
-    p_description: updates.description
+    p_description: updates.description,
+    p_is_public: updates.is_public
   });
 
   if (error) throw error;
-  if (response && response.success === false) {
-    throw new Error(response.message || response.error || 'Failed to update group');
-  }
   
   const privateGroups = await getGroups();
   return privateGroups.find((g: Group) => g.id === groupId);
 };
 
 export const deleteGroupSmart = async (groupId: string) => {
-  const { data: response, error } = await supabase.rpc('manage_group_smart', {
+  const { error } = await supabase.rpc('manage_group_smart', {
     p_action: 'delete',
     p_group_id: groupId,
     p_name: null,
-    p_description: null
+    p_description: null,
+    p_is_public: null
   });
 
   if (error) throw error;
-  if (response && response.success === false) {
-    throw new Error(response.message || response.error || 'Failed to delete group');
-  }
 };
 
-export const createGroupSmart = async (name: string, description: string) => {
+export const createGroupSmart = async (name: string, description: string, isPublic: boolean) => {
   const { data: response, error } = await supabase.rpc('manage_group_smart', {
     p_group_id: null,
     p_action: 'create',
     p_name: name,
-    p_description: description
+    p_description: description,
+    p_is_public: isPublic
   });
 
   if (error) throw error;
-  if (!response || !response.success) throw new Error(response?.message || response?.error || 'Failed to create group');
+  if (!response || !response.success) throw new Error(response?.message || 'Failed to create group');
   
   const privateGroups = await getGroups();
   if (response.group_id) {

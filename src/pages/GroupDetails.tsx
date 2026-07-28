@@ -21,7 +21,6 @@ import { TagRenameModal } from '../components/font/TagRenameModal';
 import { DetailedFontView } from '../components/font/DetailedFontView';
 import { GlobalTagFilterBanner } from '../components/font/GlobalTagFilterBanner';
 import { FontsPagination } from '../components/font/FontsPagination';
-import { FuturisticHint } from '../components/font/FuturisticHint';
 import { GlobalTagSelectionModal } from '../components/font/GlobalTagSelectionModal';
 import { formatFontName } from '../utils/text';
 import { useFontAnalyzer } from '../components/font/useFontAnalyzer';
@@ -143,7 +142,7 @@ export const GroupDetails = ({
            return;
         }
         const { createGroupSmart } = await import('../services/groupService');
-        const newGroup = await createGroupSmart(newSaveGroupName.trim(), '');
+        const newGroup = await createGroupSmart(newSaveGroupName.trim(), '', false);
         if (!newGroup) throw new Error('Failed to create group');
         finalGroupId = newGroup.id;
       }
@@ -371,7 +370,7 @@ export const GroupDetails = ({
   const [pulseFontId, setPulseFontId] = useState<string | null>(null);
   const [modalPulseFontId, setModalPulseFontId] = useState<string | null>(null);
   const [processedHighlightedId, setProcessedHighlightedId] = useState<number | null>(null);
-  const [showFuturisticHint, setShowFuturisticHint] = useState(() => {
+  const [, setShowFuturisticHint] = useState(() => {
     return !localStorage.getItem('fontinfo_hint_dismissed');
   });
   const toolbarTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1194,12 +1193,6 @@ export const GroupDetails = ({
         message={dir === 'rtl' ? `هل أنت متأكد من رغبتك في حذف الهاشتاغ #${tagDeleteGlobalModal.tag} نهائياً؟ سيتم إزالته من جميع الخطوط كلياً.` : `Are you sure you want to delete #${tagDeleteGlobalModal.tag} globally? This will remove it from all fonts.`}
         confirmText={dir === 'rtl' ? 'حذف الهاشتاغ' : 'Delete Tag'}
         variant="danger"
-      />
-
-      <FuturisticHint
-        showFuturisticHint={showFuturisticHint}
-        setShowFuturisticHint={setShowFuturisticHint}
-        dir={dir as 'ltr' | 'rtl' | 'auto'}
       />
     </div>
   );

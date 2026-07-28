@@ -118,36 +118,27 @@ export const deleteFontPermanently = async (fontId: string) => {
   });
 
   if (error) throw error;
-  if (data && typeof data === 'object' && (data.error || data.message === 'font_not_found')) {
-    throw new Error(data.error || data.message || 'Failed to delete font');
-  }
   return data;
 };
 
 export const updateFontName = async (fontId: string, newName: string) => {
-  const { data, error } = await supabase.rpc('manage_font_smart', {
+  const { error } = await supabase.rpc('manage_font_smart', {
     p_action: 'update',
     p_font_id: fontId,
     p_name: newName
   });
 
   if (error) throw error;
-  if (data && typeof data === 'object' && (data.error || data.message === 'font_not_found' || data.message === 'no_changes_provided')) {
-    throw new Error(data.error || data.message || 'Failed to update font name');
-  }
 };
 
 export const updateFontTags = async (fontId: string, tags: string[]) => {
-  const { data, error } = await supabase.rpc('manage_font_smart', {
+  const { error } = await supabase.rpc('manage_font_smart', {
     p_action: 'update',
     p_font_id: fontId,
     p_metadata: { tags }
   });
 
   if (error) throw error;
-  if (data && typeof data === 'object' && (data.error || data.message === 'font_not_found' || data.message === 'no_changes_provided')) {
-    throw new Error(data.error || data.message || 'Failed to update font tags');
-  }
 };
 
 export const getGroupFonts = async (groupId: string | null): Promise<Font[]> => {

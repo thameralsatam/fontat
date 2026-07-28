@@ -474,10 +474,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                       {/* Icon */}
                       <div style={{
                         position: "relative", zIndex: 1,
-                        filter: isActive
-                          ? `drop-shadow(0 0 7px rgba(255,255,255,0.35))`
-                          : "none",
-                        transition: "filter 0.3s ease",
                         animation: isActive
                           ? "bn-icon-enter 0.42s cubic-bezier(0.34,1.4,0.64,1)"
                           : undefined,
@@ -490,10 +486,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                         height: "3px",
                         borderRadius: "2px",
                         background: isActive ? WHITE : "transparent",
-                        boxShadow: isActive
-                          ? `0 0 6px ${WHITE}, 0 0 14px rgba(255,255,255,0.35)`
-                          : "none",
-                        transition: "background 0.3s ease, box-shadow 0.3s ease",
+                        transition: "background 0.3s ease",
                         animation: isActive ? "bn-dot-expand 0.42s cubic-bezier(0.34,1.4,0.64,1) forwards" : undefined,
                         width: isActive ? "16px" : "0px",
                       }} />

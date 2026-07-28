@@ -107,15 +107,6 @@ export const PrivacyPolicy = () => {
           </section>
         </FadeSection>
 
-        <FadeSection delay={0.45}>
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold text-white">
-              {isAr ? '7. التواصل' : '7. Contact'}
-            </h2>
-            <p>{isAr ? 'لأي استفسار:' : 'For any inquiries:'}</p>
-            <a href="mailto:support@fontat.net" className="text-cyan-400 hover:underline">support@fontat.net</a>
-          </section>
-        </FadeSection>
       </div>
     </div>
   );
