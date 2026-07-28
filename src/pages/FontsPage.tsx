@@ -70,10 +70,8 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     fetchGroups();
   }, [user, mode]);
 
-  // Realtime synchronization (Disabled in disconnected mode)
+  // Realtime synchronization
   useEffect(() => {
-    // TODO: reconnect to Supabase (previously used: supabase.channel('groups_changes'))
-    /*
     const channel = supabase
       .channel('groups_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, () => {
@@ -84,7 +82,6 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     return () => {
       supabase.removeChannel(channel);
     };
-    */
   }, [mode]);
 
   // Search implementation removed because we now use the SmartSearch component directly.
@@ -317,11 +314,8 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             let groupId = meta?.group_id;
             
             if (!groupId && res.id) {
-              // TODO: reconnect to Supabase (previously used: supabase.from('fonts').select('group_id').eq('id', res.id).single())
-              /*
               const { data } = await supabase.from('fonts').select('group_id').eq('id', res.id).single();
               if (data) groupId = data.group_id;
-              */
             }
 
             // Fallback: finding group by group_name

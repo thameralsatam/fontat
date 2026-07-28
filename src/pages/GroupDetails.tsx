@@ -446,13 +446,10 @@ export const GroupDetails = ({
       
       // Fallback if not found in my_groups but might still be mine (or we need its public details)
       if (!foundOwner) {
-        // TODO: reconnect to Supabase (previously used: supabase.from('groups').select('*').eq('id', id).single())
-        /*
         const { data: publicGroup } = await supabase.from('groups').select('*').eq('id', id).single();
         if (publicGroup) {
           setGroup(publicGroup);
         }
-        */
       }
     } catch (error) {
       console.error("Error fetching group data:", error);

@@ -1,58 +1,65 @@
 import { supabase } from '../lib/supabase';
 import { Group } from '../types';
 
-void supabase;
-
-// TODO: reconnect to Supabase (previously used: supabase.rpc('get_my_groups'))
 export const getGroups = async (): Promise<Group[]> => {
-  const cached = localStorage.getItem('fontat_disconnected_groups');
-  if (cached) {
-    try { return JSON.parse(cached); } catch(e) {}
-  }
-  const defaultGroups: Group[] = [
-    {
-      id: 'demo-group-1',
-      user_id: 'demo-user',
-      name: 'خطوط العناوين',
-      description: 'مجموعة تجريبية لخطوط العناوين والملصقات',
-      is_public: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-  ];
-  localStorage.setItem('fontat_disconnected_groups', JSON.stringify(defaultGroups));
-  return defaultGroups;
+  const { data, error } = await supabase
+    .from('groups')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  if (!data) return [];
+
+  const mappedData: Group[] = data.map((item: any) => ({
+    id: item.id,
+    user_id: item.user_id,
+    name: item.name,
+    description: item.description,
+    is_public: item.is_public,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  }));
+
+  return Array.from(new Map(mappedData.map((g: Group) => [g.id, g])).values());
 };
 
-// TODO: reconnect to Supabase (previously used: supabase.rpc('manage_group_smart', { p_action: 'update' }))
 export const updateGroup = async (groupId: string, updates: Partial<Group>) => {
-  const current = await getGroups();
-  const updated = current.map(g => g.id === groupId ? { ...g, ...updates, updated_at: new Date().toISOString() } : g);
-  localStorage.setItem('fontat_disconnected_groups', JSON.stringify(updated));
-  return updated.find((g: Group) => g.id === groupId);
+  const { data, error } = await supabase.rpc('manage_group_smart', {
+    p_action: 'update',
+    p_group_id: groupId,
+    p_name: updates.name,
+    p_description: updates.description
+  });
+
+  if (error) throw error;
+  if (!data || !data.success) throw new Error(data?.message || 'Failed to update group');
+
+  const groups = await getGroups();
+  return groups.find((g: Group) => g.id === groupId);
 };
 
-// TODO: reconnect to Supabase (previously used: supabase.rpc('manage_group_smart', { p_action: 'delete' }))
 export const deleteGroupSmart = async (groupId: string) => {
-  const current = await getGroups();
-  const updated = current.filter(g => g.id !== groupId);
-  localStorage.setItem('fontat_disconnected_groups', JSON.stringify(updated));
+  const { data, error } = await supabase.rpc('manage_group_smart', {
+    p_action: 'delete',
+    p_group_id: groupId
+  });
+
+  if (error) throw error;
+  if (!data || !data.success) throw new Error(data?.message || 'Failed to delete group');
 };
 
-// TODO: reconnect to Supabase (previously used: supabase.rpc('manage_group_smart', { p_action: 'create' }))
-export const createGroupSmart = async (name: string, description: string, isPublic: boolean) => {
-  const current = await getGroups();
-  const newGroup: Group = {
-    id: `group-${Date.now()}`,
-    user_id: 'demo-user',
-    name,
-    description,
-    is_public: isPublic,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-  const updated = [newGroup, ...current];
-  localStorage.setItem('fontat_disconnected_groups', JSON.stringify(updated));
-  return newGroup;
+export const createGroupSmart = async (name: string, description: string, _isPublic?: boolean) => {
+  const { data, error } = await supabase.rpc('manage_group_smart', {
+    p_action: 'create',
+    p_name: name,
+    p_description: description
+  });
+
+  if (error) throw error;
+  if (!data || !data.success) throw new Error(data?.message || 'Failed to create group');
+
+  const groups = await getGroups();
+  return groups.find((g: Group) => g.name === name) || groups[0];
 };
+
 

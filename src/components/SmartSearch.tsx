@@ -55,16 +55,19 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        // TODO: reconnect to Supabase (previously used: supabase.rpc('smart_search', { search_term: searchTerm || ' ', p_mode: mode }))
-        /*
         const searchTerm = query.trim().startsWith('#') ? query.trim().substring(1) : query.trim();
         const { data, error } = await supabase.rpc('smart_search', {
           search_term: searchTerm || ' ',
           p_mode: mode
         });
-        */
-        setResults([]);
-        setIsOpen(true);
+
+        if (error) {
+          console.error('Error in smart_search:', error);
+          setResults([]);
+        } else {
+          setResults(data || []);
+          setIsOpen(true);
+        }
       } catch (err) {
         console.error('Error in smart_search:', err);
         setResults([]);
