@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { Group } from '../types';
+
+void supabase;
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -68,14 +70,13 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     fetchGroups();
   }, [user, mode]);
 
-  // Realtime synchronization
+  // Realtime synchronization (Disabled in disconnected mode)
   useEffect(() => {
-    // Only set up realtime if we are on the public mode (or always, to get immediate updates)
-    // Actually, listening to all group changes ensures the UI stays perfectly synced across multiple tabs.
+    // TODO: reconnect to Supabase (previously used: supabase.channel('groups_changes'))
+    /*
     const channel = supabase
       .channel('groups_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, () => {
-         // Silently fetch groups to keep UI in sync without user interruption
          fetchGroups(true);
       })
       .subscribe();
@@ -83,6 +84,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     return () => {
       supabase.removeChannel(channel);
     };
+    */
   }, [mode]);
 
   // Search implementation removed because we now use the SmartSearch component directly.
@@ -315,8 +317,11 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             let groupId = meta?.group_id;
             
             if (!groupId && res.id) {
+              // TODO: reconnect to Supabase (previously used: supabase.from('fonts').select('group_id').eq('id', res.id).single())
+              /*
               const { data } = await supabase.from('fonts').select('group_id').eq('id', res.id).single();
               if (data) groupId = data.group_id;
+              */
             }
 
             // Fallback: finding group by group_name

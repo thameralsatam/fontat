@@ -2,6 +2,8 @@ import { useEffect, useState, useRef, useMemo, useDeferredValue } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Group, FontWeight, Font } from '../types';
+
+void supabase;
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -444,10 +446,13 @@ export const GroupDetails = ({
       
       // Fallback if not found in my_groups but might still be mine (or we need its public details)
       if (!foundOwner) {
+        // TODO: reconnect to Supabase (previously used: supabase.from('groups').select('*').eq('id', id).single())
+        /*
         const { data: publicGroup } = await supabase.from('groups').select('*').eq('id', id).single();
         if (publicGroup) {
           setGroup(publicGroup);
         }
+        */
       }
     } catch (error) {
       console.error("Error fetching group data:", error);

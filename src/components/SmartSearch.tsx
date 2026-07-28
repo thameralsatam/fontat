@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+
+void supabase;
 import { formatFontName } from '../utils/text';
 
 export interface SearchResult {
@@ -53,19 +55,16 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
+        // TODO: reconnect to Supabase (previously used: supabase.rpc('smart_search', { search_term: searchTerm || ' ', p_mode: mode }))
+        /*
         const searchTerm = query.trim().startsWith('#') ? query.trim().substring(1) : query.trim();
         const { data, error } = await supabase.rpc('smart_search', {
           search_term: searchTerm || ' ',
           p_mode: mode
         });
-
-        if (error) {
-          console.error('Error searching fonts:', error);
-          setResults([]);
-        } else {
-          setResults(data || []);
-          setIsOpen(true);
-        }
+        */
+        setResults([]);
+        setIsOpen(true);
       } catch (err) {
         console.error('Error in smart_search:', err);
         setResults([]);

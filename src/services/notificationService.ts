@@ -1,56 +1,29 @@
 import { supabase } from '../lib/supabase';
 import { Notification, NotificationPreferences } from '../types';
 
-// Get notifications
+void supabase;
+
+// TODO: reconnect to Supabase (previously used: supabase.rpc('get_my_notifications'))
 export const getNotifications = async (_userId: string | null): Promise<Notification[]> => {
-  const { data, error } = await supabase.rpc('get_my_notifications');
-  
-  if (error) {
-    console.error("Error loading notifications:", error.message);
-    throw error;
-  }
-  
-  return data || [];
+  return [];
 };
 
-// Create a new general notification (admin only)
+// TODO: reconnect to Supabase (previously used: supabase.rpc('send_notification'))
 export const createNotification = async (
-  type: string,
-  slides: any[],
-  userId: string | null = null
+  _type: string,
+  _slides: any[],
+  _userId: string | null = null
 ) => {
-  const { data, error } = await supabase.rpc('send_notification', {
-    p_user_id: userId,
-    p_type: type,
-    p_slides: slides
-  });
-
-  if (error) {
-    console.error("فشل الإرسال:", error.message);
-    throw error;
-  }
-  return data;
+  return { success: true };
 };
 
-// Upload an image for a notification slide
+// TODO: reconnect to Supabase (previously used: supabase.storage.from('notifications').upload & getPublicUrl)
 export const uploadNotificationImage = async (file: File): Promise<string> => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-  
-  const { error: uploadError } = await supabase.storage
-    .from('notifications')
-    .upload(fileName, file, { upsert: false });
-
-  if (uploadError) throw uploadError;
-
-  const { data } = supabase.storage.from('notifications').getPublicUrl(fileName);
-  return data.publicUrl;
+  return URL.createObjectURL(file);
 };
 
-// Delete notification
-export const deleteNotification = async (id: string): Promise<void> => {
-  const { error } = await supabase.from('notifications').delete().eq('id', id);
-  if (error) throw error;
+// TODO: reconnect to Supabase (previously used: supabase.from('notifications').delete().eq('id', id))
+export const deleteNotification = async (_id: string): Promise<void> => {
 };
 
 // Get User Preferences (Local Storage Only)
@@ -73,4 +46,5 @@ export const updateUserNotificationPreferences = async (
 ): Promise<void> => {
   localStorage.setItem('fontat_notification_prefs', JSON.stringify(preferences));
 };
+
 
