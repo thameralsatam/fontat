@@ -29,6 +29,14 @@ export const createNotification = async (
     console.error("فشل الإرسال:", error.message);
     throw error;
   }
+
+  if (data && typeof data === 'object') {
+    if (data.error || data.success === false) {
+      const msg = data.error || data.message || 'Failed to send notification';
+      throw new Error(msg);
+    }
+  }
+
   return data;
 };
 

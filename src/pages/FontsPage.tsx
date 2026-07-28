@@ -5,8 +5,8 @@ import { Group } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import { Folder, Plus, MoreVertical, Grid } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Folder, Plus, MoreVertical, Grid, Loader2, LogIn } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Modal } from '../components/ui/Modal';
 import { GroupDetails } from './GroupDetails';
@@ -18,6 +18,7 @@ import { updateGroup, deleteGroupSmart, createGroupSmart, getGroups } from '../s
 export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [groups, setGroups] = useState<Group[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAllGroupsOpen, setIsAllGroupsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -27,7 +28,6 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   const [highlightedFont, setHighlightedFont] = useState<{id: string, ts: number} | undefined>();
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
   
   // Confirmation Modal State
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; groupId: string | null }>({
@@ -89,14 +89,24 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   const fetchGroups = async (_hideLoader = false) => {
     if (mode === 'public') {
       setGroups([]);
+      setGroupsLoading(false);
       return;
     }
     
+    if (!_hideLoader) {
+      setGroupsLoading(true);
+    }
+
     try {
       const data = await getGroups();
       setGroups(data);
+      if (data.length > 0 && !viewingGroupId && !searchParams.get('group')) {
+        setViewingGroupId(data[0].id);
+      }
     } catch (error) {
       console.error('Error fetching groups:', error);
+    } finally {
+      setGroupsLoading(false);
     }
   };
 
@@ -163,7 +173,6 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     setSelectedGroup(group);
     setGroupName(group.name);
     setGroupDesc(group.description || '');
-    setIsPublic(group.is_public);
     setIsEditMode(true);
     setIsModalOpen(true);
     setOptionsOpenGroupId(null);
@@ -179,7 +188,6 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     setIsEditMode(false);
     setGroupName('');
     setGroupDesc('');
-    setIsPublic(mode === 'public');
     setIsModalOpen(true);
     setOptionsOpenGroupId(null);
   };
@@ -217,16 +225,12 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       try {
         const data = await updateGroup(selectedGroup.id, {
           name: groupName,
-          description: cleanedDesc,
-          is_public: isPublic
+          description: cleanedDesc
         });
 
         fetchGroups(true);
         if (data) {
           setGroups(prev => prev.map(g => g.id === data.id ? data : g));
-          if ((mode === 'public' && !data.is_public) || (mode === 'private' && data.is_public)) {
-            setViewingGroupId(null);
-          }
         }
         setIsModalOpen(false);
         setGroupName('');
@@ -239,18 +243,16 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     } else {
       // Create
       try {
-        const data = await createGroupSmart(groupName, cleanedDesc, isPublic);
+        const data = await createGroupSmart(groupName, cleanedDesc);
 
         fetchGroups(true);
         if (data) {
-          if ((mode === 'public' && data.is_public) || (mode === 'private' && !data.is_public)) {
-            setGroups(prev => {
-              const cleaned = prev.filter(g => g.id !== data.id);
-              return [data, ...cleaned];
-            });
-            setViewingGroupId(data.id);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }
+          setGroups(prev => {
+            const cleaned = prev.filter(g => g.id !== data.id);
+            return [data, ...cleaned];
+          });
+          setViewingGroupId(data.id);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         addNotification('success', t('group.create_success'));
         setIsModalOpen(false);
@@ -276,12 +278,8 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     }
   };
 
-  // Filter groups for Chips
-  const displayedGroups = groups.filter(g => {
-    if (mode === 'public') return g.is_public;
-    if (mode === 'private') return true;
-    return false;
-  });
+  // Groups list for display
+  const displayedGroups = groups;
 
   return (
     <div className="pb-32 max-lg:landscape:pb-16 pt-0">
@@ -330,9 +328,9 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
         />
       </div>
 
-      {/* Modern Group Tabs Bar - Only visible in private mode */}
-      {mode === 'private' && (
-        <div className="w-full bg-[#080808]/90 backdrop-blur-xl sticky top-0 z-30 pt-4 pb-0">
+      {/* Modern Group Tabs Bar - Only visible in private mode when logged in */}
+      {mode === 'private' && user && (
+        <div className="w-full pt-4 pb-0">
           <div className="flex items-center gap-2 xl:max-w-[1600px] mx-auto px-4 md:px-8 pb-3">
             
             {/* Scrollable Groups */}
@@ -464,8 +462,22 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
 
       {/* Main Content Area */}
       <div className="space-y-8 mt-4 w-full">
-        {/* Group Fonts View */}
-        {mode === 'public' ? (
+        {mode === 'private' && !user ? (
+          <div className="text-center py-16 px-6 max-w-md mx-auto my-8 bg-[#0d0d10]/80 border border-white/10 rounded-2xl backdrop-blur-xl shadow-2xl flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 mb-4">
+              <Folder className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">{t('groups.login_required')}</h2>
+            <p className="text-sm text-white/50 leading-relaxed mb-6">{t('groups.login_required_desc')}</p>
+            <Link
+              to="/account"
+              className="flex items-center justify-center h-10 px-5 gap-2 text-xs font-semibold text-white bg-[#080808] hover:bg-[#121212] border border-white/20 hover:border-white/40 rounded-full transition-all duration-300 backdrop-blur-sm shadow-sm active:scale-95"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{t('groups.login_button')}</span>
+            </Link>
+          </div>
+        ) : mode === 'public' ? (
           <GroupDetails 
             key="group-details-public"
             isPublicAllFonts={true}
@@ -476,6 +488,10 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             )}
             highlightedFont={highlightedFont}
           />
+        ) : groupsLoading ? (
+          <div className="text-center py-20 text-white/30 flex items-center justify-center gap-3">
+            <Loader2 className="w-6 h-6 animate-spin text-white/40" />
+          </div>
         ) : viewingGroupId ? (
           <GroupDetails 
             key={`group-details-private-${viewingGroupId}`}
@@ -483,6 +499,21 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             groupData={groups.find(g => g.id === viewingGroupId)}
             highlightedFont={highlightedFont}
           />
+        ) : displayedGroups.length === 0 ? (
+          <div className="text-center py-16 px-6 max-w-md mx-auto my-8 bg-[#0d0d10]/80 border border-white/10 rounded-2xl backdrop-blur-xl shadow-2xl flex flex-col items-center">
+            <div className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 mb-4">
+              <Folder className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">{t('groups.no_groups_title')}</h2>
+            <p className="text-sm text-white/50 leading-relaxed mb-6">{t('groups.no_groups_desc')}</p>
+            <button
+              onClick={handleOpenCreate}
+              className="px-6 py-2.5 rounded-xl bg-white text-black font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] active:scale-95 text-sm flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('groups.create_first')}</span>
+            </button>
+          </div>
         ) : (
           /* Default View (No group selected) */
            <div className="text-center py-20 max-lg:landscape:py-8 text-white opacity-20 w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">

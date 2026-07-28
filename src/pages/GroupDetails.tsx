@@ -143,7 +143,7 @@ export const GroupDetails = ({
            return;
         }
         const { createGroupSmart } = await import('../services/groupService');
-        const newGroup = await createGroupSmart(newSaveGroupName.trim(), '', false);
+        const newGroup = await createGroupSmart(newSaveGroupName.trim(), '');
         if (!newGroup) throw new Error('Failed to create group');
         finalGroupId = newGroup.id;
       }
@@ -461,20 +461,36 @@ export const GroupDetails = ({
     setLoading(false);
   };
 
-  const wasUploading = useRef(false);
-  useEffect(() => {
-    const isUploading = uploadQueue.some(t => (t.groupId === id || (isPublicAllFonts && !t.groupId)) && (t.status === 'pending' || t.status === 'uploading'));
-    if (isUploading && !wasUploading.current) {
-      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
-    }
-    wasUploading.current = isUploading;
-  }, [uploadQueue, id, isPublicAllFonts]);
+  const ensureFontCardVisible = (fontId: string) => {
+    setTimeout(() => {
+      const element = document.getElementById(`font-card-${fontId}`);
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        const isFullyVisible = rect.top >= 0 && rect.bottom <= vh;
+        if (!isFullyVisible) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setPulseFontId(fontId);
+        setTimeout(() => setPulseFontId(null), 3000);
+      }
+    }, 250);
+  };
 
   const wasUploadingRef = useRef(false);
   useEffect(() => {
     const isUploading = uploadQueue.some(t => (t.groupId === id || (isPublicAllFonts && !t.groupId)) && (t.status === 'pending' || t.status === 'uploading'));
     if (wasUploadingRef.current && !isUploading) {
+      const successfulFontIds = uploadQueue
+        .filter(t => t.status === 'success' && t.fontId && (t.groupId === id || (isPublicAllFonts && !t.groupId)))
+        .map(t => t.fontId!);
+
       fetchData();
+      if (successfulFontIds.length > 0) {
+        const lastFontId = successfulFontIds[successfulFontIds.length - 1];
+        ensureFontCardVisible(lastFontId);
+      }
+
       if (weightsModal.isOpen && weightsModal.parentFont) {
         getFontWeights(weightsModal.parentFont.id).then(weights => {
           setWeightsModal(prev => ({ ...prev, weights: weights || [] }));
