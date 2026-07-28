@@ -81,8 +81,8 @@ export function useFontTagActions({
       const targetFont = dbFonts.find(f => f.id === fontId);
       if (!targetFont) return;
 
-      const existingTags = targetFont.tags || targetFont.metadata?.tags || [];
-      const updatedTags = existingTags.filter(t => t !== tagToRemove);
+      const existingTags = (targetFont.tags || targetFont.metadata?.tags || []) as string[];
+      const updatedTags = existingTags.filter((t: string) => t !== tagToRemove);
       await import('../../services/fontService').then(m => m.updateFontTags(fontId, updatedTags));
       addNotification('success', dir === 'rtl' ? 'تم إزالة الهاشتاغ بنجاح!' : 'Tag removed successfully!');
       fetchData();

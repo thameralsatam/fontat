@@ -430,25 +430,35 @@ export const GroupDetails = ({
       return;
     }
 
+    if (!user) {
+      setGroup(null);
+      setDbFonts([]);
+      setWeightRelationships([]);
+      setLoading(false);
+      return;
+    }
+
     if (!id) return;
 
     // Fetch group using our group service which maps the fields correctly
     try {
-      const groups = await getGroups();
-      let foundOwner = false;
-      if (groups && groups.length > 0) {
-        const groupData = groups.find((g: Group) => g.id === id);
-        if (groupData) {
-          setGroup(groupData);
-          foundOwner = true;
+      if (user) {
+        const groups = await getGroups();
+        let foundOwner = false;
+        if (groups && groups.length > 0) {
+          const groupData = groups.find((g: Group) => g.id === id);
+          if (groupData) {
+            setGroup(groupData);
+            foundOwner = true;
+          }
         }
-      }
-      
-      // Fallback if not found in my_groups but might still be mine (or we need its public details)
-      if (!foundOwner) {
-        const { data: publicGroup } = await supabase.from('groups').select('*').eq('id', id).single();
-        if (publicGroup) {
-          setGroup(publicGroup);
+        
+        // Fallback if not found in my_groups but might still be mine (or we need its public details)
+        if (!foundOwner) {
+          const { data: publicGroup } = await supabase.from('groups').select('*').eq('id', id).single();
+          if (publicGroup) {
+            setGroup(publicGroup);
+          }
         }
       }
     } catch (error) {
@@ -582,8 +592,8 @@ export const GroupDetails = ({
       filtered.sort((a, b) => {
         const aTags = a.tags || a.metadata?.tags || [];
         const bTags = b.tags || b.metadata?.tags || [];
-        const aMatches = aTags.filter(t => publicTagFilters.includes(t)).length;
-        const bMatches = bTags.filter(t => publicTagFilters.includes(t)).length;
+        const aMatches = aTags.filter((t: string) => publicTagFilters.includes(t)).length;
+        const bMatches = bTags.filter((t: string) => publicTagFilters.includes(t)).length;
         
         if (aMatches !== bMatches) {
           return bMatches - aMatches; // Highest matches first

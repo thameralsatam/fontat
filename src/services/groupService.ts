@@ -2,6 +2,11 @@ import { supabase } from '../lib/supabase';
 import { Group } from '../types';
 
 export const getGroups = async (): Promise<Group[]> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('groups')
     .select('*')

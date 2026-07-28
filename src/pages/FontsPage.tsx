@@ -72,6 +72,8 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
 
   // Realtime synchronization
   useEffect(() => {
+    if (mode === 'public' || !user) return;
+
     const channel = supabase
       .channel('groups_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, () => {
@@ -82,12 +84,12 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [mode]);
+  }, [mode, user]);
 
   // Search implementation removed because we now use the SmartSearch component directly.
   
   const fetchGroups = async (_hideLoader = false) => {
-    if (mode === 'public') {
+    if (mode === 'public' || !user) {
       setGroups([]);
       setGroupsLoading(false);
       return;
