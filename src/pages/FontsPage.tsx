@@ -68,7 +68,7 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
 
   useEffect(() => {
     fetchGroups();
-  }, [user, mode]);
+  }, [user?.id, mode]);
 
   // Realtime synchronization
   useEffect(() => {

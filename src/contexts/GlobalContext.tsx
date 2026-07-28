@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { uploadFontToGroup, uploadFontWeight, getGroupFonts, getFontWeights } from '../services/fontService';
+import { uploadFontToGroup, uploadFontWeight } from '../services/fontService';
 import { useLanguage } from './LanguageContext';
 import { Group } from '../types';
 
@@ -108,66 +108,37 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   }, [addNotification]);
 
   // --- Upload Logic ---
-  // ✅ FIX: حذف uploadQueue من الـ dependencies، نستخدم uploadQueueRef بدلها
-  const addToUploadQueue = useCallback(async (files: File[], groupId: string | null, parentFontId?: string) => {
+  const addToUploadQueue = useCallback((files: File[], groupId: string | null, parentFontId?: string) => {
     let filesToProcess = files;
     if (files.length > 10) {
       addNotification('error', t('common.error') || 'Error');
       filesToProcess = files.slice(0, 10);
     }
 
-    try {
-      let dbDuplicateNames = new Set<string>();
-      if (parentFontId) {
-        const weights = await getFontWeights(parentFontId);
-        dbDuplicateNames = new Set(weights.map(w => w.child_font?.name || ''));
+    if (filesToProcess.length === 0) return;
+
+    const queueDuplicateNames = new Set(uploadQueueRef.current.map(t => t.file.name));
+    const uniqueFiles: File[] = [];
+    const duplicateNames: string[] = [];
+
+    filesToProcess.forEach(file => {
+      if (queueDuplicateNames.has(file.name)) {
+        duplicateNames.push(file.name);
       } else {
-        const groupFonts = await getGroupFonts(groupId);
-        dbDuplicateNames = new Set(groupFonts.map(f => f.name));
+        uniqueFiles.push(file);
       }
+    });
 
-      // ✅ نقرأ من الـ ref بدل الـ state مباشرة
-      const queueDuplicateNames = new Set(uploadQueueRef.current.map(t => t.file.name));
+    if (duplicateNames.length > 0) {
+      const title = t('font.duplicate_title') || 'Duplicate font';
+      const details = duplicateNames.length <= 5 
+        ? duplicateNames.map(name => `• ${name}`).join('\n')
+        : `• ${duplicateNames.slice(0, 5).join('\n')}\n...and ${duplicateNames.length - 5} more`;
+      addNotification('error', title, details);
+    }
 
-      const uniqueFiles: File[] = [];
-      const duplicateNames: string[] = [];
-
-      filesToProcess.forEach(file => {
-        if (dbDuplicateNames.has(file.name) || queueDuplicateNames.has(file.name)) {
-          duplicateNames.push(file.name);
-        } else {
-          uniqueFiles.push(file);
-        }
-      });
-
-      if (duplicateNames.length > 0) {
-        const title = t('font.duplicate_title');
-        let details = '';
-        if (duplicateNames.length <= 5) {
-          details = duplicateNames.map(name => `• ${name}`).join('\n');
-        } else {
-          details = `• ${duplicateNames.slice(0, 5).join('\n')}\n...and ${duplicateNames.length - 5} more`;
-        }
-        addNotification('error', title, details);
-      }
-
-      if (uniqueFiles.length > 0) {
-        const newTasks: UploadTask[] = uniqueFiles.map((file, index) => ({
-          id: Math.random().toString(36).substr(2, 9),
-          tempId: `temp-${Date.now()}-${index}`,
-          file,
-          localUrl: URL.createObjectURL(file),
-          groupId,
-          parentFontId,
-          status: 'pending',
-          progress: 0,
-          timestamp: Date.now() + index
-        }));
-        setUploadQueue(prev => [...prev, ...newTasks]);
-      }
-    } catch (error) {
-      console.error('Error checking duplicates:', error);
-      const newTasks: UploadTask[] = filesToProcess.map((file, index) => ({
+    if (uniqueFiles.length > 0) {
+      const newTasks: UploadTask[] = uniqueFiles.map((file, index) => ({
         id: Math.random().toString(36).substr(2, 9),
         tempId: `temp-${Date.now()}-${index}`,
         file,
@@ -180,55 +151,61 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
       }));
       setUploadQueue(prev => [...prev, ...newTasks]);
     }
-  }, [addNotification, t]); // ✅ حذف uploadQueue من هنا
+  }, [addNotification, t]);
 
   // Process Queue Effect
   useEffect(() => {
-    const processNext = async () => {
+    const processQueue = async () => {
       if (processingRef.current) return;
-      const nextTask = uploadQueue.find(t => t.status === 'pending');
-      if (!nextTask) return;
-
       processingRef.current = true;
 
-      const attemptUpload = async (retries: number): Promise<any> => {
-        try {
-          setUploadQueue(prev => prev.map(t => t.id === nextTask.id ? { ...t, status: 'uploading' } : t));
-          await new Promise(resolve => setTimeout(resolve, 500));
+      try {
+        while (true) {
+          const queue = uploadQueueRef.current;
+          const nextTask = queue.find(t => t.status === 'pending');
+          if (!nextTask) break;
 
-          let font;
-          if (nextTask.parentFontId) {
-            font = await uploadFontWeight(nextTask.file, nextTask.parentFontId, nextTask.groupId);
-          } else {
-            const res = await uploadFontToGroup(nextTask.file, nextTask.groupId);
-            font = res.font;
-          }
+          const attemptUpload = async (task: UploadTask, retries: number): Promise<void> => {
+            try {
+              setUploadQueue(prev => prev.map(t => t.id === task.id ? { ...t, status: 'uploading' } : t));
+              await new Promise(resolve => setTimeout(resolve, 300));
 
-          setUploadQueue(prev => prev.map(t =>
-            t.id === nextTask.id ? { ...t, status: 'success', fontId: font.id, downloadUrl: font.download_url, progress: 100 } : t
-          ));
-        } catch (error: any) {
-          if (retries > 0 && !error.message?.includes('already in the group')) {
-            await new Promise(res => setTimeout(res, 1000));
-            return attemptUpload(retries - 1);
-          } else {
-            setUploadQueue(prev => prev.map(t =>
-              t.id === nextTask.id ? { ...t, status: 'error', error: error.message || 'Upload failed' } : t
-            ));
-            if (error.message?.includes('already in the group')) {
-              addNotification('error', t('font.duplicate_title') || 'Duplicate font', error.message);
-            } else {
-              addNotification('error', error.message || t('common.error') || 'Error');
+              let font;
+              if (task.parentFontId) {
+                font = await uploadFontWeight(task.file, task.parentFontId, task.groupId);
+              } else {
+                const res = await uploadFontToGroup(task.file, task.groupId);
+                font = res.font;
+              }
+
+              setUploadQueue(prev => prev.map(t =>
+                t.id === task.id ? { ...t, status: 'success', fontId: font.id, downloadUrl: font.download_url, progress: 100 } : t
+              ));
+            } catch (error: any) {
+              if (retries > 0 && !error.message?.includes('already in the group')) {
+                await new Promise(res => setTimeout(res, 800));
+                return attemptUpload(task, retries - 1);
+              } else {
+                setUploadQueue(prev => prev.map(t =>
+                  t.id === task.id ? { ...t, status: 'error', error: error.message || 'Upload failed' } : t
+                ));
+                if (error.message?.includes('already in the group')) {
+                  addNotification('error', t('font.duplicate_title') || 'Duplicate font', error.message);
+                } else {
+                  addNotification('error', error.message || t('common.error') || 'Error');
+                }
+              }
             }
-          }
-        }
-      };
+          };
 
-      await attemptUpload(2);
-      processingRef.current = false;
+          await attemptUpload(nextTask, 2);
+        }
+      } finally {
+        processingRef.current = false;
+      }
     };
 
-    processNext();
+    processQueue();
   }, [uploadQueue, addNotification, t]);
 
   const retryUpload = useCallback((taskId: string) => {

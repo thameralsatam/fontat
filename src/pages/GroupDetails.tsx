@@ -849,23 +849,42 @@ export const GroupDetails = ({
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files.length || (!id && !isPublicAllFonts) || !user || !isOwner) return;
-    const allFiles = Array.from(e.target.files);
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    const allFiles = Array.from(files);
     
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    if (!user) {
+      addNotification('error', t('auth.login_required') || 'يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
+    if (!id && !isPublicAllFonts) return;
+
     let targetGroupId = id || null;
 
     if (allFiles.length > 10) addNotification('error', t('font.max_limit') || 'Max 10');
     const filesToProcess = allFiles.slice(0, 10);
     addToUploadQueue(filesToProcess, targetGroupId);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleWeightUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files.length || !uploadingWeightFor || !user || (!id && !isPublicAllFonts)) return;
-    const files = Array.from(e.target.files);
-    addToUploadQueue(files, id || null, uploadingWeightFor);
-    setUploadingWeightFor(null);
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    const allFiles = Array.from(files);
+
     if (weightInputRef.current) weightInputRef.current.value = '';
+
+    if (!user) {
+      addNotification('error', t('auth.login_required') || 'يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
+    if (!uploadingWeightFor || (!id && !isPublicAllFonts)) return;
+
+    addToUploadQueue(allFiles, id || null, uploadingWeightFor);
+    setUploadingWeightFor(null);
   };
 
   const handleDeleteFont = async (fontId: string) => {

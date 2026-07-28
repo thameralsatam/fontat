@@ -63,13 +63,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
+  const deletedIdsRef = React.useRef(deletedIds);
+  useEffect(() => {
+    deletedIdsRef.current = deletedIds;
+  }, [deletedIds]);
+
+  const userId = user?.id || null;
+
   const loadNotifications = useCallback(async () => {
     setLoading(true);
     try {
       // Load user preferences
       let prefs: NotificationPreferences = { all_notifications: true, updates: true, alerts: true, info: true, promotion: true };
-      if (user) {
-        try { prefs = await getUserNotificationPreferences(user.id); } catch(e) {}
+      if (userId) {
+        try { prefs = await getUserNotificationPreferences(userId); } catch(e) {}
       } else {
         try {
            const stored = localStorage.getItem(PREFS_KEY);
@@ -80,16 +87,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         } catch(e) {}
       }
 
-      const data = await getNotifications(user?.id || null);
+      const data = await getNotifications(userId);
       
       // Optional: Filter notifications to last 30 days max for performance/storage optimization
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
+      const currentDeleted = deletedIdsRef.current;
       const filteredData = data.filter(n => {
           if (new Date(n.created_at) <= thirtyDaysAgo) return false;
           // Hide manually deleted items
-          if (deletedIds.has(n.id)) return false;
+          if (currentDeleted.has(n.id)) return false;
           
           // Alert is critical and cannot be disabled
           if (n.type === 'alert') return true;
@@ -111,7 +119,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setLoading(false);
     }
-  }, [user, deletedIds]);
+  }, [userId]);
 
   useEffect(() => {
     loadNotifications();
