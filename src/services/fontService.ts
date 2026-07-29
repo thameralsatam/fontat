@@ -65,7 +65,7 @@ export const uploadFontToGroup = async (
     const { error: uploadError } = await supabase.storage
       .from('fonts')
       .upload(fileName, file, {
-        upsert: true
+        upsert: false
       });
 
     if (uploadError) throw uploadError;
@@ -223,7 +223,7 @@ export const uploadFontWeight = async (
     const { error: uploadError } = await supabase.storage
       .from('fonts')
       .upload(fileName, file, {
-        upsert: true
+        upsert: false
       });
 
     if (uploadError) throw uploadError;
