@@ -177,11 +177,21 @@ const extractTags = (metadata: any, rawTags: any): string[] => {
   return [];
 };
 
-export const getPublicFonts = async (): Promise<Font[]> => {
-  const { data, error } = await supabase.rpc('get_public_fonts');
+export const getPublicFonts = async (
+  p_sort: string = 'newest',
+  p_limit: number = 50,
+  p_offset: number = 0
+): Promise<{ fonts: Font[]; totalCount: number }> => {
+  const { data, error } = await supabase.rpc('get_public_fonts', {
+    p_sort,
+    p_limit,
+    p_offset,
+  });
   
   if (error) throw error;
-  if (!data) return [];
+  if (!data || data.length === 0) return { fonts: [], totalCount: 0 };
+  
+  const totalCount = data[0].total_count || 0;
   
   const mappedFonts = data.map((item: any) => {
     const fontTags = extractTags(item.metadata, item.tags);
@@ -196,7 +206,8 @@ export const getPublicFonts = async (): Promise<Font[]> => {
     };
   });
 
-  return Array.from(new Map(mappedFonts.map((f: any) => [f.id, f])).values()) as Font[];
+  const uniqueFonts = Array.from(new Map(mappedFonts.map((f: any) => [f.id, f])).values()) as Font[];
+  return { fonts: uniqueFonts, totalCount };
 };
 
 export const uploadFontWeight = async (

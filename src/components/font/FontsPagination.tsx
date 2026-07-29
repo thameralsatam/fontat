@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface FontsPaginationProps {
   currentPage: number;
-  setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+  setCurrentPage: (page: number) => void;
   displayFontsLength: number;
   itemsPerPage: number;
   dir: 'ltr' | 'rtl' | 'auto';
@@ -32,10 +32,7 @@ export const FontsPagination: React.FC<FontsPaginationProps> = ({
         <button
           onClick={() => {
             if (currentPage > 1) {
-              setCurrentPage(prev => prev - 1);
-              setTimeout(() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }, 50);
+              setCurrentPage(currentPage - 1);
             }
           }}
           disabled={currentPage === 1}
@@ -63,9 +60,6 @@ export const FontsPagination: React.FC<FontsPaginationProps> = ({
                 key={p}
                 onClick={() => {
                   setCurrentPage(p);
-                  setTimeout(() => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }, 50);
                 }}
                 className={`w-10 h-10 rounded-xl flex items-center justify-center font-medium transition-all duration-300 cursor-pointer text-sm
                   ${currentPage === p 
@@ -81,10 +75,7 @@ export const FontsPagination: React.FC<FontsPaginationProps> = ({
         <button
           onClick={() => {
             if (currentPage < totalPages) {
-              setCurrentPage(prev => prev + 1);
-              setTimeout(() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }, 50);
+              setCurrentPage(currentPage + 1);
             }
           }}
           disabled={currentPage === totalPages}

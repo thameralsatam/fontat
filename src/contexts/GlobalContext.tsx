@@ -16,6 +16,7 @@ export interface UploadTask {
   localUrl?: string;
   downloadUrl?: string | null;
   timestamp?: number;
+  completedAt?: number;
 }
 
 interface Notification {
@@ -149,7 +150,11 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
         progress: 0,
         timestamp: Date.now() + index
       }));
-      setUploadQueue(prev => [...prev, ...newTasks]);
+      setUploadQueue(prev => {
+        // Filter out completed tasks to reset counters for new batch uploads
+        const filtered = prev.filter(t => t.status !== 'success');
+        return [...filtered, ...newTasks];
+      });
     }
   }, [addNotification, t]);
 
@@ -179,7 +184,7 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
               }
 
               setUploadQueue(prev => prev.map(t =>
-                t.id === task.id ? { ...t, status: 'success', fontId: font.id, downloadUrl: font.download_url, progress: 100 } : t
+                t.id === task.id ? { ...t, status: 'success', fontId: font.id, downloadUrl: font.download_url, progress: 100, completedAt: Date.now() } : t
               ));
             } catch (error: any) {
               if (retries > 0 && !error.message?.includes('already in the group')) {

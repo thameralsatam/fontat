@@ -376,33 +376,33 @@ export const Account = () => {
               </div>
 
             </div>
-
-            {/* Language Switcher for Guest */}
-            <div className="flex justify-center mt-6">
-              <div className="relative flex bg-[#0a0a0a]/85 border border-white/5 p-1 rounded-2xl shadow-xl w-[180px]" dir="ltr">
-                <div 
-                  className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] shadow-md"
-                  style={{
-                    transform: language === 'en' ? 'translateX(0)' : 'translateX(calc(100% + 4px))',
-                    left: '2px'
-                  }}
-                />
-                <button 
-                  onClick={() => setLanguage('en')}
-                  className={`relative z-10 flex-1 py-1.5 text-xs font-medium transition-colors duration-300 cursor-pointer ${language === 'en' ? 'text-black font-semibold' : 'text-white opacity-50 hover:opacity-100'}`}
-                >
-                  EN
-                </button>
-                <button 
-                  onClick={() => setLanguage('ar')}
-                  className={`relative z-10 flex-1 py-1.5 text-xs font-medium transition-colors duration-300 cursor-pointer ${language === 'ar' ? 'text-black font-semibold' : 'text-white opacity-50 hover:opacity-100'}`}
-                >
-                  عربي
-                </button>
-              </div>
-            </div>
           </>
         )}
+
+        {/* Language Switcher - Persistent */}
+        <div className="flex justify-center mt-6">
+          <div className="relative flex bg-[#0a0a0a]/85 border border-white/5 p-1 rounded-2xl shadow-xl w-[180px]" dir="ltr">
+            <div 
+              className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] shadow-md"
+              style={{
+                transform: language === 'en' ? 'translateX(0)' : 'translateX(calc(100% + 4px))',
+                left: '2px'
+              }}
+            />
+            <button 
+              onClick={() => setLanguage('en')}
+              className={`relative z-10 flex-1 py-1.5 text-xs font-medium transition-colors duration-300 cursor-pointer ${language === 'en' ? 'text-black font-semibold' : 'text-white opacity-50 hover:opacity-100'}`}
+            >
+              EN
+            </button>
+            <button 
+              onClick={() => setLanguage('ar')}
+              className={`relative z-10 flex-1 py-1.5 text-xs font-medium transition-colors duration-300 cursor-pointer ${language === 'ar' ? 'text-black font-semibold' : 'text-white opacity-50 hover:opacity-100'}`}
+            >
+              عربي
+            </button>
+          </div>
+        </div>
       </div>
 
       <ConfirmationModal

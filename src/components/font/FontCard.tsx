@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Download, Trash2, Check, Plus, Layers } from 'lucide-react';
 import { Font } from '../../types';
@@ -51,6 +51,26 @@ export const FontCard: React.FC<FontCardProps> = ({
   setTagEditModal,
   openWeightsModal,
 }) => {
+  const [showSuccessCheck, setShowSuccessCheck] = useState(false);
+
+  useEffect(() => {
+    if (item.metadata?.status === 'success') {
+      const completedAt = item.metadata.completedAt || Date.now();
+      const elapsed = Date.now() - completedAt;
+      const remaining = 5000 - elapsed;
+      if (remaining > 0) {
+        setShowSuccessCheck(true);
+        const timer = setTimeout(() => {
+          setShowSuccessCheck(false);
+        }, remaining);
+        return () => clearTimeout(timer);
+      } else {
+        setShowSuccessCheck(false);
+      }
+    } else {
+      setShowSuccessCheck(false);
+    }
+  }, [item.metadata?.status, item.metadata?.completedAt]);
   return (
     <motion.div
       id={`font-card-${item.id}`}
@@ -103,7 +123,7 @@ export const FontCard: React.FC<FontCardProps> = ({
                 <span dir="ltr" className="truncate text-left block">
                   {formatFontName(item.name || '')}
                 </span>
-                {item.metadata?.status === 'success' && (
+                {showSuccessCheck && (
                   <Check className="w-3.5 h-3.5 text-white/50 group-hover:text-white flex-shrink-0 transition-colors" />
                 )}
                 <span className="text-[10px] uppercase font-bold text-transparent bg-clip-text bg-gradient-to-r from-white/40 to-white/20 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 group-hover:mr-2 rtl:group-hover:-translate-x-0 rtl:group-hover:translate-x-2 rtl:translate-x-2 rtl:-mr-2 transition-all duration-300">

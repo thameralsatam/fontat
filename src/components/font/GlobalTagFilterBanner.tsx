@@ -54,8 +54,8 @@ export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
   }, []);
 
   return (
-    <div className="pb-8 pt-4 px-4 md:px-8 w-full xl:max-w-[1600px] mx-auto font-sans" key="hashtag-isolate">
-      <div className="flex flex-col gap-6">
+    <div className="pb-2 pt-4 px-4 md:px-8 w-full xl:max-w-[1600px] mx-auto font-sans" key="hashtag-isolate">
+      <div className="flex flex-col gap-4">
         {/* Top Navigation Row */}
         <div className="flex items-center justify-between">
           <button 
@@ -74,63 +74,6 @@ export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
             <span className="text-[10px] tracking-wider uppercase font-bold text-cyan-400 bg-cyan-400/5 px-2.5 py-1 rounded-md border border-cyan-400/10">
               {dir === 'rtl' ? 'التصفية المتعددة' : 'Multiple Filter'}
             </span>
-
-            {/* Sort Dropdown */}
-            <div className="relative" ref={sortDropdownRef}>
-              <button 
-                onClick={() => setIsSortOpen(!isSortOpen)}
-                className="h-10 px-4 rounded-full border border-white/20 hover:border-white/40 bg-[#080808] hover:bg-[#121212] text-white/80 hover:text-white flex items-center gap-2 text-xs font-semibold transition-all duration-300 backdrop-blur-md cursor-pointer active:scale-95"
-                title={dir === 'rtl' ? 'ترتيب الخطوط' : 'Sort Fonts'}
-              >
-                <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span className="hidden sm:inline">
-                  {dir === 'rtl' 
-                    ? (sortBy === 'oldest_first' ? 'الأقدم للأحدث' : sortBy === 'newest_first' ? 'الأحدث للأقدم' : sortBy === 'alpha_az' ? 'A - Z' : 'Z - A')
-                    : (sortBy === 'oldest_first' ? 'Oldest' : sortBy === 'newest_first' ? 'Newest' : sortBy === 'alpha_az' ? 'A - Z' : 'Z - A')
-                  }
-                </span>
-                <span className="sm:hidden">{dir === 'rtl' ? 'ترتيب' : 'Sort'}</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 opacity-70 ${isSortOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {isSortOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className={`absolute top-12 z-50 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-[#121214] border border-white/15 rounded-2xl shadow-2xl p-2 backdrop-blur-xl ${
-                      dir === 'rtl' ? 'left-0' : 'right-0'
-                    }`}
-                  >
-                    <div className="text-[11px] font-semibold text-white/40 px-3 py-1.5 uppercase tracking-wider">
-                      {dir === 'rtl' ? 'ترتيب الخطوط' : 'Sort Fonts'}
-                    </div>
-                    {SortOptionList.OPTIONS.map(opt => {
-                      const isSelected = sortBy === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => {
-                            setSortBy(opt.id);
-                            setIsSortOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all text-start cursor-pointer my-0.5 ${
-                            isSelected 
-                              ? 'bg-cyan-500/15 text-cyan-400 font-bold border border-cyan-500/20' 
-                              : 'text-white/80 hover:bg-white/5 hover:text-white'
-                          }`}
-                        >
-                          <span className="leading-relaxed">{dir === 'rtl' ? opt.labelAr : opt.labelEn}</span>
-                          {isSelected && <Check className="w-4 h-4 text-cyan-400 shrink-0 ms-2" />}
-                        </button>
-                      );
-                    })}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
         </div>
 
@@ -246,6 +189,66 @@ export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
                 }}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Sort button row (above first font card): Sort dropdown on the Left */}
+        <div className={`flex items-center justify-between gap-4 pt-1 pb-1 ${dir === 'rtl' ? 'flex-row' : 'flex-row-reverse'}`}>
+          <div className="flex-1" />
+
+          {/* Sort Dropdown */}
+          <div className="relative shrink-0" ref={sortDropdownRef}>
+            <button 
+              onClick={() => setIsSortOpen(!isSortOpen)}
+              className="h-10 px-4 rounded-full border border-white/20 hover:border-white/40 bg-[#080808] hover:bg-[#121212] text-white/80 hover:text-white flex items-center gap-2 text-xs font-semibold transition-all duration-300 backdrop-blur-md cursor-pointer active:scale-95"
+              title={dir === 'rtl' ? 'ترتيب الخطوط' : 'Sort Fonts'}
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="hidden sm:inline">
+                {dir === 'rtl' 
+                  ? (sortBy === 'oldest_first' ? 'الأقدم للأحدث' : sortBy === 'newest_first' ? 'الأحدث للأقدم' : sortBy === 'alpha_az' ? 'A - Z' : 'Z - A')
+                  : (sortBy === 'oldest_first' ? 'Oldest' : sortBy === 'newest_first' ? 'Newest' : sortBy === 'alpha_az' ? 'A - Z' : 'Z - A')
+                }
+              </span>
+              <span className="sm:hidden">{dir === 'rtl' ? 'ترتيب' : 'Sort'}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 opacity-70 ${isSortOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+              {isSortOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-12 z-50 w-48 bg-[#121214] border border-white/15 rounded-2xl shadow-2xl p-1.5 backdrop-blur-xl left-0"
+                >
+                  <div className="text-[11px] font-semibold text-white/40 px-3 py-1.5 uppercase tracking-wider">
+                    {dir === 'rtl' ? 'ترتيب الخطوط' : 'Sort Fonts'}
+                  </div>
+                  {SortOptionList.OPTIONS.map(opt => {
+                    const isSelected = sortBy === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        onClick={() => {
+                          setSortBy(opt.id);
+                          setIsSortOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all text-start cursor-pointer my-0.5 ${
+                          isSelected 
+                            ? 'bg-cyan-500/15 text-cyan-400 font-bold border border-cyan-500/20' 
+                            : 'text-white/80 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <span className="leading-relaxed">{dir === 'rtl' ? opt.labelAr : opt.labelEn}</span>
+                        {isSelected && <Check className="w-4 h-4 text-cyan-400 shrink-0 ms-2" />}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

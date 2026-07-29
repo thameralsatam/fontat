@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts, getWeightRelationshipsForFonts } from '../services/fontService';
 import { getGroups } from '../services/groupService';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { saveFontHistory } from '../lib/db';
 // @ts-ignore
 
@@ -318,24 +318,66 @@ export const GroupDetails = ({
   
   // Pagination & Sorting State (15 items per page)
   const [currentPage, setCurrentPage] = useState(1);
-  const [renderedCountInPage, setRenderedCountInPage] = useState(7);
+  const [isChangingPage, setIsChangingPage] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('oldest_first');
 
+  const handlePageChange = async (newPage: number) => {
+    if (isChangingPage) return;
+    setIsChangingPage(true);
+    
+    // Smooth fade out
+    await new Promise(resolve => setTimeout(resolve, 250));
+    
+    setCurrentPage(newPage);
+    
+    // Try multiple ways to scroll to top for full iframe/browser compatibility
+    try {
+      document.documentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    // Additional instant fallback to ensure it reaches top even if smooth scroll gets interrupted
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 450);
+    
+    // Wait for the scroll and content update to align naturally
+    await new Promise(resolve => setTimeout(resolve, 350));
+    
+    setIsChangingPage(false);
+  };
+
+  const [publicFontsTotal, setPublicFontsTotal] = useState(0);
+  const [isPublicLoadingMore, setIsPublicLoadingMore] = useState(false);
+
+  const handleLoadMorePublicFonts = async () => {
+    if (isPublicLoadingMore) return;
+    setIsPublicLoadingMore(true);
+    try {
+      let p_sort = 'newest';
+      if (sortBy === 'oldest_first') p_sort = 'oldest';
+      else if (sortBy === 'newest_first') p_sort = 'newest';
+      else if (sortBy === 'alpha_az') p_sort = 'name_asc';
+
+      const { fonts, totalCount } = await getPublicFonts(p_sort, 15, dbFonts.length);
+      setDbFonts(prev => {
+        const existingIds = new Set(prev.map(f => f.id));
+        const uniqueNew = fonts.filter(f => !existingIds.has(f.id));
+        return [...prev, ...uniqueNew];
+      });
+      setPublicFontsTotal(totalCount);
+    } catch (err) {
+      console.error("Error loading more public fonts:", err);
+    } finally {
+      setIsPublicLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
-    // Reset page of fonts and rendered count when switching contexts, tags, or sort order
+    // Reset page of fonts when switching contexts, tags, or sort order
     setCurrentPage(1);
-    setRenderedCountInPage(7);
   }, [id, isPublicAllFonts, publicTagFilters.join(','), sortBy]);
-
-  useEffect(() => {
-    // Reset renderedCountInPage when manually turning pages
-    setRenderedCountInPage(7);
-  }, [currentPage]);
-
-  // ✅ FIX: نحدّث الـ ref كل ما يتغير الـ state
-  useEffect(() => {
-    renderedCountRef.current = renderedCountInPage;
-  }, [renderedCountInPage]);
 
 
 
@@ -378,11 +420,8 @@ export const GroupDetails = ({
   const toolbarTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const fontGridRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const uploadedSessionFontsRef = useRef<Record<string, { localUrl: string, name: string, taskId: string }>>({});
-  // ✅ FIX: ref لـ renderedCountInPage — يمنع API call عند كل scroll
-  const renderedCountRef = useRef(7);
+  const uploadedSessionFontsRef = useRef<Record<string, { localUrl: string, name: string, taskId: string, completedAt?: number }>>({});
 
   useEffect(() => {
     uploadQueue.forEach(task => {
@@ -392,7 +431,8 @@ export const GroupDetails = ({
           uploadedSessionFontsRef.current[idKey] = {
             localUrl: task.localUrl,
             name: task.file.name,
-            taskId: task.id
+            taskId: task.id,
+            completedAt: task.completedAt || Date.now()
           };
         }
       }
@@ -415,18 +455,28 @@ export const GroupDetails = ({
     if (id || isPublicAllFonts) {
       fetchData();
     }
-  }, [id, user?.id, isPublicAllFonts, publicTagFilters.join(',')]);
+  }, [id, user?.id, isPublicAllFonts, publicTagFilters.join(','), sortBy]);
 
   async function fetchData() {
     if (isPublicAllFonts) {
-      // Public mode: fetch all public fonts, ignoring group logic
+      // Public mode: fetch first page of public fonts, ignoring group logic
       setGroup(null);
-      let fontsData = await getPublicFonts();
-      
-      setDbFonts(fontsData || []);
-      
-      setWeightRelationships([]);
-      setLoading(false);
+      setLoading(true);
+      try {
+        let p_sort = 'newest';
+        if (sortBy === 'oldest_first') p_sort = 'oldest';
+        else if (sortBy === 'newest_first') p_sort = 'newest';
+        else if (sortBy === 'alpha_az') p_sort = 'name_asc';
+
+        const { fonts, totalCount } = await getPublicFonts(p_sort, 15, 0);
+        setDbFonts(fonts || []);
+        setPublicFontsTotal(totalCount);
+      } catch (err) {
+        console.error("Error fetching public fonts:", err);
+      } finally {
+        setWeightRelationships([]);
+        setLoading(false);
+      }
       return;
     }
 
@@ -535,7 +585,7 @@ export const GroupDetails = ({
             download_url: dbFont.download_url || matchedTask.downloadUrl || '',
             sessionLocalUrl: matchedTask.localUrl,
             created_at: matchedTask.timestamp ? new Date(matchedTask.timestamp).toISOString() : dbFont.created_at,
-            metadata: { ...dbFont.metadata, taskId: matchedTask.id, status: matchedTask.status } 
+            metadata: { ...dbFont.metadata, taskId: matchedTask.id, status: matchedTask.status, completedAt: matchedTask.completedAt } 
           } as Font & { sessionLocalUrl?: string };
        }
 
@@ -545,7 +595,7 @@ export const GroupDetails = ({
           return {
              ...dbFont,
              sessionLocalUrl: sessionFont.localUrl,
-             metadata: { ...dbFont.metadata, taskId: sessionFont.taskId, status: 'success' }
+             metadata: { ...dbFont.metadata, taskId: sessionFont.taskId, status: 'success', completedAt: sessionFont.completedAt }
           } as Font & { sessionLocalUrl?: string };
        }
 
@@ -567,7 +617,8 @@ export const GroupDetails = ({
         isUploading: task.status !== 'success',
         status: task.status,
         error: task.error,
-        taskId: task.id
+        taskId: task.id,
+        completedAt: task.completedAt
       }
     }));
 
@@ -613,35 +664,17 @@ export const GroupDetails = ({
     return displayFonts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [displayFonts, currentPage]);
 
-  // Continuous progressive font rendering using a single high-performance sentinel observer
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setRenderedCountInPage((prev) => Math.min(prev + 6, paginatedFonts.length));
-        }
-      },
-      {
-        root: null,
-        rootMargin: '100px 0px 400px 0px', // Pre-trigger loading of next fonts before they enter the screen
-        threshold: 0.01,
-      }
-    );
-
-    observer.observe(sentinel);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [paginatedFonts.length, renderedCountInPage]);
+  const fontsToRender = useMemo(() => {
+    if (isPublicAllFonts) {
+      return displayFonts; // Show all loaded public fonts since they are already server-side paginated
+    }
+    return paginatedFonts;
+  }, [isPublicAllFonts, displayFonts, paginatedFonts]);
 
   // Dynamic weights loading for active visible/rendered fonts in the current page via secure RPC
   useEffect(() => {
     if (loading) return;
-    const visibleFonts = paginatedFonts.slice(0, renderedCountInPage);
+    const visibleFonts = fontsToRender;
     if (visibleFonts.length === 0) return;
 
     let isSubscribed = true;
@@ -682,7 +715,7 @@ export const GroupDetails = ({
     return () => {
       isSubscribed = false;
     };
-  }, [paginatedFonts, renderedCountInPage, loading]);
+  }, [fontsToRender, loading]);
 
 
 
@@ -743,7 +776,7 @@ export const GroupDetails = ({
   useEffect(() => {
     const loadFonts = async () => {
       const fontsToLoad: Font[] = [];
-      paginatedFonts.slice(0, renderedCountInPage).forEach(item => {
+      fontsToRender.forEach(item => {
         fontsToLoad.push(item);
       });
 
@@ -812,7 +845,7 @@ export const GroupDetails = ({
       }
     };
     loadFonts();
-  }, [paginatedFonts, renderedCountInPage, weightsModal.isOpen, weightsModal.weights, weightsModal.parentFont, selectedFontDetail]);
+  }, [fontsToRender, weightsModal.isOpen, weightsModal.weights, weightsModal.parentFont, selectedFontDetail]);
 
   useEffect(() => {
     // Cleanup DOM style nodes and preloads when context, tag filter, or mode changes
@@ -1021,9 +1054,13 @@ export const GroupDetails = ({
       <input type="file" ref={weightInputRef} onChange={handleWeightUpload} className="hidden" accept=".ttf,.otf,.woff,.woff2" multiple />
 
       <div ref={fontGridRef} className="w-full xl:max-w-[1600px] mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <motion.div
+          animate={{ opacity: isChangingPage ? 0 : 1 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+        >
           <AnimatePresence>
-            {paginatedFonts.slice(0, renderedCountInPage).map((item, i) => (
+            {fontsToRender.map((item, i) => (
             <FontCard
               key={item.metadata?.taskId || item.id}
               item={item}
@@ -1056,22 +1093,40 @@ export const GroupDetails = ({
               {t('font.no_fonts')} {isOwner && t('font.start_upload')}
             </div>
           )}
-        </div>
+        </motion.div>
 
-        {/* Single sentinel for high-performance lazy scroll loading */}
-        {paginatedFonts.length > renderedCountInPage && (
-          <div ref={sentinelRef} className="h-4 w-full bg-transparent" />
+        {isPublicAllFonts ? (
+          dbFonts.length < publicFontsTotal && (
+            <div className="flex justify-center mt-8 mb-12">
+              <button
+                onClick={handleLoadMorePublicFonts}
+                disabled={isPublicLoadingMore}
+                className="px-8 py-3 bg-[#1c1c1c] hover:bg-[#252525] border border-white/10 hover:border-white/20 text-white rounded-2xl font-semibold transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-lg cursor-pointer flex items-center gap-2"
+              >
+                {isPublicLoadingMore ? (
+                  <>
+                    <span className="w-5 h-5 border-2 border-white/50 border-t-transparent rounded-full animate-spin"></span>
+                    <span>{dir === 'rtl' ? 'جاري التحميل...' : 'Loading...'}</span>
+                  </>
+                ) : (
+                  <span>{dir === 'rtl' ? 'تحميل المزيد' : 'Load More'}</span>
+                )}
+              </button>
+            </div>
+          )
+        ) : (
+          <>
+            {/* Modern Glass Pagination UI */}
+            <FontsPagination
+              currentPage={currentPage}
+              setCurrentPage={handlePageChange}
+              displayFontsLength={displayFonts.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              dir={dir as 'ltr' | 'rtl' | 'auto'}
+              t={t}
+            />
+          </>
         )}
-
-        {/* Modern Glass Pagination UI */}
-        <FontsPagination
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          displayFontsLength={displayFonts.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          dir={dir as 'ltr' | 'rtl' | 'auto'}
-          t={t}
-        />
       </div>
 
       {/* Weights Modal */}

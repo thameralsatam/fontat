@@ -106,7 +106,7 @@ export function useFontTagActions({
     try {
       setLoading(true);
       // Find all public fonts that contain this oldTag
-      const allFonts = await getPublicFonts();
+      const { fonts: allFonts } = await getPublicFonts('newest', 10000, 0);
       const fontsWithOldTag = allFonts.filter(f => f.tags && f.tags.includes(oldTag));
       
       if (fontsWithOldTag.length === 0) {
@@ -144,7 +144,7 @@ export function useFontTagActions({
   const handleDeleteHashtagGlobally = async (tagToDelete: string) => {
     try {
       setLoading(true);
-      const allFonts = await getPublicFonts();
+      const { fonts: allFonts } = await getPublicFonts('newest', 10000, 0);
       const fontsWithTag = allFonts.filter(f => f.tags && f.tags.includes(tagToDelete));
       
       if (fontsWithTag.length === 0) {
