@@ -80,6 +80,12 @@ const AppRoutes = () => {
         </Layout>
       } />
       
+      <Route path="/group/:id/:fontParam" element={
+        <Layout>
+          <GroupDetails />
+        </Layout>
+      } />
+      
       <Route path="/privacy" element={
         <Layout>
           <PrivacyPolicy />

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo, useDeferredValue } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Group, FontWeight, Font } from '../types';
 
@@ -49,6 +49,7 @@ export const GroupDetails = ({
   const { id: paramId, fontParam } = useParams<{ id: string, fontParam: string }>();
   const id = groupId || paramId;
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { t, dir } = useLanguage();
   const { user } = useAuth();
@@ -316,10 +317,40 @@ export const GroupDetails = ({
     onClearTagFilter
   });
   
+  // Base path for pagination URLs
+  const basePath = useMemo(() => {
+    if (isPublicAllFonts) {
+      return '/fonts';
+    }
+    if (location.pathname.startsWith('/group/')) {
+      return `/group/${id}`;
+    }
+    return '/my-fonts';
+  }, [isPublicAllFonts, id, location.pathname]);
+
   // Pagination & Sorting State (15 items per page)
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const isPageNum = fontParam && /^\d+$/.test(fontParam);
+    return isPageNum ? parseInt(fontParam!, 10) : 1;
+  });
   const [isChangingPage, setIsChangingPage] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('oldest_first');
+
+  // Keep currentPage synchronized with URL parameter changes (e.g. back/forward navigation)
+  useEffect(() => {
+    if (fontParam) {
+      if (/^\d+$/.test(fontParam)) {
+        const pageVal = parseInt(fontParam, 10);
+        if (currentPage !== pageVal) {
+          setCurrentPage(pageVal);
+        }
+      }
+    } else {
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      }
+    }
+  }, [fontParam]);
 
   const handlePageChange = async (newPage: number) => {
     if (isChangingPage) return;
@@ -344,6 +375,8 @@ export const GroupDetails = ({
     await new Promise(resolve => setTimeout(resolve, 400));
     
     // 4. Now load and render the new page of fonts
+    const pageSuffix = newPage > 1 ? `/${newPage}` : '';
+    navigate(`${basePath}${pageSuffix}${location.search}`);
     setCurrentPage(newPage);
     
     // 5. Very short delay to let state update and fonts mount
@@ -356,9 +389,13 @@ export const GroupDetails = ({
   const [publicFontsTotal, setPublicFontsTotal] = useState(0);
 
   useEffect(() => {
-    // Reset page of fonts when switching contexts, tags, or sort order
-    setCurrentPage(1);
-  }, [id, isPublicAllFonts, publicTagFilters.join(','), sortBy]);
+    // Reset page of fonts in URL and state when switching contexts, tags, or sort order
+    if (fontParam && /^\d+$/.test(fontParam)) {
+      navigate(`${basePath}${location.search}`);
+    } else {
+      setCurrentPage(1);
+    }
+  }, [id, isPublicAllFonts, publicTagFilters.join(','), sortBy, basePath]);
 
 
 
@@ -777,7 +814,7 @@ export const GroupDetails = ({
   useEffect(() => {
     if (loading) return; 
     
-    if (fontParam && !selectedFontDetail) {
+    if (fontParam && !/^\d+$/.test(fontParam) && !selectedFontDetail) {
       const targetFont = isPublicAllFonts 
         ? displayFonts.find(f => f.name === fontParam)
         : displayFonts.find(f => f.id === fontParam);
@@ -786,11 +823,11 @@ export const GroupDetails = ({
         setSelectedFontDetail(targetFont);
         setActiveParentFontId(targetFont.id);
       }
-    } else if (!fontParam && selectedFontDetail) {
+    } else if ((!fontParam || /^\d+$/.test(fontParam)) && selectedFontDetail) {
       setSelectedFontDetail(null);
       setActiveParentFontId(null);
     }
-  }, [fontParam, displayFonts, loading]);
+  }, [fontParam, displayFonts, loading, isPublicAllFonts, selectedFontDetail]);
 
   useEffect(() => {
     const loadFonts = async () => {
@@ -1214,6 +1251,7 @@ export const GroupDetails = ({
         navigate={navigate}
         isPublicAllFonts={isPublicAllFonts}
         id={id}
+        currentPage={currentPage}
         setSelectedGlyphZoom={setSelectedGlyphZoom}
         isDetailScrolled={isDetailScrolled}
         setIsDetailScrolled={setIsDetailScrolled}

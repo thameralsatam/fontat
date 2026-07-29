@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Download, ExternalLink, Beaker, Copy, Layout, BookOpen, Edit3, Sliders, Sparkles, ChevronDown, Plus, X, Dices } from 'lucide-react';
 import { FontPreviewSandbox } from './FontPreviewSandbox';
@@ -14,6 +15,7 @@ interface DetailedFontViewProps {
   navigate: ReturnType<typeof import('react-router-dom').useNavigate>;
   isPublicAllFonts: boolean;
   id: string | undefined;
+  currentPage?: number;
   setSelectedGlyphZoom: (zoom: any) => void;
   isDetailScrolled: boolean;
   setIsDetailScrolled: (val: boolean) => void;
@@ -66,6 +68,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
   navigate,
   isPublicAllFonts,
   id,
+  currentPage,
   setSelectedGlyphZoom,
   isDetailScrolled,
   setIsDetailScrolled,
@@ -110,6 +113,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
   formatFontName
 }) => {
   const { t } = useLanguage();
+  const location = useLocation();
   if (!selectedFontDetail) return null;
 
   return (
@@ -134,7 +138,14 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
           <div className="flex items-center gap-4">
             <button
               onClick={() => {
-                navigate(isPublicAllFonts ? '/fonts' : `/my-fonts${id ? `?group=${id}` : ''}`);
+                const pageSuffix = currentPage && currentPage > 1 ? `/${currentPage}` : '';
+                if (isPublicAllFonts) {
+                  navigate(`/fonts${pageSuffix}`);
+                } else if (location.pathname.startsWith('/group/')) {
+                  navigate(`/group/${id}${pageSuffix}`);
+                } else {
+                  navigate(`/my-fonts${pageSuffix}${id ? `?group=${id}` : ''}`);
+                }
                 setSelectedFontDetail(null);
                 setSelectedGlyphZoom(null);
                 setIsDetailScrolled(false);
