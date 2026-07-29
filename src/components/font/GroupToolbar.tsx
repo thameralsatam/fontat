@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Upload, X, ArrowUpDown, Check, ChevronDown } from 'lucide-react';
+import { Filter, Upload, X, ArrowUpDown, Check, ChevronDown, RotateCcw } from 'lucide-react';
 import { Group } from '../../types';
 import { SortOption, SortOptionList } from '../../utils/sortUtils';
 
@@ -104,6 +104,22 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
                   <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.preview_text')}</span>
                   <div className="flex items-center gap-1.5">
                     <AnimatePresence>
+                      {(globalPreviewText !== 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)' || fontSize !== 35) && (
+                        <motion.button 
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          onClick={() => { 
+                            setGlobalPreviewText('اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)'); 
+                            setFontSize(35);
+                            setFontPreviews({}); 
+                          }}
+                          className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer flex items-center justify-center"
+                          title={dir === 'rtl' ? 'إعادة ضبط تلقائي' : 'Reset defaults'}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </motion.button>
+                      )}
                       {globalPreviewText && (
                         <motion.button 
                           initial={{ opacity: 0, scale: 0.8 }}
@@ -111,6 +127,7 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
                           exit={{ opacity: 0, scale: 0.8 }}
                           onClick={() => { setGlobalPreviewText(''); setFontPreviews({}); }}
                           className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer"
+                          title={dir === 'rtl' ? 'مسح نص المعاينة' : 'Clear preview text'}
                         >
                           <X className="w-3.5 h-3.5" />
                         </motion.button>
@@ -307,6 +324,22 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
                   <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.preview_text')}</span>
                   <div className="flex items-center gap-1.5">
                     <AnimatePresence>
+                      {(globalPreviewText !== 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)' || fontSize !== 35) && (
+                        <motion.button 
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          onClick={() => { 
+                            setGlobalPreviewText('اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)'); 
+                            setFontSize(35);
+                            setFontPreviews({}); 
+                          }}
+                          className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer flex items-center justify-center"
+                          title={dir === 'rtl' ? 'إعادة ضبط تلقائي' : 'Reset defaults'}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </motion.button>
+                      )}
                       {globalPreviewText && (
                         <motion.button 
                           initial={{ opacity: 0, scale: 0.8 }}
@@ -314,6 +347,7 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
                           exit={{ opacity: 0, scale: 0.8 }}
                           onClick={() => { setGlobalPreviewText(''); setFontPreviews({}); }}
                           className="text-white/35 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all bg-white/5 active:scale-95 cursor-pointer"
+                          title={dir === 'rtl' ? 'مسح نص المعاينة' : 'Clear preview text'}
                         >
                           <X className="w-3.5 h-3.5" />
                         </motion.button>

@@ -363,7 +363,14 @@ export const GroupDetails = ({
 
 
   // Toolbar State
-  const [fontSize, setFontSize] = useState(25); // Default size
+  const [fontSize, setFontSize] = useState(() => {
+    const saved = localStorage.getItem('fontinfo_font_size');
+    return saved ? Number(saved) : 35;
+  }); // Default size
+
+  useEffect(() => {
+    localStorage.setItem('fontinfo_font_size', fontSize.toString());
+  }, [fontSize]);
   const [globalPreviewText, setGlobalPreviewText] = useState(() => {
     if (isPublicAllFonts) {
       return localStorage.getItem('fontinfo_preview_public') || 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
@@ -434,15 +441,19 @@ export const GroupDetails = ({
 
   useEffect(() => {
     if (id || isPublicAllFonts) {
-      fetchData();
+      // Only show full loading spinner on initial load to prevent page unmount and scroll reset
+      const showFull = loading;
+      fetchData(showFull);
     }
   }, [id, user?.id, isPublicAllFonts, publicTagFilters.join(','), sortBy, currentPage]);
 
-  async function fetchData() {
+  async function fetchData(showFullSpinner = false) {
     if (isPublicAllFonts) {
       // Public mode: fetch page of public fonts based on currentPage (offset calculation)
       setGroup(null);
-      setLoading(true);
+      if (showFullSpinner) {
+        setLoading(true);
+      }
       try {
         let p_sort = 'newest';
         if (sortBy === 'oldest_first') p_sort = 'oldest';
@@ -460,7 +471,9 @@ export const GroupDetails = ({
         console.error("Error fetching public fonts:", err);
       } finally {
         setWeightRelationships([]);
-        setLoading(false);
+        if (showFullSpinner) {
+          setLoading(false);
+        }
       }
       return;
     }
@@ -469,12 +482,17 @@ export const GroupDetails = ({
       setGroup(null);
       setDbFonts([]);
       setWeightRelationships([]);
-      setLoading(false);
+      if (showFullSpinner) {
+        setLoading(false);
+      }
       return;
     }
 
     if (!id) return;
 
+    if (showFullSpinner) {
+      setLoading(true);
+    }
     // Fetch group using our group service which maps the fields correctly
     try {
       if (user) {
@@ -504,8 +522,10 @@ export const GroupDetails = ({
     setDbFonts(fontsData || []);
     
     setWeightRelationships([]);
-    setLoading(false);
-  };
+    if (showFullSpinner) {
+      setLoading(false);
+    }
+  }
 
   const ensureFontCardVisible = (fontId: string) => {
     setTimeout(() => {
@@ -525,10 +545,11 @@ export const GroupDetails = ({
 
   const wasUploadingRef = useRef(false);
   useEffect(() => {
-    const isUploading = uploadQueue.some(t => (t.groupId === id || (isPublicAllFonts && !t.groupId)) && (t.status === 'pending' || t.status === 'uploading'));
+    // Track parent font uploads (exclude weights)
+    const isUploading = uploadQueue.some(t => !t.parentFontId && (t.groupId === id || (isPublicAllFonts && !t.groupId)) && (t.status === 'pending' || t.status === 'uploading'));
     if (wasUploadingRef.current && !isUploading) {
       const successfulFontIds = uploadQueue
-        .filter(t => t.status === 'success' && t.fontId && (t.groupId === id || (isPublicAllFonts && !t.groupId)))
+        .filter(t => !t.parentFontId && t.status === 'success' && t.fontId && (t.groupId === id || (isPublicAllFonts && !t.groupId)))
         .map(t => t.fontId!);
 
       fetchData();
@@ -536,15 +557,24 @@ export const GroupDetails = ({
         const lastFontId = successfulFontIds[successfulFontIds.length - 1];
         ensureFontCardVisible(lastFontId);
       }
+    }
+    wasUploadingRef.current = isUploading;
+  }, [uploadQueue, id, isPublicAllFonts]);
 
+  const wasWeightsUploadingRef = useRef(false);
+  useEffect(() => {
+    // Track weight uploads (must have parentFontId)
+    const isWeightsUploading = uploadQueue.some(t => t.parentFontId && (t.status === 'pending' || t.status === 'uploading'));
+    if (wasWeightsUploadingRef.current && !isWeightsUploading) {
+      // Weight uploads finished! Refresh only the weights inside the modal smoothly without reloading the main fonts
       if (weightsModal.isOpen && weightsModal.parentFont) {
         getFontWeights(weightsModal.parentFont.id).then(weights => {
           setWeightsModal(prev => ({ ...prev, weights: weights || [] }));
         });
       }
     }
-    wasUploadingRef.current = isUploading;
-  }, [uploadQueue, id, isPublicAllFonts, weightsModal.isOpen, weightsModal.parentFont]);
+    wasWeightsUploadingRef.current = isWeightsUploading;
+  }, [uploadQueue, weightsModal.isOpen, weightsModal.parentFont]);
 
   const { childFontIds, parentFontIds } = useMemo(() => {
     const children = new Set<string>();
@@ -1114,6 +1144,7 @@ export const GroupDetails = ({
         setDeleteWeightModal={setDeleteWeightModal}
         setUploadingWeightFor={setUploadingWeightFor}
         weightInputRef={weightInputRef}
+        fontSize={fontSize}
       />
 
       {/* Tags Selection Modal */}

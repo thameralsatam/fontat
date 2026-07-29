@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { Download, Trash2, Plus, Check, X } from 'lucide-react';
@@ -21,7 +21,104 @@ interface FontWeightsModalProps {
   setDeleteWeightModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean; childFontId: string | null }>>;
   setUploadingWeightFor: React.Dispatch<React.SetStateAction<string | null>>;
   weightInputRef: React.RefObject<HTMLInputElement | null>;
+  fontSize: number;
 }
+
+interface WeightRowProps {
+  w: any;
+  dir: 'rtl' | 'ltr' | 'auto';
+  modalPulseFontId: string | null;
+  handleDownload: (url: string, name: string) => void;
+  isOwner: boolean;
+  setDeleteWeightModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean; childFontId: string | null }>>;
+  getPreviewText: (id: string) => string;
+  handlePreviewChange: (id: string, text: string) => void;
+  fontSize: number;
+}
+
+const WeightRow: React.FC<WeightRowProps> = ({
+  w,
+  dir,
+  modalPulseFontId,
+  handleDownload,
+  isOwner,
+  setDeleteWeightModal,
+  getPreviewText,
+  handlePreviewChange,
+  fontSize
+}) => {
+  const [showSuccessCheck, setShowSuccessCheck] = useState(false);
+
+  useEffect(() => {
+    if (w.font?.metadata?.status === 'success') {
+      const completedAt = w.font.metadata.completedAt || Date.now();
+      const elapsed = Date.now() - completedAt;
+      const remaining = 5000 - elapsed;
+      if (remaining > 0) {
+        setShowSuccessCheck(true);
+        const timer = setTimeout(() => {
+          setShowSuccessCheck(false);
+        }, remaining);
+        return () => clearTimeout(timer);
+      } else {
+        setShowSuccessCheck(false);
+      }
+    } else {
+      setShowSuccessCheck(false);
+    }
+  }, [w.font?.metadata?.status, w.font?.metadata?.completedAt]);
+
+  return (
+    <div className={`bg-white/5 p-3 rounded-xl border flex flex-col gap-1.5 group/item transition-all duration-700 ${modalPulseFontId === w.font?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
+       <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
+               <span style={{ fontFamily: w.font?.name ? `"${w.font.name}", sans-serif` : 'sans-serif', fontSize: '14px', lineHeight: 1 }}>{dir === 'rtl' ? 'ع' : 'a'}</span>
+            </div>
+            <div className="flex items-center gap-2 min-w-0">
+              <p dir="ltr" className="text-white font-medium text-xs truncate max-w-[150px] text-left">{formatFontName(w.font?.name || '')}</p>
+              {showSuccessCheck && <Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 animate-pulse" />}
+            </div>
+          </div>
+          <div className="flex items-center">
+            {!w.font?.metadata?.isUploading && (
+              <>
+                <button onClick={(e) => { e.stopPropagation(); handleDownload(w.font?.download_url!, w.font?.name!); }} className="p-2 -mr-1 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white transition-colors cursor-pointer">
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+                {isOwner && !w.isOptimistic && (
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteWeightModal({ isOpen: true, childFontId: w.childFontId || null }); }} className="p-2 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-30 hover:text-red-400 transition-colors cursor-pointer" title="Delete Weight">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+       </div>
+       <textarea 
+         value={getPreviewText(w.font?.id || '')} 
+         onChange={(e) => handlePreviewChange(w.font?.id || '', e.target.value)} 
+         className="w-full bg-transparent border-none outline-none text-white font-light resize-none overflow-hidden whitespace-nowrap" 
+         style={{ 
+           fontFamily: w.font?.name ? `"${w.font.name}", sans-serif` : 'sans-serif', 
+           fontSize: `${fontSize}px`, 
+           lineHeight: '1.6', 
+           height: `${fontSize * 1.6 + 12}px`,
+           minHeight: `${fontSize * 1.6 + 12}px`,
+           maxHeight: `${fontSize * 1.6 + 12}px`,
+           paddingTop: '6px',
+           paddingBottom: '6px',
+           display: '-webkit-box', 
+           WebkitLineClamp: 1, 
+           WebkitBoxOrient: 'vertical', 
+           whiteSpace: 'nowrap',
+           fontFeatureSettings: 'normal', 
+           fontVariantLigatures: 'normal' 
+         }} 
+       />
+    </div>
+  );
+};
 
 export const FontWeightsModal: React.FC<FontWeightsModalProps> = ({
   weightsModal,
@@ -37,7 +134,8 @@ export const FontWeightsModal: React.FC<FontWeightsModalProps> = ({
   isOwner,
   setDeleteWeightModal,
   setUploadingWeightFor,
-  weightInputRef
+  weightInputRef,
+  fontSize
 }) => {
   return createPortal(
     <AnimatePresence>
@@ -57,23 +155,43 @@ export const FontWeightsModal: React.FC<FontWeightsModalProps> = ({
               </button>
             </div>
 
-            <div className="overflow-y-auto pr-2 custom-scrollbar max-h-[310px] min-h-0 space-y-2">
+            <div className="overflow-y-auto pr-2 custom-scrollbar max-h-[420px] min-h-0 space-y-3">
               {/* Parent Font */}
-              <div className={`bg-white/5 p-2 rounded-xl border flex flex-col gap-1 relative overflow-hidden transition-all duration-700 ${modalPulseFontId === weightsModal.parentFont?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
+              <div className={`bg-white/5 p-3 rounded-xl border flex flex-col gap-1.5 relative overflow-hidden transition-all duration-700 ${modalPulseFontId === weightsModal.parentFont?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
-                         <span style={{ fontFamily: `"${weightsModal.parentFont?.name}", sans-serif`, fontSize: '14px', lineHeight: 1 }}>{dir === 'rtl' ? 'ع' : 'a'}</span>
-                      </div>
-                      <div>
-                        <p className="text-white font-bold text-xs truncate max-w-[150px]">{formatFontName(weightsModal.parentFont?.name || '')}</p>
-                      </div>
+                       <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
+                          <span style={{ fontFamily: `"${weightsModal.parentFont?.name}", sans-serif`, fontSize: '14px', lineHeight: 1 }}>{dir === 'rtl' ? 'ع' : 'a'}</span>
+                       </div>
+                       <div>
+                         <p className="text-white font-bold text-xs truncate max-w-[150px]">{formatFontName(weightsModal.parentFont?.name || '')}</p>
+                       </div>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); handleDownload(weightsModal.parentFont?.download_url!, weightsModal.parentFont?.name!); }} className="p-1.5 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white transition-colors cursor-pointer">
                       <Download className="w-3.5 h-3.5" />
                     </button>
                  </div>
-                 <textarea value={getPreviewText(weightsModal.parentFont?.id || '')} onChange={(e) => handlePreviewChange(weightsModal.parentFont?.id || '', e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-light resize-none h-8 overflow-hidden" style={{ fontFamily: weightsModal.parentFont?.name ? `"${weightsModal.parentFont?.name}", sans-serif` : 'sans-serif', fontSize: '15px', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', fontFeatureSettings: 'normal', fontVariantLigatures: 'normal' }} />
+                 <textarea 
+                   value={getPreviewText(weightsModal.parentFont?.id || '')} 
+                   onChange={(e) => handlePreviewChange(weightsModal.parentFont?.id || '', e.target.value)} 
+                   className="w-full bg-transparent border-none outline-none text-white font-light resize-none overflow-hidden whitespace-nowrap" 
+                   style={{ 
+                     fontFamily: weightsModal.parentFont?.name ? `"${weightsModal.parentFont?.name}", sans-serif` : 'sans-serif', 
+                     fontSize: `${fontSize}px`, 
+                     lineHeight: '1.6', 
+                     height: `${fontSize * 1.6 + 12}px`,
+                     minHeight: `${fontSize * 1.6 + 12}px`,
+                     maxHeight: `${fontSize * 1.6 + 12}px`,
+                     paddingTop: '6px',
+                     paddingBottom: '6px',
+                     display: '-webkit-box', 
+                     WebkitLineClamp: 1, 
+                     WebkitBoxOrient: 'vertical', 
+                     whiteSpace: 'nowrap',
+                     fontFeatureSettings: 'normal', 
+                     fontVariantLigatures: 'normal' 
+                   }} 
+                 />
               </div>
 
               {/* Weights */}
@@ -147,34 +265,18 @@ export const FontWeightsModal: React.FC<FontWeightsModalProps> = ({
                 if (allWeights.length === 0) return <p className="text-center text-white opacity-30 py-8 text-sm">{t('font.no_weights')}</p>;
 
                 return allWeights.map((w) => (
-                  <div key={w.font?.metadata?.taskId || w.id} className={`bg-white/5 p-2 rounded-xl border flex flex-col gap-1 group/item transition-all duration-700 ${modalPulseFontId === w.font?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
-                             <span style={{ fontFamily: w.font?.name ? `"${w.font.name}", sans-serif` : 'sans-serif', fontSize: '14px', lineHeight: 1 }}>{dir === 'rtl' ? 'ع' : 'a'}</span>
-                          </div>
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p dir="ltr" className="text-white font-medium text-xs truncate max-w-[150px] text-left">{formatFontName(w.font?.name || '')}</p>
-                            {w.font?.metadata?.status === 'success' && <Check className="w-3.5 h-3.5 text-white flex-shrink-0" />}
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          {!w.font?.metadata?.isUploading && (
-                            <>
-                              <button onClick={(e) => { e.stopPropagation(); handleDownload(w.font?.download_url!, w.font?.name!); }} className="p-2 -mr-1 hover:bg-white/10 rounded-full text-white opacity-50 hover:text-white transition-colors cursor-pointer">
-                                <Download className="w-3.5 h-3.5" />
-                              </button>
-                              {isOwner && !w.isOptimistic && (
-                                <button onClick={(e) => { e.stopPropagation(); setDeleteWeightModal({ isOpen: true, childFontId: w.childFontId || null }); }} className="p-2 -mr-1 hover:bg-red-500/10 rounded-full text-white opacity-30 hover:text-red-400 transition-colors cursor-pointer" title="Delete Weight">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                     </div>
-                     <textarea value={getPreviewText(w.font?.id || '')} onChange={(e) => handlePreviewChange(w.font?.id || '', e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-light resize-none h-8 overflow-hidden" style={{ fontFamily: w.font?.name ? `"${w.font.name}", sans-serif` : 'sans-serif', fontSize: '15px', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', fontFeatureSettings: 'normal', fontVariantLigatures: 'normal' }} />
-                  </div>
+                  <WeightRow
+                    key={w.font?.metadata?.taskId || w.id}
+                    w={w}
+                    dir={dir}
+                    modalPulseFontId={modalPulseFontId}
+                    handleDownload={handleDownload}
+                    isOwner={isOwner}
+                    setDeleteWeightModal={setDeleteWeightModal}
+                    getPreviewText={getPreviewText}
+                    handlePreviewChange={handlePreviewChange}
+                    fontSize={fontSize}
+                  />
                 ));
               })()}
             </div>
