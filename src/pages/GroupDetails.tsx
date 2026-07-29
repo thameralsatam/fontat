@@ -325,54 +325,35 @@ export const GroupDetails = ({
     if (isChangingPage) return;
     setIsChangingPage(true);
     
-    // Smooth fade out
+    // 1. Smooth fade out (wait 250ms for opacity to reach 0)
     await new Promise(resolve => setTimeout(resolve, 250));
     
-    setCurrentPage(newPage);
-    
-    // Try multiple ways to scroll to top for full iframe/browser compatibility
+    // 2. Scroll to top (while fonts are completely invisible)
     try {
       document.documentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     
-    // Additional instant fallback to ensure it reaches top even if smooth scroll gets interrupted
+    // Additional instant fallback to ensure it reaches top
     setTimeout(() => {
       window.scrollTo(0, 0);
     }, 450);
     
-    // Wait for the scroll and content update to align naturally
-    await new Promise(resolve => setTimeout(resolve, 350));
+    // 3. Wait for the scroll animation to complete (400ms)
+    await new Promise(resolve => setTimeout(resolve, 400));
     
+    // 4. Now load and render the new page of fonts
+    setCurrentPage(newPage);
+    
+    // 5. Very short delay to let state update and fonts mount
+    await new Promise(resolve => setTimeout(resolve, 150));
+    
+    // 6. Smooth fade back in
     setIsChangingPage(false);
   };
 
   const [publicFontsTotal, setPublicFontsTotal] = useState(0);
-  const [isPublicLoadingMore, setIsPublicLoadingMore] = useState(false);
-
-  const handleLoadMorePublicFonts = async () => {
-    if (isPublicLoadingMore) return;
-    setIsPublicLoadingMore(true);
-    try {
-      let p_sort = 'newest';
-      if (sortBy === 'oldest_first') p_sort = 'oldest';
-      else if (sortBy === 'newest_first') p_sort = 'newest';
-      else if (sortBy === 'alpha_az') p_sort = 'name_asc';
-
-      const { fonts, totalCount } = await getPublicFonts(p_sort, 15, dbFonts.length);
-      setDbFonts(prev => {
-        const existingIds = new Set(prev.map(f => f.id));
-        const uniqueNew = fonts.filter(f => !existingIds.has(f.id));
-        return [...prev, ...uniqueNew];
-      });
-      setPublicFontsTotal(totalCount);
-    } catch (err) {
-      console.error("Error loading more public fonts:", err);
-    } finally {
-      setIsPublicLoadingMore(false);
-    }
-  };
 
   useEffect(() => {
     // Reset page of fonts when switching contexts, tags, or sort order
@@ -455,11 +436,11 @@ export const GroupDetails = ({
     if (id || isPublicAllFonts) {
       fetchData();
     }
-  }, [id, user?.id, isPublicAllFonts, publicTagFilters.join(','), sortBy]);
+  }, [id, user?.id, isPublicAllFonts, publicTagFilters.join(','), sortBy, currentPage]);
 
   async function fetchData() {
     if (isPublicAllFonts) {
-      // Public mode: fetch first page of public fonts, ignoring group logic
+      // Public mode: fetch page of public fonts based on currentPage (offset calculation)
       setGroup(null);
       setLoading(true);
       try {
@@ -468,7 +449,11 @@ export const GroupDetails = ({
         else if (sortBy === 'newest_first') p_sort = 'newest';
         else if (sortBy === 'alpha_az') p_sort = 'name_asc';
 
-        const { fonts, totalCount } = await getPublicFonts(p_sort, 15, 0);
+        // If tag filters are active, fetch a larger pool (300 fonts) so we can filter client-side
+        const limit = publicTagFilters.length > 0 ? 300 : 15;
+        const offset = publicTagFilters.length > 0 ? 0 : (currentPage - 1) * 15;
+
+        const { fonts, totalCount } = await getPublicFonts(p_sort, limit, offset);
         setDbFonts(fonts || []);
         setPublicFontsTotal(totalCount);
       } catch (err) {
@@ -666,10 +651,14 @@ export const GroupDetails = ({
 
   const fontsToRender = useMemo(() => {
     if (isPublicAllFonts) {
-      return displayFonts; // Show all loaded public fonts since they are already server-side paginated
+      if (publicTagFilters.length > 0) {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return displayFonts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+      }
+      return displayFonts; // Already paginated to 15 items server-side
     }
     return paginatedFonts;
-  }, [isPublicAllFonts, displayFonts, paginatedFonts]);
+  }, [isPublicAllFonts, displayFonts, paginatedFonts, publicTagFilters.length, currentPage]);
 
   // Dynamic weights loading for active visible/rendered fonts in the current page via secure RPC
   useEffect(() => {
@@ -1095,38 +1084,18 @@ export const GroupDetails = ({
           )}
         </motion.div>
 
-        {isPublicAllFonts ? (
-          dbFonts.length < publicFontsTotal && (
-            <div className="flex justify-center mt-8 mb-12">
-              <button
-                onClick={handleLoadMorePublicFonts}
-                disabled={isPublicLoadingMore}
-                className="px-8 py-3 bg-[#1c1c1c] hover:bg-[#252525] border border-white/10 hover:border-white/20 text-white rounded-2xl font-semibold transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-lg cursor-pointer flex items-center gap-2"
-              >
-                {isPublicLoadingMore ? (
-                  <>
-                    <span className="w-5 h-5 border-2 border-white/50 border-t-transparent rounded-full animate-spin"></span>
-                    <span>{dir === 'rtl' ? 'جاري التحميل...' : 'Loading...'}</span>
-                  </>
-                ) : (
-                  <span>{dir === 'rtl' ? 'تحميل المزيد' : 'Load More'}</span>
-                )}
-              </button>
-            </div>
-          )
-        ) : (
-          <>
-            {/* Modern Glass Pagination UI */}
-            <FontsPagination
-              currentPage={currentPage}
-              setCurrentPage={handlePageChange}
-              displayFontsLength={displayFonts.length}
-              itemsPerPage={ITEMS_PER_PAGE}
-              dir={dir as 'ltr' | 'rtl' | 'auto'}
-              t={t}
-            />
-          </>
-        )}
+        {/* Unified Modern Glass Pagination UI */}
+        <FontsPagination
+          currentPage={currentPage}
+          setCurrentPage={handlePageChange}
+          displayFontsLength={
+            isPublicAllFonts
+              ? (publicTagFilters.length > 0 ? displayFonts.length : publicFontsTotal)
+              : displayFonts.length
+          }
+          itemsPerPage={ITEMS_PER_PAGE}
+          dir={dir as 'ltr' | 'rtl' | 'auto'}
+        />
       </div>
 
       {/* Weights Modal */}
