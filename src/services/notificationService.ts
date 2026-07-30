@@ -47,19 +47,12 @@ export const uploadNotificationImage = async (file: File): Promise<string> => {
   return data.publicUrl;
 };
 
-// Delete notification (Admin via RPC)
+// Delete notification (Admin via table delete)
 export const deleteNotification = async (id: string): Promise<void> => {
-  const { error } = await supabase.rpc('manage_notification', {
-    p_action: 'delete',
-    p_id: id
-  });
+  const { error } = await supabase.from('notifications').delete().eq('id', id);
   if (error) {
-    // Fallback to delete_notification RPC if manage_notification is not used
-    const { error: fallbackError } = await supabase.rpc('delete_notification', { p_id: id });
-    if (fallbackError) {
-      console.error("Error deleting notification via RPC:", error.message);
-      throw error;
-    }
+    console.error("Error deleting notification:", error.message);
+    throw error;
   }
 };
 

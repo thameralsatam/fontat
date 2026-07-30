@@ -7,10 +7,7 @@ export const getGroups = async (): Promise<Group[]> => {
     return [];
   }
 
-  const { data, error } = await supabase
-    .from('groups')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const { data, error } = await supabase.rpc('get_my_groups');
 
   if (error) throw error;
   if (!data) return [];
@@ -20,9 +17,8 @@ export const getGroups = async (): Promise<Group[]> => {
     user_id: item.user_id,
     name: item.name,
     description: item.description,
-    is_public: item.is_public,
+    is_public: false,
     created_at: item.created_at,
-    updated_at: item.updated_at,
   }));
 
   return Array.from(new Map(mappedData.map((g: Group) => [g.id, g])).values());
