@@ -724,9 +724,9 @@ export const Lab = () => {
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {history.map(item => (
+                  {history.map((item, idx) => (
                     <button
-                      key={item.id}
+                      key={item.id ? `hist-${item.id}` : `hist-idx-${idx}`}
                       onClick={() => handleLoadHistoryItem(item.id)}
                       className="w-full flex flex-row justify-between items-center p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all"
                       dir="rtl"
@@ -806,7 +806,7 @@ export const Lab = () => {
             <div className="bg-[#141414] p-6 rounded-3xl border border-white/5">
               <h2 className="text-lg font-bold mb-4">{t('lab.full_info')}</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-white opacity-60 mb-6">
-                {Object.entries(font.names).map(([key, value]: any) => {
+                {Object.entries(font.names).map(([key, value]: any, idx) => {
                   let displayValue = '';
                   if (typeof value === 'object' && value !== null) {
                     displayValue = value.en || value['ar-AE'] || Object.values(value)[0] || '';
@@ -815,7 +815,7 @@ export const Lab = () => {
                   }
                   
                   return (
-                    <div key={key} className="break-words">
+                    <div key={`font-info-${key}-${idx}`} className="break-words">
                       <span className="block text-white opacity-40 text-xs uppercase">{key}</span>
                       <span className="block w-full overflow-hidden text-ellipsis">{displayValue}</span>
                     </div>
@@ -861,7 +861,7 @@ export const Lab = () => {
               >
                 {filteredGlyphs.slice(0, renderedGlyphCount).map((glyph, idx) => (
                   <div
-                    key={`${glyph.unicode || idx}-${glyph.index}`}
+                    key={`lab-glyph-${glyph.unicode || idx}-${glyph.index}-${idx}`}
                     onClick={() => {
                       setSelectedGlyphZoom({ char: glyph.char, name: glyph.name, svgPath: glyph.svgPath, svgViewBox: glyph.svgViewBox });
                     }}

@@ -296,20 +296,13 @@ export const getFontWeights = async (parentFontId: string): Promise<FontWeight[]
   return Array.from(new Map(mappedWeights.map((w: FontWeight) => [w.id, w])).values());
 };
 
-export const getAllWeightRelationships = async (): Promise<{ parent_font_id: string, child_font_id: string }[]> => {
-  const { data, error } = await supabase
-    .from('font_weights')
-    .select('parent_font_id, child_font_id');
-  if (error) return [];
-  return data || [];
-};
 
-export const getWeightRelationshipsForFonts = async (fontIds: string[]): Promise<{ parent_font_id: string, child_font_id: string }[]> => {
+
+export const getWeightRelationshipsForFonts = async (fontIds: string[]): Promise<{ parent_font_id: string }[]> => {
   if (!fontIds || fontIds.length === 0) return [];
-  const { data, error } = await supabase
-    .from('font_weights')
-    .select('parent_font_id, child_font_id')
-    .in('parent_font_id', fontIds);
+  const { data, error } = await supabase.rpc('get_parent_font_ids', {
+    p_font_ids: fontIds
+  });
   if (error) return [];
   return data || [];
 };

@@ -329,9 +329,9 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                             >
                               {t('font_detail.base')}
                             </button>
-                            {selectedFontWeights.map(w => (
+                            {selectedFontWeights.map((w, wIdx) => (
                               <button
-                                key={w.child_font_id}
+                                key={w.child_font_id ? `weight-${w.child_font_id}` : `weight-idx-${wIdx}`}
                                 onClick={() => {
                                   if (w.child_font) {
                                     setSelectedFontDetail(w.child_font as Font);
@@ -394,9 +394,9 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                   <span className={`font-light ${activeTheme.textSecondary} opacity-40 text-xs`}>{t('font_detail.no_tags')}</span>
                 ) : (
                   <div className="flex flex-wrap gap-1.5 mt-1">
-                    {baseFontForMetadata.tags.map(tag => (
+                    {baseFontForMetadata.tags.map((tag, tagIdx) => (
                       <button 
-                        key={tag} 
+                        key={`${tag}-${tagIdx}`} 
                         onClick={(e) => {
                            e.stopPropagation();
                            navigate(isPublicAllFonts ? '/fonts' : `/my-fonts${id ? `?group=${id}` : ''}`);

@@ -85,8 +85,8 @@ export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
           <div className="flex flex-col gap-5 relative z-10 w-full">
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-3">
-                {publicTagFilters.map(filterTag => (
-                  <div key={filterTag} className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
+                {publicTagFilters.map((filterTag, idx) => (
+                  <div key={`${filterTag}-${idx}`} className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
                     <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
                       <span className="font-mono text-xl font-bold leading-none">#</span>
                     </div>
@@ -243,11 +243,11 @@ export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
                   <div className="text-[11px] font-semibold text-white/40 px-3 py-1.5 uppercase tracking-wider">
                     {dir === 'rtl' ? 'ترتيب الخطوط' : 'Sort Fonts'}
                   </div>
-                  {SortOptionList.OPTIONS.map(opt => {
+                  {SortOptionList.OPTIONS.map((opt, idx) => {
                     const isSelected = sortBy === opt.id;
                     return (
                       <button
-                        key={opt.id}
+                        key={`sort-banner-${opt.id || idx}-${idx}`}
                         onClick={() => {
                           setSortBy(opt.id);
                           setIsSortOpen(false);

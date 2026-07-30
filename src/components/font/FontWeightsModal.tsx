@@ -264,9 +264,9 @@ export const FontWeightsModal: React.FC<FontWeightsModalProps> = ({
 
                 if (allWeights.length === 0) return <p className="text-center text-white opacity-30 py-8 text-sm">{t('font.no_weights')}</p>;
 
-                return allWeights.map((w) => (
+                return allWeights.map((w, wIdx) => (
                   <WeightRow
-                    key={w.font?.metadata?.taskId || w.id}
+                    key={w.isOptimistic ? `opt-${w.id}` : `real-${w.id || w.childFontId || wIdx}`}
                     w={w}
                     dir={dir}
                     modalPulseFontId={modalPulseFontId}

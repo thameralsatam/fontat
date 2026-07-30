@@ -61,9 +61,9 @@ export const TagsEditModal: React.FC<TagsEditModalProps> = ({
                   <div className="text-white/30 text-xs py-2 font-light">{dir === 'rtl' ? 'لا توجد هاشتاغات مضافة بعد لهذا الخط' : 'No tags added yet for this font'}</div>
                 ) : (
                   <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
-                    {currentFont.tags.map(tag => (
+                    {currentFont.tags.map((tag, tagIdx) => (
                       <div 
-                        key={tag} 
+                        key={`${tag}-${tagIdx}`} 
                         className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-xl bg-cyan-500/5 hover:bg-cyan-500/10 border border-cyan-500/10 text-cyan-400 text-xs font-light transition-colors"
                       >
                         <span className="opacity-50 font-mono">#</span>

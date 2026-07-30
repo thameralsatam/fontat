@@ -827,11 +827,11 @@ export function VideoExportModal({
                         { id: '1:1', label: isAr ? '1:1 مربع' : '1:1 Square', desc: isAr ? 'منشور' : 'Post' },
                         { id: '16:9', label: isAr ? '16:9 شاشة' : '16:9 Wide', desc: isAr ? 'عرض' : 'Landscape' },
                         { id: '9:16', label: isAr ? '9:16 طولي' : '9:16 Portrait', desc: isAr ? 'ستوري' : 'Stories' }
-                      ].map(item => {
+                      ].map((item, idx) => {
                         const isActive = aspectRatio === item.id;
                         return (
                           <button
-                            key={item.id}
+                            key={`aspect-${item.id || idx}-${idx}`}
                             onClick={() => {
                               resetExport();
                               setAspectRatio(item.id as AspectRatioType);
@@ -906,9 +906,9 @@ export function VideoExportModal({
                       <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
                         <span className="text-xs text-white/50" style={{ fontFamily: "'Thmanyah Sans', sans-serif" }}>{t('fps')}</span>
                         <div className="grid grid-cols-4 gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
-                          {[24, 30, 60, 120].map(val => (
+                          {[24, 30, 60, 120].map((val, idx) => (
                             <button
-                              key={val}
+                              key={`fps-${val}-${idx}`}
                               onClick={() => handleFpsChange(val)}
                               disabled={isExporting}
                               className={`py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
@@ -933,9 +933,9 @@ export function VideoExportModal({
                             { key: 'medium', label: '720p' },
                             { key: 'high', label: '1080p' },
                             { key: '2k', label: '2K' }
-                          ].map(q => (
+                          ].map((q, idx) => (
                             <button
-                              key={q.key}
+                              key={`qual-${q.key}-${idx}`}
                               onClick={() => handleQualityChange(q.key as QualityType)}
                               disabled={isExporting}
                               className={`py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
@@ -1017,12 +1017,12 @@ export function VideoExportModal({
 
                   {isAxesOpen && (
                     <div className="p-4 sm:p-5 pt-2 border-t border-white/5 bg-black/20 flex flex-col gap-3 max-h-[300px] sm:max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
-                      {axes.map(axis => {
+                      {axes.map((axis, idx) => {
                         const cfg = axesConfig[axis.tag] || { start: axis.minValue, end: axis.maxValue, staticVal: axis.defaultValue, animated: false };
                         
                         return (
                           <div 
-                            key={axis.tag} 
+                            key={`axis-${axis.tag || idx}-${idx}`} 
                             className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
                               cfg.animated 
                                 ? 'bg-cyan-500/[0.04] border-cyan-500/30' 

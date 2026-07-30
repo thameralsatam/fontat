@@ -212,9 +212,9 @@ export const FontCard: React.FC<FontCardProps> = ({
                   dir === 'rtl' ? 'pl-8' : 'pr-8'
                 }`}
               >
-                {(item.tags || item.metadata?.tags || []).map((tag: string) => (
+                {(item.tags || item.metadata?.tags || []).map((tag: string, tagIdx: number) => (
                   <button
-                    key={tag}
+                    key={`${tag}-${tagIdx}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onTagClick?.(tag);

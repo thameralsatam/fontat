@@ -196,8 +196,8 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
 
                 {publicTagFilters.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {publicTagFilters.map(filterTag => (
-                      <div key={filterTag} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-[11px] text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                    {publicTagFilters.map((filterTag, idx) => (
+                      <div key={`${filterTag}-${idx}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-[11px] text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
                         <span className="opacity-50 font-mono">#</span>
                         <span className="font-medium">{filterTag}</span>
                         {onTagClick && (
@@ -252,11 +252,11 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
                       <div className="text-[11px] font-semibold text-white/40 px-3 py-1.5 uppercase tracking-wider">
                         {dir === 'rtl' ? 'ترتيب الخطوط' : 'Sort Fonts'}
                       </div>
-                      {SortOptionList.OPTIONS.map(opt => {
+                      {SortOptionList.OPTIONS.map((opt, idx) => {
                         const isSelected = sortBy === opt.id;
                         return (
                           <button
-                            key={opt.id}
+                            key={`sort1-${opt.id || idx}-${idx}`}
                             onClick={() => {
                               setSortBy(opt.id);
                               setIsSortOpen(false);
@@ -430,11 +430,11 @@ export const GroupToolbar: React.FC<GroupToolbarProps> = ({
                       <div className="text-[11px] font-semibold text-white/40 px-3 py-1.5 uppercase tracking-wider">
                         {dir === 'rtl' ? 'ترتيب الخطوط' : 'Sort Fonts'}
                       </div>
-                      {SortOptionList.OPTIONS.map(opt => {
+                      {SortOptionList.OPTIONS.map((opt, idx) => {
                         const isSelected = sortBy === opt.id;
                         return (
                           <button
-                            key={opt.id}
+                            key={`sort2-${opt.id || idx}-${idx}`}
                             onClick={() => {
                               setSortBy(opt.id);
                               setIsSortOpen(false);

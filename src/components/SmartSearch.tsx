@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
-
-void supabase;
 import { formatFontName } from '../utils/text';
 
 export interface SearchResult {
@@ -224,7 +222,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                   </div>
                   {tagsList.map((tag, idx) => (
                     <button
-                      key={tag || idx}
+                      key={`${tag}-${idx}`}
                       onClick={() => handleSelect({ type: 'tag', tag })}
                       className="flex items-center justify-between w-full px-4 py-3.5 hover:bg-white/[0.04] rounded-xl transition-all text-right group border-0"
                     >
@@ -246,7 +244,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                     </div>
                     {results.map((result, idx) => (
                       <button
-                        key={result.id || idx}
+                        key={`res-${result.id || idx}-${idx}`}
                         onClick={() => handleSelect(result)}
                         className="flex flex-col items-start w-full px-4 py-3 hover:bg-white/[0.04] rounded-xl transition-all text-right group mb-0.5 last:mb-0"
                       >

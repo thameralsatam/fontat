@@ -71,8 +71,8 @@ export const SaveFontModal: React.FC<SaveFontModalProps> = ({
                   <option value="new" className="bg-[#16191f] font-bold text-cyan-400">
                     {dir === 'rtl' ? ' إنشاء مجموعة جديدة...' : ' Create new group...'}
                   </option>
-                  {userGroups.map(g => (
-                    <option key={g.id} value={g.id} className="bg-[#16191f]">
+                  {userGroups.map((g, idx) => (
+                    <option key={`user-grp-${g.id || idx}-${idx}`} value={g.id} className="bg-[#16191f]">
                       {g.name}
                     </option>
                   ))}

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { uploadFontToGroup, uploadFontWeight } from '../services/fontService';
 import { useLanguage } from './LanguageContext';
+import { useAuth } from './AuthContext';
 import { Group } from '../types';
 
 export interface UploadTask {
@@ -65,6 +66,18 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   // ✅ FIX: useRef بدل dependency على uploadQueue في addToUploadQueue
   const uploadQueueRef = useRef<UploadTask[]>([]);
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const prevUserIdRef = useRef<string | undefined>(user?.id);
+
+  // reset global state when user changes or logs out
+  useEffect(() => {
+    if (prevUserIdRef.current !== user?.id) {
+      prevUserIdRef.current = user?.id;
+      setUploadQueue([]);
+      setNotifications([]);
+      setActiveGroup(null);
+    }
+  }, [user?.id]);
 
   // نحدّث الـ ref كل ما يتغير الـ state
   useEffect(() => {
@@ -118,7 +131,11 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (filesToProcess.length === 0) return;
 
-    const queueDuplicateNames = new Set(uploadQueueRef.current.map(t => t.file.name));
+    const queueDuplicateNames = new Set(
+      uploadQueueRef.current
+        .filter(t => t.status === 'pending' || t.status === 'uploading')
+        .map(t => t.file.name)
+    );
     const uniqueFiles: File[] = [];
     const duplicateNames: string[] = [];
 

@@ -1,9 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { Group } from '../types';
 
-void supabase;
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -287,11 +286,14 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
   };
 
   // Filter groups for Chips
-  const displayedGroups = groups.filter(g => {
-    if (mode === 'public') return g.is_public;
-    if (mode === 'private') return true;
-    return false;
-  });
+  const displayedGroups = useMemo(() => {
+    const filtered = groups.filter(g => {
+      if (mode === 'public') return g.is_public;
+      if (mode === 'private') return true;
+      return false;
+    });
+    return Array.from(new Map(filtered.map(g => [g.id, g])).values());
+  }, [groups, mode]);
 
   return (
     <div className="pb-32 max-lg:landscape:pb-16 pt-0">
@@ -349,9 +351,9 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             <div className="overflow-x-auto scrollbar-hide flex-1 touch-pan-x relative mask-fade-edges">
             <div className="flex items-center gap-1.5 w-max px-1">
               <AnimatePresence mode='popLayout'>
-                {displayedGroups.map(group => (
+                {displayedGroups.map((group: Group) => (
                   <motion.div
-                    key={group.id}
+                    key={`group-tab-${group.id}`}
                     layout
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -615,9 +617,9 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       >
         <div className="pt-2 pb-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {displayedGroups.map((group) => (
+            {displayedGroups.map((group: Group) => (
               <div 
-                key={group.id}
+                key={`group-modal-${group.id}`}
                 onClick={(e) => {
                   handleGroupClick(e as any, group.id);
                   setIsAllGroupsOpen(false);

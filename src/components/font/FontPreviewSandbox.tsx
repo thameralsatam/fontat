@@ -58,7 +58,7 @@ export const FontPreviewSandbox: React.FC<FontPreviewSandboxProps> = ({
       {/* Absolute subtle background decorative seal */}
       {backdropChars.map((item, idx) => (
         <div
-          key={idx}
+          key={`backdrop-${idx}`}
           className={item.className}
           style={{ 
             fontFamily: `"${selectedFontDetail.name}", sans-serif`,
@@ -76,7 +76,7 @@ export const FontPreviewSandbox: React.FC<FontPreviewSandboxProps> = ({
           <div className="flex gap-2 pb-2 overflow-x-auto select-none no-scrollbar border-b border-white/[0.03] shrink-0">
             {POEMS.map((poem, idx) => (
               <button
-                key={poem.title}
+                key={`poem-${poem.title || idx}-${idx}`}
                 onClick={() => setSelectedPoemIndex(idx)}
                 className={`px-4 py-2 rounded-2xl cursor-pointer text-xs font-bold whitespace-nowrap transition-all flex flex-col items-start gap-1 border ${
                   selectedPoemIndex === idx
@@ -201,7 +201,7 @@ export const FontPreviewSandbox: React.FC<FontPreviewSandboxProps> = ({
               <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(45px,1fr))] gap-1.5 sm:gap-2 pb-8 p-1">
                 {filteredGlyphs.slice(0, renderedGlyphCount).map((glyph, idx) => (
                   <button
-                    key={`${glyph.unicode || idx}-${glyph.index}`}
+                    key={`sandbox-glyph-${glyph.unicode || idx}-${glyph.index}-${idx}`}
                     onClick={() => setSelectedGlyphZoom({ char: glyph.char, name: glyph.name, svgPath: glyph.svgPath, svgViewBox: glyph.svgViewBox })}
                     className="h-[40px] md:h-[45px] p-2 rounded-xl bg-white/[0.02] border border-white/5 text-white/90 hover:border-white hover:text-white hover:bg-white/5 hover:scale-[1.12] flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 shadow-lg shadow-black/30"
                     style={{

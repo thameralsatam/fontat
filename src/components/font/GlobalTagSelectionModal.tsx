@@ -61,9 +61,9 @@ export const GlobalTagSelectionModal: React.FC<GlobalTagSelectionModalProps> = (
                 <div className="text-sm text-white/40 py-8 text-center font-light">{dir === 'rtl' ? 'لا توجد هاشتاغات متاحة حالياً للتصنيف' : 'No tags available for filtering'}</div>
               ) : (
                 <div className="flex flex-wrap gap-2 pt-1" dir="rtl">
-                  {availableTags.map(tag => (
+                  {availableTags.map((tag, tagIdx) => (
                     <button
-                      key={tag}
+                      key={`${tag}-${tagIdx}`}
                       onClick={() => {
                         onTagClick?.(tag);
                       }}

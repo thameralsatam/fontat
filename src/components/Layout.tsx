@@ -228,9 +228,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
        {/* Persistent Notifications - Top Corner */}
        <div className={`fixed top-4 z-[999] flex flex-col gap-2 pointer-events-auto ${dir === 'rtl' ? 'left-4' : 'right-4'}`}>
          <AnimatePresence>
-           {notifications.map(notification => (
+           {notifications.map((notification, idx) => (
              <NotificationItem 
-               key={notification.id} 
+               key={notification.id ? `notif-${notification.id}` : `notif-${idx}`} 
                notification={notification} 
                onRemove={() => removeNotification(notification.id)}
              />
@@ -283,7 +283,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           {/* Desktop Navigation Floating Dock */}
           <nav className="hidden lg:flex items-center p-1.5 rounded-full bg-[#121217]/85 border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] gap-1 relative">
             {navItems.map(({ id, label, icon }) => {
-              const isActive = location.pathname === id;
+              const isActive = id === '/' ? location.pathname === '/' : (location.pathname === id || location.pathname.startsWith(`${id}/`));
               return (
                 <Link
                   key={id}
@@ -438,7 +438,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 padding:  "8px 6px",
               }}>
                 {navItems.map(({ id, icon, label }) => {
-                  const isActive  = location.pathname === id;
+                  const isActive = id === '/' ? location.pathname === '/' : (location.pathname === id || location.pathname.startsWith(`${id}/`));
 
                   return (
                     <Link

@@ -3,7 +3,6 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Group, FontWeight, Font } from '../types';
 
-void supabase;
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -11,7 +10,6 @@ import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts, g
 import { getGroups } from '../services/groupService';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFontHistory } from '../lib/db';
-// @ts-ignore
 
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { FontCard } from '../components/font/FontCard';
@@ -281,7 +279,7 @@ export const GroupDetails = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Weights System State
-  const [weightRelationships, setWeightRelationships] = useState<FontWeight[]>([]);
+  const [weightRelationships, setWeightRelationships] = useState<{ parent_font_id: string }[]>([]);
   const [weightsModal, setWeightsModal] = useState<{ isOpen: boolean; parentFont: Font | null; weights: FontWeight[] }>({
     isOpen: false,
     parentFont: null,
@@ -437,7 +435,7 @@ export const GroupDetails = ({
   }, [id, isPublicAllFonts]);
   const [fontPreviews, setFontPreviews] = useState<Record<string, string>>({});
   const [pulseFontId, setPulseFontId] = useState<string | null>(null);
-  const [modalPulseFontId, setModalPulseFontId] = useState<string | null>(null);
+  const [modalPulseFontId] = useState<string | null>(null);
   const [processedHighlightedId, setProcessedHighlightedId] = useState<number | null>(null);
   const [, setShowFuturisticHint] = useState(() => {
     return !localStorage.getItem('fontinfo_hint_dismissed');
@@ -447,6 +445,10 @@ export const GroupDetails = ({
   const fontGridRef = useRef<HTMLDivElement>(null);
 
   const uploadedSessionFontsRef = useRef<Record<string, { localUrl: string, name: string, taskId: string, completedAt?: number }>>({});
+
+  useEffect(() => {
+    uploadedSessionFontsRef.current = {};
+  }, [user?.id, id]);
 
   useEffect(() => {
     uploadQueue.forEach(task => {
@@ -613,14 +615,14 @@ export const GroupDetails = ({
     wasWeightsUploadingRef.current = isWeightsUploading;
   }, [uploadQueue, weightsModal.isOpen, weightsModal.parentFont]);
 
-  const { childFontIds, parentFontIds } = useMemo(() => {
-    const children = new Set<string>();
+  const parentFontIds = useMemo(() => {
     const parents = new Set<string>();
     weightRelationships.forEach(rel => {
-      children.add(rel.child_font_id);
-      parents.add(rel.parent_font_id);
+      if (rel.parent_font_id) {
+        parents.add(rel.parent_font_id);
+      }
     });
-    return { childFontIds: children, parentFontIds: parents };
+    return parents;
   }, [weightRelationships]);
 
   const displayFonts = useMemo(() => {
@@ -675,12 +677,22 @@ export const GroupDetails = ({
     }));
 
     const filteredOptimisticItems = optimisticItems.filter(optItem => {
-      if (optItem.metadata?.status !== 'success') return true;
       const realFontId = optItem.id;
-      return !mappedDbFonts.some(dbFont => dbFont.id === realFontId);
+      if (mappedDbFonts.some(dbFont => dbFont.id === realFontId)) return false;
+      const taskId = optItem.metadata?.taskId;
+      if (taskId && mappedDbFonts.some(dbFont => dbFont.metadata?.taskId === taskId)) return false;
+      return true;
     });
 
-    const allFonts = [...mappedDbFonts, ...filteredOptimisticItems].filter(f => !childFontIds.has(f.id));
+    const fontMap = new Map<string, Font & { sessionLocalUrl?: string }>();
+    [...mappedDbFonts, ...filteredOptimisticItems].forEach(f => {
+      const uniqueKey = f.id || f.metadata?.taskId;
+      if (uniqueKey && !fontMap.has(uniqueKey)) {
+        fontMap.set(uniqueKey, f);
+      }
+    });
+
+    const allFonts = Array.from(fontMap.values());
 
     // Sort fonts according to selected sortBy rule (default: oldest to newest)
     const sortedFonts = sortFonts(allFonts, sortBy);
@@ -708,7 +720,7 @@ export const GroupDetails = ({
     }
 
     return sortedFonts;
-  }, [dbFonts, uploadQueue, id, user, childFontIds, isPublicAllFonts, publicTagFilters.join(','), sortBy]);
+  }, [dbFonts, uploadQueue, id, user, isPublicAllFonts, publicTagFilters.join(','), sortBy]);
 
   const ITEMS_PER_PAGE = 15;
   const paginatedFonts = useMemo(() => {
@@ -748,16 +760,14 @@ export const GroupDetails = ({
         
         if (!rels || rels.length === 0) return;
         
-        const newRels: FontWeight[] = rels.map(r => ({
-           id: `${r.parent_font_id}-${r.child_font_id}`,
+        const newRels = rels.map(r => ({
            parent_font_id: r.parent_font_id,
-           child_font_id: r.child_font_id,
-        }) as FontWeight);
+        }));
 
         if (isSubscribed && newRels.length > 0) {
           setWeightRelationships(prev => {
             const combined = [...prev, ...newRels];
-            const unique = Array.from(new Map(combined.map(r => [`${r.parent_font_id}-${r.child_font_id}`, r])).values());
+            const unique = Array.from(new Map(combined.map(r => [r.parent_font_id, r])).values());
             return unique;
           });
         }
@@ -781,8 +791,7 @@ export const GroupDetails = ({
     if (loading) return; 
 
     if (highlightedFont?.ts && highlightedFont.ts !== processedHighlightedId) {
-      const parentRel = weightRelationships.find(w => w.child_font_id === highlightedFont.id);
-      const targetId = parentRel ? parentRel.parent_font_id : highlightedFont.id;
+      const targetId = highlightedFont.id;
 
       if (displayFonts.some(f => f.id === targetId)) {
         setTimeout(() => {
@@ -791,17 +800,6 @@ export const GroupDetails = ({
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             setPulseFontId(targetId);
             setProcessedHighlightedId(highlightedFont.ts);
-            
-            if (parentRel) {
-               const parentFont = displayFonts.find(f => f.id === targetId);
-               if (parentFont) {
-                 setTimeout(() => {
-                   openWeightsModal(parentFont);
-                   setModalPulseFontId(highlightedFont.id);
-                   setTimeout(() => setModalPulseFontId(null), 3000);
-                 }, 1200); // Give user enough time to see the main card pulse before opening modal
-               }
-            }
             
             // Remove pulse after 3 seconds (fade out handled by CSS transition)
             setTimeout(() => setPulseFontId(null), 3000);
@@ -1118,7 +1116,7 @@ export const GroupDetails = ({
           <AnimatePresence>
             {fontsToRender.map((item, i) => (
             <FontCard
-              key={item.metadata?.taskId || item.id}
+              key={item.id ? `font-${item.id}` : `task-${item.metadata?.taskId || i}`}
               item={item}
               index={i}
               pulseFontId={pulseFontId}
