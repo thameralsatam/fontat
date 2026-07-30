@@ -49,8 +49,19 @@ export const deleteGroupSmart = async (groupId: string) => {
     p_group_id: groupId
   });
 
-  if (error) throw error;
-  if (!data || !data.success) throw new Error(data?.message || 'Failed to delete group');
+  if (error) {
+    throw new Error(error.message || 'Failed to delete group');
+  }
+
+  if (data && data.success === false) {
+    throw new Error(data.message || 'Failed to delete group');
+  }
+
+  if (!data || data.success !== true) {
+    throw new Error(data?.message || 'Failed to delete group');
+  }
+
+  return data;
 };
 
 export const createGroupSmart = async (name: string, description: string, _isPublic?: boolean) => {
