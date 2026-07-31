@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ArrowLeft, Download, ExternalLink, Beaker, Copy, Layout, BookOpen, Edit3, Sliders, Sparkles, ChevronDown, Plus, X, Dices } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Download, ExternalLink, Beaker, Copy, Layout, BookOpen, Edit3, Sliders, Sparkles, ChevronDown, Plus, X, Dices, FileText } from 'lucide-react';
 import { FontPreviewSandbox } from './FontPreviewSandbox';
 import { Font } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -41,6 +41,7 @@ interface DetailedFontViewProps {
   getSupportedLanguages: () => string;
   baseFontForMetadata: Font | null;
   setTagEditModal: React.Dispatch<React.SetStateAction<{isOpen: boolean, fontId: string|null, tagsText: string}>>;
+  setNoteEditModal?: React.Dispatch<React.SetStateAction<{isOpen: boolean, fontId: string|null, noteText: string}>>;
   onTagClick?: (tag: string) => void;
   backdropChars: { char: string; className: string; fontSize?: string }[];
   selectedPoemIndex: number;
@@ -94,6 +95,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
   getSupportedLanguages,
   baseFontForMetadata,
   setTagEditModal,
+  setNoteEditModal,
   onTagClick,
   backdropChars,
   selectedPoemIndex,
@@ -376,44 +378,72 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                 </div>
               </div>
 
-              {/* Isolated Tag view within details */}
-              <div className="flex flex-col gap-1.5 mt-1 border-t border-white/[0.03] pt-3">
-                <div className="flex items-center justify-between">
-                  <span className={`${activeTheme.textSecondary} text-[11px] font-bold`}>{t('font_detail.tags')}</span>
-                  {isOwner && baseFontForMetadata && (
-                    <button 
-                      onClick={() => setTagEditModal({ isOpen: true, fontId: baseFontForMetadata.id, tagsText: baseFontForMetadata.tags?.join(', ') || '' })}
-                      className="hover:bg-white/10 p-1 rounded transition-colors text-white/50 hover:text-white"
-                      title={t('font_detail.edit_tags')}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
+              {/* Isolated Tag or Note view within details */}
+              {isPublicAllFonts ? (
+                <div className="flex flex-col gap-1.5 mt-1 border-t border-white/[0.03] pt-3">
+                  <div className="flex items-center justify-between">
+                    <span className={`${activeTheme.textSecondary} text-[11px] font-bold`}>{t('font_detail.tags')}</span>
+                    {isOwner && baseFontForMetadata && (
+                      <button 
+                        onClick={() => setTagEditModal({ isOpen: true, fontId: baseFontForMetadata.id, tagsText: baseFontForMetadata.tags?.join(', ') || '' })}
+                        className="hover:bg-white/10 p-1 rounded transition-colors text-white/50 hover:text-white"
+                        title={t('font_detail.edit_tags')}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {(!baseFontForMetadata?.tags || baseFontForMetadata.tags.length === 0) ? (
+                    <span className={`font-light ${activeTheme.textSecondary} opacity-40 text-xs`}>{t('font_detail.no_tags')}</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {baseFontForMetadata.tags.map((tag, tagIdx) => (
+                        <button 
+                          key={`${tag}-${tagIdx}`} 
+                          onClick={(e) => {
+                             e.stopPropagation();
+                             navigate(isPublicAllFonts ? '/fonts' : `/my-fonts${id ? `?group=${id}` : ''}`);
+                             setSelectedFontDetail(null);
+                             setSelectedGlyphZoom(null);
+                             setIsDetailScrolled(false);
+                             onTagClick?.(tag);
+                          }}
+                          className={`text-[11px] px-2.5 py-1 rounded-lg border ${activeTheme.accentBg} hover:bg-white/10 transition-colors select-none font-medium cursor-pointer flex items-center gap-1`}
+                        >
+                          <span className="opacity-50 font-mono text-cyan-400">#</span>
+                          <span>{tag}</span>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
-                {(!baseFontForMetadata?.tags || baseFontForMetadata.tags.length === 0) ? (
-                  <span className={`font-light ${activeTheme.textSecondary} opacity-40 text-xs`}>{t('font_detail.no_tags')}</span>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {baseFontForMetadata.tags.map((tag, tagIdx) => (
+              ) : (
+                <div className="flex flex-col gap-1.5 mt-1 border-t border-white/[0.03] pt-3">
+                  <div className="flex items-center justify-between">
+                    <span className={`${activeTheme.textSecondary} text-[11px] font-bold`}>
+                      {dir === 'rtl' ? 'الملاحظة' : 'Note'}
+                    </span>
+                    {isOwner && baseFontForMetadata && (
                       <button 
-                        key={`${tag}-${tagIdx}`} 
-                        onClick={(e) => {
-                           e.stopPropagation();
-                           navigate(isPublicAllFonts ? '/fonts' : `/my-fonts${id ? `?group=${id}` : ''}`);
-                           setSelectedFontDetail(null);
-                           setSelectedGlyphZoom(null);
-                           setIsDetailScrolled(false);
-                           onTagClick?.(tag);
-                        }}
-                        className={`text-[11px] px-2.5 py-1 rounded-lg border ${activeTheme.accentBg} hover:bg-white/10 transition-colors select-none font-medium cursor-pointer flex items-center gap-1`}
+                        onClick={() => setNoteEditModal?.({ isOpen: true, fontId: baseFontForMetadata.id, noteText: baseFontForMetadata.metadata?.note || '' })}
+                        className="hover:bg-amber-500/20 p-1 rounded transition-colors text-amber-400 hover:text-amber-300"
+                        title={dir === 'rtl' ? 'تعديل الملاحظة' : 'Edit Note'}
                       >
-                        <span className="opacity-50 font-mono text-cyan-400">#</span>
-                        <span>{tag}</span>
+                        <FileText className="w-3.5 h-3.5" />
                       </button>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
+                  {!baseFontForMetadata?.metadata?.note ? (
+                    <span className={`font-light ${activeTheme.textSecondary} opacity-40 text-xs`}>
+                      {dir === 'rtl' ? 'لا توجد ملاحظة مضافة لهذا الخط' : 'No note added for this font'}
+                    </span>
+                  ) : (
+                    <div className="mt-1 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-200 text-xs font-light whitespace-pre-wrap leading-relaxed">
+                      {baseFontForMetadata.metadata.note}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
           </div>

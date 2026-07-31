@@ -5,7 +5,7 @@ import { Group, FontWeight, Font } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts, getWeightRelationshipsForFonts } from '../services/fontService';
+import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts, getWeightRelationshipsForFonts, updateFontNote } from '../services/fontService';
 import { getGroups } from '../services/groupService';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFontHistory } from '../lib/db';
@@ -16,6 +16,7 @@ import { GroupToolbar } from '../components/font/GroupToolbar';
 import { FontWeightsModal } from '../components/font/FontWeightsModal';
 import { SaveFontModal } from '../components/font/SaveFontModal';
 import { TagsEditModal } from '../components/font/TagsEditModal';
+import { NoteEditModal } from '../components/font/NoteEditModal';
 import { TagRenameModal } from '../components/font/TagRenameModal';
 import { DetailedFontView } from '../components/font/DetailedFontView';
 import { GlobalTagFilterBanner } from '../components/font/GlobalTagFilterBanner';
@@ -188,9 +189,13 @@ export const GroupDetails = ({
       setSaveToGroupId('new');
       setNewSaveGroupName('');
       
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء حفظ الخط' : 'Error saving font');
+      if (err?.message?.includes('font_limit_reached')) {
+        addNotification('error', dir === 'rtl' ? 'وصلت للحد الأقصى 50 خط' : 'Maximum font limit reached (50 fonts)');
+      } else {
+        addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء حفظ الخط' : 'Error saving font');
+      }
     } finally {
       setIsSavingFont(false);
     }
@@ -286,6 +291,42 @@ export const GroupDetails = ({
   });
   const weightInputRef = useRef<HTMLInputElement>(null);
   const [uploadingWeightFor, setUploadingWeightFor] = useState<string | null>(null);
+
+  const [noteEditModal, setNoteEditModal] = useState<{ isOpen: boolean; fontId: string | null; noteText: string }>({
+    isOpen: false,
+    fontId: null,
+    noteText: ''
+  });
+
+  const handleSaveNote = async (fontId: string, noteText: string) => {
+    const trimmed = noteText.trim();
+    if (trimmed.length > 100) {
+      addNotification('error', dir === 'rtl' ? 'الملاحظة يجب ألا تتجاوز 100 حرف' : 'Note cannot exceed 100 characters');
+      return;
+    }
+
+    const targetFont = dbFonts.find(f => f.id === fontId);
+    if (!targetFont) return;
+
+    try {
+      setLoading(true);
+      await updateFontNote(fontId, trimmed, targetFont.metadata);
+      addNotification(
+        'success',
+        trimmed
+          ? (dir === 'rtl' ? 'تم حفظ الملاحظة بنجاح!' : 'Note saved successfully!')
+          : (dir === 'rtl' ? 'تم حذف الملاحظة بنجاح!' : 'Note removed successfully!')
+      );
+      await fetchData();
+    } catch (err: any) {
+      console.error('Error in handleSaveNote:', err);
+      const serverMessage = err?.message || (dir === 'rtl' ? 'حدث خطأ أثناء حفظ الملاحظة' : 'Error saving note');
+      addNotification('error', serverMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const {
     tagEditModal,
@@ -795,20 +836,79 @@ export const GroupDetails = ({
       const targetId = highlightedFont.id;
 
       if (displayFonts.some(f => f.id === targetId)) {
-        setTimeout(() => {
+        const scrollToFont = () => {
           const element = document.getElementById(`font-card-${targetId}`);
           if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const rect = element.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const targetY = rect.top + scrollTop - (window.innerHeight / 2) + (rect.height / 2);
+            window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
             setPulseFontId(targetId);
             setProcessedHighlightedId(highlightedFont.ts);
             
             // Remove pulse after 3 seconds (fade out handled by CSS transition)
             setTimeout(() => setPulseFontId(null), 3000);
+            return true;
           }
-        }, 150); // small delay to ensure DOM layout
+          return false;
+        };
+
+        const timer1 = setTimeout(() => {
+          scrollToFont();
+          setTimeout(() => {
+            scrollToFont();
+          }, 350);
+        }, 200);
+
+        return () => clearTimeout(timer1);
+      } else {
+        // Target font is not on current page: locate its page index and switch to it
+        let isCancelled = false;
+        const locateAndSwitchPage = async () => {
+          try {
+            let p_sort = 'oldest';
+            if (isPublicAllFonts) {
+              p_sort = 'newest';
+              if (sortBy === 'oldest_first') p_sort = 'oldest';
+              else if (sortBy === 'newest_first') p_sort = 'newest';
+              else if (sortBy === 'alpha_az') p_sort = 'name_asc';
+
+              const { fonts } = await getPublicFonts(p_sort, 1000, 0);
+              if (isCancelled) return;
+              const idx = fonts.findIndex((f: any) => f.id === targetId);
+              if (idx !== -1) {
+                const targetPage = Math.floor(idx / 15) + 1;
+                if (targetPage !== currentPage) {
+                  window.scrollTo({ top: 0, behavior: 'instant' as any });
+                  setCurrentPage(targetPage);
+                }
+              }
+            } else {
+              if (sortBy === 'oldest_first') p_sort = 'oldest';
+              else if (sortBy === 'newest_first') p_sort = 'newest';
+              else if (sortBy === 'alpha_az') p_sort = 'name_asc';
+
+              const { fonts } = await getGroupFonts(id, p_sort, 1, 1000);
+              if (isCancelled) return;
+              const idx = fonts.findIndex((f: any) => f.id === targetId);
+              if (idx !== -1) {
+                const targetPage = Math.floor(idx / 15) + 1;
+                if (targetPage !== currentPage) {
+                  window.scrollTo({ top: 0, behavior: 'instant' as any });
+                  setCurrentPage(targetPage);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error locating highlighted font page:', e);
+          }
+        };
+
+        locateAndSwitchPage();
+        return () => { isCancelled = true; };
       }
     }
-  }, [highlightedFont?.ts, loading, displayFonts.length, weightRelationships.length, processedHighlightedId]);
+  }, [highlightedFont?.ts, loading, displayFonts, weightRelationships.length, processedHighlightedId, currentPage, id, isPublicAllFonts, sortBy]);
 
   useEffect(() => {
     if (loading) return; 
@@ -1138,6 +1238,7 @@ export const GroupDetails = ({
               isAdmin={isAdmin}
               onTagClick={onTagClick}
               setTagEditModal={setTagEditModal as any}
+              setNoteEditModal={setNoteEditModal}
               openWeightsModal={openWeightsModal}
             />
           ))}
@@ -1276,6 +1377,7 @@ export const GroupDetails = ({
         getSupportedLanguages={getSupportedLanguages}
         baseFontForMetadata={baseFontForMetadata}
         setTagEditModal={setTagEditModal as any}
+        setNoteEditModal={setNoteEditModal}
         backdropChars={backdropChars}
         selectedPoemIndex={selectedPoemIndex}
         setSelectedPoemIndex={setSelectedPoemIndex}
@@ -1321,6 +1423,15 @@ export const GroupDetails = ({
         message={dir === 'rtl' ? `هل أنت متأكد من رغبتك في حذف الهاشتاغ #${tagDeleteGlobalModal.tag} نهائياً؟ سيتم إزالته من جميع الخطوط كلياً.` : `Are you sure you want to delete #${tagDeleteGlobalModal.tag} globally? This will remove it from all fonts.`}
         confirmText={dir === 'rtl' ? 'حذف الهاشتاغ' : 'Delete Tag'}
         variant="danger"
+      />
+
+      <NoteEditModal
+        noteEditModal={noteEditModal}
+        setNoteEditModal={setNoteEditModal}
+        dbFonts={dbFonts}
+        dir={dir as 'rtl' | 'ltr' | 'auto'}
+        t={t}
+        onSaveNote={handleSaveNote}
       />
     </div>
   );

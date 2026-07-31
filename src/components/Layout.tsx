@@ -226,7 +226,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     >
       
        {/* Persistent Notifications - Top Corner */}
-       <div className={`fixed top-4 z-[999] flex flex-col gap-2 pointer-events-auto ${dir === 'rtl' ? 'left-4' : 'right-4'}`}>
+       <div className={`fixed top-4 z-[999999] flex flex-col gap-2 pointer-events-auto ${dir === 'rtl' ? 'left-4' : 'right-4'}`}>
          <AnimatePresence>
            {notifications.map((notification, idx) => (
              <NotificationItem 

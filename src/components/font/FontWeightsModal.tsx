@@ -69,7 +69,14 @@ const WeightRow: React.FC<WeightRowProps> = ({
   }, [w.font?.metadata?.status, w.font?.metadata?.completedAt]);
 
   return (
-    <div className={`bg-white/5 p-3 rounded-xl border flex flex-col gap-1.5 group/item transition-all duration-700 ${modalPulseFontId === w.font?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: -8 }}
+      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      layout
+      className={`bg-white/5 p-3 rounded-xl border flex flex-col gap-1.5 group/item transition-all duration-700 ${modalPulseFontId === w.font?.id ? 'border-white/30 shadow-lg ring-1 ring-white/50 bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-white/5 ring-0 ring-transparent shadow-none'}`}
+    >
        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
@@ -116,7 +123,7 @@ const WeightRow: React.FC<WeightRowProps> = ({
            fontVariantLigatures: 'normal' 
          }} 
        />
-    </div>
+    </motion.div>
   );
 };
 
@@ -264,20 +271,24 @@ export const FontWeightsModal: React.FC<FontWeightsModalProps> = ({
 
                 if (allWeights.length === 0) return <p className="text-center text-white opacity-30 py-8 text-sm">{t('font.no_weights')}</p>;
 
-                return allWeights.map((w, wIdx) => (
-                  <WeightRow
-                    key={w.isOptimistic ? `opt-${w.id || wIdx}-${wIdx}` : `real-${w.id || w.childFontId || wIdx}-${wIdx}`}
-                    w={w}
-                    dir={dir}
-                    modalPulseFontId={modalPulseFontId}
-                    handleDownload={handleDownload}
-                    isOwner={isOwner}
-                    setDeleteWeightModal={setDeleteWeightModal}
-                    getPreviewText={getPreviewText}
-                    handlePreviewChange={handlePreviewChange}
-                    fontSize={fontSize}
-                  />
-                ));
+                return (
+                  <AnimatePresence>
+                    {allWeights.map((w, wIdx) => (
+                      <WeightRow
+                        key={w.isOptimistic ? `opt-${w.id || wIdx}-${wIdx}` : `real-${w.id || w.childFontId || wIdx}-${wIdx}`}
+                        w={w}
+                        dir={dir}
+                        modalPulseFontId={modalPulseFontId}
+                        handleDownload={handleDownload}
+                        isOwner={isOwner}
+                        setDeleteWeightModal={setDeleteWeightModal}
+                        getPreviewText={getPreviewText}
+                        handlePreviewChange={handlePreviewChange}
+                        fontSize={fontSize}
+                      />
+                    ))}
+                  </AnimatePresence>
+                );
               })()}
             </div>
           

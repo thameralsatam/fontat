@@ -24,9 +24,17 @@ export const uploadFontToGroup = async (
       p_group_id: groupId
     });
 
-    if (prepareError) throw prepareError;
+    if (prepareError) {
+      if (prepareError.message?.includes('font_limit_reached') || (prepareError as any).details?.includes('font_limit_reached') || prepareError.code === 'font_limit_reached') {
+        throw new Error('font_limit_reached');
+      }
+      throw prepareError;
+    }
 
     if (!prepareResult || prepareResult.success === false) {
+      if (prepareResult?.message === 'font_limit_reached' || prepareResult?.error === 'font_limit_reached' || prepareResult?.code === 'font_limit_reached' || prepareResult?.message?.includes('font_limit_reached')) {
+        throw new Error('font_limit_reached');
+      }
       throw new Error(prepareResult?.message || 'Failed to prepare font upload');
     }
 
@@ -88,8 +96,16 @@ export const uploadFontToGroup = async (
       p_group_id: groupId
     });
 
-    if (saveError) throw saveError;
+    if (saveError) {
+      if (saveError.message?.includes('font_limit_reached') || (saveError as any).details?.includes('font_limit_reached') || saveError.code === 'font_limit_reached') {
+        throw new Error('font_limit_reached');
+      }
+      throw saveError;
+    }
     if (!saveResult || saveResult.success === false) {
+      if (saveResult?.message === 'font_limit_reached' || saveResult?.error === 'font_limit_reached' || saveResult?.code === 'font_limit_reached' || saveResult?.message?.includes('font_limit_reached')) {
+        throw new Error('font_limit_reached');
+      }
        throw new Error(saveResult?.message || 'Failed to save the font');
     }
 
@@ -136,6 +152,33 @@ export const updateFontTags = async (fontId: string, tags: string[]) => {
     p_action: 'update',
     p_font_id: fontId,
     p_metadata: { tags }
+  });
+
+  if (error) throw error;
+  return data;
+};
+
+export const updateFontNote = async (
+  fontId: string,
+  note: string,
+  existingMetadata: Record<string, any> = {}
+) => {
+  const trimmed = note.trim();
+  if (trimmed.length > 100) {
+    throw new Error('الملاحظة يجب ألا تتجاوز 100 حرف');
+  }
+
+  const updatedMetadata = { ...existingMetadata };
+  if (trimmed) {
+    updatedMetadata.note = trimmed;
+  } else {
+    delete updatedMetadata.note;
+  }
+
+  const { data, error } = await supabase.rpc('manage_font_smart', {
+    p_action: 'update',
+    p_font_id: fontId,
+    p_metadata: updatedMetadata
   });
 
   if (error) throw error;
@@ -239,9 +282,17 @@ export const uploadFontWeight = async (
       p_group_id: groupId
     });
 
-    if (prepareError) throw prepareError;
+    if (prepareError) {
+      if (prepareError.message?.includes('font_limit_reached') || (prepareError as any).details?.includes('font_limit_reached') || prepareError.code === 'font_limit_reached') {
+        throw new Error('font_limit_reached');
+      }
+      throw prepareError;
+    }
 
     if (!prepareResult || prepareResult.success === false) {
+      if (prepareResult?.message === 'font_limit_reached' || prepareResult?.error === 'font_limit_reached' || prepareResult?.code === 'font_limit_reached' || prepareResult?.message?.includes('font_limit_reached')) {
+        throw new Error('font_limit_reached');
+      }
       throw new Error(prepareResult?.message || 'Failed to prepare font weight upload');
     }
 
@@ -278,8 +329,16 @@ export const uploadFontWeight = async (
       p_metadata: metadata
     });
 
-    if (saveError) throw saveError;
+    if (saveError) {
+      if (saveError.message?.includes('font_limit_reached') || (saveError as any).details?.includes('font_limit_reached') || saveError.code === 'font_limit_reached') {
+        throw new Error('font_limit_reached');
+      }
+      throw saveError;
+    }
     if (!saveResult || saveResult.success === false) {
+      if (saveResult?.message === 'font_limit_reached' || saveResult?.error === 'font_limit_reached' || saveResult?.code === 'font_limit_reached' || saveResult?.message?.includes('font_limit_reached')) {
+        throw new Error('font_limit_reached');
+      }
        throw new Error(saveResult?.message || 'Failed to add weight');
     }
 

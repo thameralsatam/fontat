@@ -204,15 +204,27 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
                 t.id === task.id ? { ...t, status: 'success', fontId: font.id, downloadUrl: font.download_url, progress: 100, completedAt: Date.now() } : t
               ));
             } catch (error: any) {
-              if (retries > 0 && !error.message?.includes('already in the group')) {
+              const errMsg = typeof error === 'string' ? error : (error?.message || error?.details || '');
+              const isLimitReached = errMsg.includes('font_limit_reached');
+              const isAlreadyInGroup = errMsg.includes('already in the group');
+
+              if (retries > 0 && !isAlreadyInGroup && !isLimitReached) {
                 await new Promise(res => setTimeout(res, 800));
                 return attemptUpload(task, retries - 1);
               } else {
+                const limitMsg = t('font.limit_reached') || 'وصلت للحد الأقصى 50 خط';
+                const displayError = isLimitReached 
+                  ? limitMsg 
+                  : (error.message || 'Upload failed');
+
                 setUploadQueue(prev => prev.map(t =>
-                  t.id === task.id ? { ...t, status: 'error', error: error.message || 'Upload failed' } : t
+                  t.id === task.id ? { ...t, status: 'error', error: displayError } : t
                 ));
-                if (error.message?.includes('already in the group')) {
+
+                if (isAlreadyInGroup) {
                   addNotification('error', t('font.duplicate_title') || 'Duplicate font', error.message);
+                } else if (isLimitReached) {
+                  addNotification('error', limitMsg);
                 } else {
                   addNotification('error', error.message || t('common.error') || 'Error');
                 }
@@ -231,6 +243,7 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   }, [uploadQueue, addNotification, t]);
 
   const retryUpload = useCallback((taskId: string) => {
+    errorTimersRef.current.delete(taskId);
     setUploadQueue(prev => prev.map(task =>
       task.id === taskId ? { ...task, status: 'pending', error: undefined } : task
     ));
@@ -245,6 +258,21 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const wasUploadingRef = useRef(false);
+  const errorTimersRef = useRef<Set<string>>(new Set());
+
+  // Automatically remove errored upload items from the queue after 5 seconds
+  useEffect(() => {
+    uploadQueue.forEach(task => {
+      if (task.status === 'error' && !errorTimersRef.current.has(task.id)) {
+        errorTimersRef.current.add(task.id);
+        setTimeout(() => {
+          setUploadQueue(prev => prev.filter(t => t.id !== task.id));
+          errorTimersRef.current.delete(task.id);
+        }, 5000);
+      }
+    });
+  }, [uploadQueue]);
+
   useEffect(() => {
     const isUploading = uploadQueue.some(t => t.status === 'pending' || t.status === 'uploading');
     wasUploadingRef.current = isUploading;

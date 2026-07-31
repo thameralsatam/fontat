@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Trash2, Check, Plus, Layers } from 'lucide-react';
+import { Download, Trash2, Check, Plus, Layers, FileText } from 'lucide-react';
 import { Font } from '../../types';
 import { formatFontName } from '../../utils/text';
 
@@ -25,6 +25,7 @@ export interface FontCardProps {
   isAdmin: boolean;
   onTagClick?: (tag: string) => void;
   setTagEditModal: (modal: { isOpen: boolean; fontId: string | null; tagsText: string }) => void;
+  setNoteEditModal?: (modal: { isOpen: boolean; fontId: string | null; noteText: string }) => void;
   openWeightsModal: (font: Font) => void;
 }
 
@@ -49,6 +50,7 @@ export const FontCard: React.FC<FontCardProps> = ({
   isAdmin,
   onTagClick,
   setTagEditModal,
+  setNoteEditModal,
   openWeightsModal,
 }) => {
   const [showSuccessCheck, setShowSuccessCheck] = useState(false);
@@ -75,10 +77,11 @@ export const FontCard: React.FC<FontCardProps> = ({
     <motion.div
       id={`font-card-${item.id}`}
       data-index={index}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.15, delay: index * 0.02 }}
+      initial={{ opacity: 0, scale: 0.95, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: -12 }}
+      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      layout
       className={`group font-card-item bg-[#141414] p-4 rounded-2xl border transition-all duration-500 flex flex-col gap-3 relative overflow-hidden border-white/5 hover:border-white/10 hover:shadow-[0_0_30px_rgba(255,255,255,0.02)] cursor-pointer ${
         pulseFontId === item.id
           ? 'ring-1 ring-white/50 shadow-[0_0_20px_rgba(255,255,255,0.15)]'
@@ -212,30 +215,64 @@ export const FontCard: React.FC<FontCardProps> = ({
                   dir === 'rtl' ? 'pl-8' : 'pr-8'
                 }`}
               >
-                {(item.tags || item.metadata?.tags || []).map((tag: string, tagIdx: number) => (
-                  <button
-                    key={`${tag}-${tagIdx}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTagClick?.(tag);
-                    }}
-                    className="text-[10px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 px-2.5 py-1 rounded-lg text-white/60 cursor-pointer transition-all duration-300 flex items-center gap-1 font-sans font-light shrink-0"
-                  >
-                    <span className="text-cyan-400 opacity-50 font-mono">#</span>
-                    <span>{tag}</span>
-                  </button>
-                ))}
-                {(isOwner || (isPublicAllFonts && isAdmin)) && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setTagEditModal({ isOpen: true, fontId: item.id, tagsText: '' });
-                    }}
-                    className="w-6 h-6 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 rounded-lg flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0"
-                    title={dir === 'rtl' ? 'إضافة هاشتاغ جديد' : 'Add new tag'}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+                {isPublicAllFonts ? (
+                  <>
+                    {(item.tags || item.metadata?.tags || []).map((tag: string, tagIdx: number) => (
+                      <button
+                        key={`${tag}-${tagIdx}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTagClick?.(tag);
+                        }}
+                        className="text-[10px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 px-2.5 py-1 rounded-lg text-white/60 cursor-pointer transition-all duration-300 flex items-center gap-1 font-sans font-light shrink-0"
+                      >
+                        <span className="text-cyan-400 opacity-50 font-mono">#</span>
+                        <span>{tag}</span>
+                      </button>
+                    ))}
+                    {(isOwner || isAdmin) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTagEditModal({ isOpen: true, fontId: item.id, tagsText: '' });
+                        }}
+                        className="w-6 h-6 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 rounded-lg flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0"
+                        title={dir === 'rtl' ? 'إضافة هاشتاغ جديد' : 'Add new tag'}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {item.metadata?.note ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isOwner) {
+                            setNoteEditModal?.({ isOpen: true, fontId: item.id, noteText: item.metadata?.note || '' });
+                          }
+                        }}
+                        className="text-[10px] bg-amber-500/10 border border-amber-500/20 hover:border-amber-500/40 text-amber-300 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg cursor-pointer transition-all duration-300 flex items-center gap-1.5 font-sans font-light shrink-0 max-w-[200px] truncate"
+                        title={item.metadata.note}
+                      >
+                        <FileText className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span className="truncate">{item.metadata.note}</span>
+                      </button>
+                    ) : isOwner ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNoteEditModal?.({ isOpen: true, fontId: item.id, noteText: '' });
+                        }}
+                        className="text-[10px] bg-white/[0.03] border border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-300 px-2.5 py-1 rounded-lg text-white/50 hover:text-white cursor-pointer transition-all duration-300 flex items-center gap-1.5 font-sans font-light shrink-0"
+                        title={dir === 'rtl' ? 'إضافة ملاحظة' : 'Add note'}
+                      >
+                        <FileText className="w-3 h-3 text-white/40 group-hover:text-amber-400 shrink-0" />
+                        <span>{dir === 'rtl' ? 'ملاحظة' : 'Note'}</span>
+                      </button>
+                    ) : null}
+                  </>
                 )}
               </div>
 
