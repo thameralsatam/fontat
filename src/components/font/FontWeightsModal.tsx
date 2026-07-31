@@ -266,7 +266,7 @@ export const FontWeightsModal: React.FC<FontWeightsModalProps> = ({
 
                 return allWeights.map((w, wIdx) => (
                   <WeightRow
-                    key={w.isOptimistic ? `opt-${w.id}` : `real-${w.id || w.childFontId || wIdx}`}
+                    key={w.isOptimistic ? `opt-${w.id || wIdx}-${wIdx}` : `real-${w.id || w.childFontId || wIdx}-${wIdx}`}
                     w={w}
                     dir={dir}
                     modalPulseFontId={modalPulseFontId}

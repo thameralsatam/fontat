@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useMemo, useDeferredValue } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { Group, FontWeight, Font } from '../types';
 
 import { useLanguage } from '../contexts/LanguageContext';
@@ -25,7 +24,7 @@ import { GlobalTagSelectionModal } from '../components/font/GlobalTagSelectionMo
 import { formatFontName } from '../utils/text';
 import { useFontAnalyzer } from '../components/font/useFontAnalyzer';
 import { useFontTagActions } from '../components/font/useFontTagActions';
-import { SortOption, sortFonts } from '../utils/sortUtils';
+import { SortOption } from '../utils/sortUtils';
 
 export const GroupDetails = ({ 
   groupId, 
@@ -385,6 +384,7 @@ export const GroupDetails = ({
   };
 
   const [publicFontsTotal, setPublicFontsTotal] = useState(0);
+  const [myFontsTotal, setMyFontsTotal] = useState(0);
 
   useEffect(() => {
     // Reset page of fonts in URL and state when switching contexts, tags, or sort order
@@ -547,18 +547,28 @@ export const GroupDetails = ({
         
         // Fallback if not found in my_groups but might still be mine (or we need its public details)
         if (!foundOwner) {
-          const { data: publicGroup } = await supabase.from('groups').select('*').eq('id', id).single();
-          if (publicGroup) {
-            setGroup(publicGroup);
-          }
+          // If not in getGroups(), group not found or inaccessible
+          setGroup(null);
         }
       }
     } catch (error) {
       console.error("Error fetching group data:", error);
     }
     
-    const fontsData = await getGroupFonts(id);
-    setDbFonts(fontsData || []);
+    try {
+      let p_sort = 'oldest';
+      if (sortBy === 'oldest_first') p_sort = 'oldest';
+      else if (sortBy === 'newest_first') p_sort = 'newest';
+      else if (sortBy === 'alpha_az') p_sort = 'name_asc';
+
+      const { fonts: fontsData, totalCount } = await getGroupFonts(id, p_sort, currentPage, 15);
+      setDbFonts(fontsData || []);
+      setMyFontsTotal(totalCount);
+    } catch (err) {
+      console.error("Error fetching group fonts:", err);
+      setDbFonts([]);
+      setMyFontsTotal(0);
+    }
     
     setWeightRelationships([]);
     if (showFullSpinner) {
@@ -685,7 +695,8 @@ export const GroupDetails = ({
     });
 
     const fontMap = new Map<string, Font & { sessionLocalUrl?: string }>();
-    [...mappedDbFonts, ...filteredOptimisticItems].forEach(f => {
+    // Prepend optimistic items currently uploading to top of current view, followed by server page items
+    [...filteredOptimisticItems, ...mappedDbFonts].forEach(f => {
       const uniqueKey = f.id || f.metadata?.taskId;
       if (uniqueKey && !fontMap.has(uniqueKey)) {
         fontMap.set(uniqueKey, f);
@@ -694,11 +705,8 @@ export const GroupDetails = ({
 
     const allFonts = Array.from(fontMap.values());
 
-    // Sort fonts according to selected sortBy rule (default: oldest to newest)
-    const sortedFonts = sortFonts(allFonts, sortBy);
-
     if (isPublicAllFonts && publicTagFilters.length > 0) {
-      let filtered = sortedFonts.filter(f => {
+      let filtered = allFonts.filter(f => {
         const fontTags = f.tags || f.metadata?.tags || [];
         return publicTagFilters.some(tag => fontTags.includes(tag));
       });
@@ -713,31 +721,24 @@ export const GroupDetails = ({
         if (aMatches !== bMatches) {
           return bMatches - aMatches; // Highest matches first
         }
-        return 0; // Fallback to current sort order
+        return 0;
       });
 
       return filtered;
     }
 
-    return sortedFonts;
-  }, [dbFonts, uploadQueue, id, user, isPublicAllFonts, publicTagFilters.join(','), sortBy]);
+    return allFonts;
+  }, [dbFonts, uploadQueue, id, user, isPublicAllFonts, publicTagFilters.join(',')]);
 
   const ITEMS_PER_PAGE = 15;
-  const paginatedFonts = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return displayFonts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [displayFonts, currentPage]);
 
   const fontsToRender = useMemo(() => {
-    if (isPublicAllFonts) {
-      if (publicTagFilters.length > 0) {
-        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-        return displayFonts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-      }
-      return displayFonts; // Already paginated to 15 items server-side
+    if (isPublicAllFonts && publicTagFilters.length > 0) {
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      return displayFonts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
     }
-    return paginatedFonts;
-  }, [isPublicAllFonts, displayFonts, paginatedFonts, publicTagFilters.length, currentPage]);
+    return displayFonts; // Already paginated 15 items server-side via RPC
+  }, [isPublicAllFonts, displayFonts, publicTagFilters.length, currentPage]);
 
   // Dynamic weights loading for active visible/rendered fonts in the current page via secure RPC
   useEffect(() => {
@@ -1116,7 +1117,7 @@ export const GroupDetails = ({
           <AnimatePresence>
             {fontsToRender.map((item, i) => (
             <FontCard
-              key={item.id ? `font-${item.id}` : `task-${item.metadata?.taskId || i}`}
+              key={item.id ? `font-${item.id}-${i}` : `task-${item.metadata?.taskId || i}-${i}`}
               item={item}
               index={i}
               pulseFontId={pulseFontId}
@@ -1156,7 +1157,7 @@ export const GroupDetails = ({
           displayFontsLength={
             isPublicAllFonts
               ? (publicTagFilters.length > 0 ? displayFonts.length : publicFontsTotal)
-              : displayFonts.length
+              : myFontsTotal
           }
           itemsPerPage={ITEMS_PER_PAGE}
           dir={dir as 'ltr' | 'rtl' | 'auto'}

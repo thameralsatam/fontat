@@ -331,7 +331,7 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
                             </button>
                             {selectedFontWeights.map((w, wIdx) => (
                               <button
-                                key={w.child_font_id ? `weight-${w.child_font_id}` : `weight-idx-${wIdx}`}
+                                key={w.child_font_id ? `weight-${w.child_font_id}-${wIdx}` : `weight-idx-${wIdx}`}
                                 onClick={() => {
                                   if (w.child_font) {
                                     setSelectedFontDetail(w.child_font as Font);

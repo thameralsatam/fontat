@@ -47,13 +47,9 @@ export const uploadNotificationImage = async (file: File): Promise<string> => {
   return data.publicUrl;
 };
 
-// Delete notification (Admin via table delete)
-export const deleteNotification = async (id: string): Promise<void> => {
-  const { error } = await supabase.from('notifications').delete().eq('id', id);
-  if (error) {
-    console.error("Error deleting notification:", error.message);
-    throw error;
-  }
+// Delete notification (Handled client-side via localStorage in NotificationContext)
+export const deleteNotification = async (_id: string): Promise<void> => {
+  // Notification deletion is handled locally via localStorage
 };
 
 // Get User Preferences (Local Storage Only)

@@ -237,7 +237,7 @@ export const NotificationsDropdown: React.FC<InternalProps> = ({ onOpenNotificat
                 <div className="flex flex-col">
                   {notifications.map((n, idx) => (
                     <SwipeableNotification
-                      key={n.id ? `notif-dropdown-${n.id}` : `notif-dropdown-idx-${idx}`}
+                      key={n.id ? `notif-dropdown-${n.id}-${idx}` : `notif-dropdown-idx-${idx}`}
                       n={n}
                       onOpen={() => { setIsOpen(false); onOpenNotification(n); }}
                       t={t}

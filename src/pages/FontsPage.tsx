@@ -15,6 +15,7 @@ import { SmartSearch, SearchResult } from '../components/SmartSearch';
 
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { updateGroup, deleteGroupSmart, createGroupSmart, getGroups } from '../services/groupService';
+import { getGroupFonts } from '../services/fontService';
 
 export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -318,8 +319,9 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             let groupId = meta?.group_id;
             
             if (!groupId && res.id) {
-              const { data } = await supabase.from('fonts').select('group_id').eq('id', res.id).single();
-              if (data) groupId = data.group_id;
+              const { fonts: myFonts } = await getGroupFonts(null);
+              const foundFont = myFonts.find((f: any) => f.id === res.id);
+              if (foundFont) groupId = foundFont.group_id;
             }
 
             // Fallback: finding group by group_name
@@ -351,9 +353,9 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
             <div className="overflow-x-auto scrollbar-hide flex-1 touch-pan-x relative mask-fade-edges">
             <div className="flex items-center gap-1.5 w-max px-1">
               <AnimatePresence mode='popLayout'>
-                {displayedGroups.map((group: Group) => (
+                {displayedGroups.map((group: Group, idx: number) => (
                   <motion.div
-                    key={`group-tab-${group.id}`}
+                    key={`group-tab-${group.id || idx}-${idx}`}
                     layout
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -617,9 +619,9 @@ export const FontsPage = ({ mode = 'private' }: { mode?: 'public' | 'private' })
       >
         <div className="pt-2 pb-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {displayedGroups.map((group: Group) => (
+            {displayedGroups.map((group: Group, idx: number) => (
               <div 
-                key={`group-modal-${group.id}`}
+                key={`group-modal-${group.id || idx}-${idx}`}
                 onClick={(e) => {
                   handleGroupClick(e as any, group.id);
                   setIsAllGroupsOpen(false);

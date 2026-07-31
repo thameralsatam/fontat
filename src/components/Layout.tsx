@@ -230,7 +230,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
          <AnimatePresence>
            {notifications.map((notification, idx) => (
              <NotificationItem 
-               key={notification.id ? `notif-${notification.id}` : `notif-${idx}`} 
+               key={notification.id ? `notif-${notification.id}-${idx}` : `notif-idx-${idx}`} 
                notification={notification} 
                onRemove={() => removeNotification(notification.id)}
              />

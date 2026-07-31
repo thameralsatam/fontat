@@ -35,7 +35,7 @@ export const uploadFontToGroup = async (
         throw new Error('This font is already in the group.');
       }
       
-      const fonts = await getGroupFonts(groupId);
+      const { fonts } = await getGroupFonts(groupId);
       const existingFont = fonts.find((f: Font) => f.id === prepareResult.font_id || f.hash === hash);
       if (!existingFont) {
         return {
@@ -47,7 +47,7 @@ export const uploadFontToGroup = async (
     }
 
     if (prepareResult.needs_upload === false && prepareResult.linked === true) {
-      const fonts = await getGroupFonts(groupId);
+      const { fonts } = await getGroupFonts(groupId);
       const existingFont = fonts.find((f: Font) => f.id === prepareResult.font_id || f.hash === hash);
       if (!existingFont) {
         return { 
@@ -65,10 +65,12 @@ export const uploadFontToGroup = async (
     const { error: uploadError } = await supabase.storage
       .from('fonts')
       .upload(fileName, file, {
-        upsert: false
+        upsert: true
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError && !uploadError.message?.toLowerCase().includes('already exists') && (uploadError as any).error !== 'Duplicate') {
+      throw uploadError;
+    }
 
     const { data: publicUrlData } = supabase.storage
       .from('fonts')
@@ -91,7 +93,7 @@ export const uploadFontToGroup = async (
        throw new Error(saveResult?.message || 'Failed to save the font');
     }
 
-    const fonts = await getGroupFonts(groupId);
+    const { fonts } = await getGroupFonts(groupId);
     const finalFont = fonts.find((f: Font) => f.id === saveResult.font_id || f.hash === hash);
     if (!finalFont) {
       return { 
@@ -140,13 +142,23 @@ export const updateFontTags = async (fontId: string, tags: string[]) => {
   return data;
 };
 
-export const getGroupFonts = async (groupId: string | null): Promise<Font[]> => {
+export const getGroupFonts = async (
+  groupId: string | null = null,
+  sort: string = 'oldest',
+  page: number = 1,
+  itemsPerPage: number = 15
+): Promise<{ fonts: Font[]; totalCount: number }> => {
   const { data, error } = await supabase.rpc('get_my_fonts', {
-    p_group_id: groupId
+    p_group_id: groupId,
+    p_sort: sort,
+    p_limit: itemsPerPage,
+    p_offset: (page - 1) * itemsPerPage
   });
   
   if (error) throw error;
-  if (!data) return [];
+  if (!data || data.length === 0) return { fonts: [], totalCount: 0 };
+  
+  const totalCount = Number(data[0].total_count) || 0;
   
   const mappedFonts = data.map((item: any) => {
     const fontTags = extractTags(item.metadata, item.tags);
@@ -164,7 +176,8 @@ export const getGroupFonts = async (groupId: string | null): Promise<Font[]> => 
     };
   });
 
-  return Array.from(new Map(mappedFonts.map((f: any) => [f.id, f])).values()) as Font[];
+  const uniqueFonts = Array.from(new Map(mappedFonts.map((f: any) => [f.id, f])).values()) as Font[];
+  return { fonts: uniqueFonts, totalCount };
 };
 
 const extractTags = (metadata: any, rawTags: any): string[] => {
@@ -213,20 +226,40 @@ export const getPublicFonts = async (
 export const uploadFontWeight = async (
   file: File,
   parentFontId: string,
-  groupId: string | null
+  groupId: string | null,
+  metadata: Record<string, any> = {}
 ): Promise<Font> => {
   try {
     const hash = await calculateFileHash(file);
+
+    // 1. Prepare upload via RPC
+    const { data: prepareResult, error: prepareError } = await supabase.rpc('prepare_font_upload', {
+      p_name: file.name,
+      p_hash: hash,
+      p_group_id: groupId
+    });
+
+    if (prepareError) throw prepareError;
+
+    if (!prepareResult || prepareResult.success === false) {
+      throw new Error(prepareResult?.message || 'Failed to prepare font weight upload');
+    }
+
+    // 2. Upload file to storage bucket if required
     const fileExt = file.name.split('.').pop() || 'ttf';
     const fileName = `${hash}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('fonts')
-      .upload(fileName, file, {
-        upsert: false
-      });
+    if (prepareResult.needs_upload !== false) {
+      const { error: uploadError } = await supabase.storage
+        .from('fonts')
+        .upload(fileName, file, {
+          upsert: true
+        });
 
-    if (uploadError) throw uploadError;
+      if (uploadError && !uploadError.message?.toLowerCase().includes('already exists') && (uploadError as any).error !== 'Duplicate') {
+        throw uploadError;
+      }
+    }
 
     const { data: publicUrlData } = supabase.storage
       .from('fonts')
@@ -234,13 +267,15 @@ export const uploadFontWeight = async (
     
     const downloadUrl = publicUrlData.publicUrl;
 
+    // 3. Add weight directly via RPC
     const { data: saveResult, error: saveError } = await supabase.rpc('add_weight_directly', {
       p_parent_font_id: parentFontId,
       p_name: file.name,
       p_hash: hash,
       p_storage_path: fileName,
       p_download_url: downloadUrl,
-      p_size: file.size
+      p_size: file.size,
+      p_metadata: metadata
     });
 
     if (saveError) throw saveError;
