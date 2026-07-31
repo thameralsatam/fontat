@@ -16,7 +16,7 @@ export interface SearchResult {
 }
 
 interface SmartSearchProps {
-  mode: 'public' | 'private';
+  mode: 'public' | 'private' | 'my' | string;
   onSelect: (result: SearchResult | { type: 'tag', tag: string }) => void;
 }
 
@@ -54,9 +54,10 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
       setLoading(true);
       try {
         const searchTerm = query.trim().startsWith('#') ? query.trim().substring(1) : query.trim();
+        const searchMode = (mode === 'my' || mode === 'private') ? 'private' : 'public';
         const { data, error } = await supabase.rpc('smart_search', {
           search_term: searchTerm || ' ',
-          p_mode: mode
+          p_mode: searchMode
         });
 
         if (error) {

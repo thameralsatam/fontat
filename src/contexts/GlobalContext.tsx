@@ -204,27 +204,21 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
                 t.id === task.id ? { ...t, status: 'success', fontId: font.id, downloadUrl: font.download_url, progress: 100, completedAt: Date.now() } : t
               ));
             } catch (error: any) {
-              const errMsg = typeof error === 'string' ? error : (error?.message || error?.details || '');
-              const isLimitReached = errMsg.includes('font_limit_reached');
-              const isAlreadyInGroup = errMsg.includes('already in the group');
+              const errMsg = typeof error === 'string' ? error : (error?.message || '');
+              const isFontLimit = errMsg === 'font_limit_reached' || errMsg.includes('font_limit_reached');
+              const limitNotificationMsg = 'عذراً، لقد وصلت للحد الأقصى المسموح به لحسابك وهو 50 خطاً. لا يمكنك إضافة المزيد من الخطوط في الوقت الحالي.';
 
-              if (retries > 0 && !isAlreadyInGroup && !isLimitReached) {
+              if (retries > 0 && !errMsg.includes('already in the group') && !isFontLimit) {
                 await new Promise(res => setTimeout(res, 800));
                 return attemptUpload(task, retries - 1);
               } else {
-                const limitMsg = t('font.limit_reached') || 'وصلت للحد الأقصى 50 خط';
-                const displayError = isLimitReached 
-                  ? limitMsg 
-                  : (error.message || 'Upload failed');
-
                 setUploadQueue(prev => prev.map(t =>
-                  t.id === task.id ? { ...t, status: 'error', error: displayError } : t
+                  t.id === task.id ? { ...t, status: 'error', error: isFontLimit ? limitNotificationMsg : (error.message || 'Upload failed') } : t
                 ));
-
-                if (isAlreadyInGroup) {
+                if (isFontLimit) {
+                  addNotification('error', limitNotificationMsg);
+                } else if (errMsg.includes('already in the group')) {
                   addNotification('error', t('font.duplicate_title') || 'Duplicate font', error.message);
-                } else if (isLimitReached) {
-                  addNotification('error', limitMsg);
                 } else {
                   addNotification('error', error.message || t('common.error') || 'Error');
                 }

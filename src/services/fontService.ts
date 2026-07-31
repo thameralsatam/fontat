@@ -25,14 +25,14 @@ export const uploadFontToGroup = async (
     });
 
     if (prepareError) {
-      if (prepareError.message?.includes('font_limit_reached') || (prepareError as any).details?.includes('font_limit_reached') || prepareError.code === 'font_limit_reached') {
+      if (prepareError.message?.includes('font_limit_reached') || (prepareError as any).details?.includes('font_limit_reached')) {
         throw new Error('font_limit_reached');
       }
       throw prepareError;
     }
 
     if (!prepareResult || prepareResult.success === false) {
-      if (prepareResult?.message === 'font_limit_reached' || prepareResult?.error === 'font_limit_reached' || prepareResult?.code === 'font_limit_reached' || prepareResult?.message?.includes('font_limit_reached')) {
+      if (prepareResult?.message === 'font_limit_reached') {
         throw new Error('font_limit_reached');
       }
       throw new Error(prepareResult?.message || 'Failed to prepare font upload');
@@ -97,15 +97,15 @@ export const uploadFontToGroup = async (
     });
 
     if (saveError) {
-      if (saveError.message?.includes('font_limit_reached') || (saveError as any).details?.includes('font_limit_reached') || saveError.code === 'font_limit_reached') {
+      if (saveError.message?.includes('font_limit_reached') || (saveError as any).details?.includes('font_limit_reached')) {
         throw new Error('font_limit_reached');
       }
       throw saveError;
     }
     if (!saveResult || saveResult.success === false) {
-      if (saveResult?.message === 'font_limit_reached' || saveResult?.error === 'font_limit_reached' || saveResult?.code === 'font_limit_reached' || saveResult?.message?.includes('font_limit_reached')) {
-        throw new Error('font_limit_reached');
-      }
+       if (saveResult?.message === 'font_limit_reached') {
+         throw new Error('font_limit_reached');
+       }
        throw new Error(saveResult?.message || 'Failed to save the font');
     }
 
@@ -283,14 +283,14 @@ export const uploadFontWeight = async (
     });
 
     if (prepareError) {
-      if (prepareError.message?.includes('font_limit_reached') || (prepareError as any).details?.includes('font_limit_reached') || prepareError.code === 'font_limit_reached') {
+      if (prepareError.message?.includes('font_limit_reached') || (prepareError as any).details?.includes('font_limit_reached')) {
         throw new Error('font_limit_reached');
       }
       throw prepareError;
     }
 
     if (!prepareResult || prepareResult.success === false) {
-      if (prepareResult?.message === 'font_limit_reached' || prepareResult?.error === 'font_limit_reached' || prepareResult?.code === 'font_limit_reached' || prepareResult?.message?.includes('font_limit_reached')) {
+      if (prepareResult?.message === 'font_limit_reached') {
         throw new Error('font_limit_reached');
       }
       throw new Error(prepareResult?.message || 'Failed to prepare font weight upload');
@@ -330,15 +330,15 @@ export const uploadFontWeight = async (
     });
 
     if (saveError) {
-      if (saveError.message?.includes('font_limit_reached') || (saveError as any).details?.includes('font_limit_reached') || saveError.code === 'font_limit_reached') {
+      if (saveError.message?.includes('font_limit_reached') || (saveError as any).details?.includes('font_limit_reached')) {
         throw new Error('font_limit_reached');
       }
       throw saveError;
     }
     if (!saveResult || saveResult.success === false) {
-      if (saveResult?.message === 'font_limit_reached' || saveResult?.error === 'font_limit_reached' || saveResult?.code === 'font_limit_reached' || saveResult?.message?.includes('font_limit_reached')) {
-        throw new Error('font_limit_reached');
-      }
+       if (saveResult?.message === 'font_limit_reached') {
+         throw new Error('font_limit_reached');
+       }
        throw new Error(saveResult?.message || 'Failed to add weight');
     }
 

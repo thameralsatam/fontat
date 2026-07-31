@@ -191,8 +191,9 @@ export const GroupDetails = ({
       
     } catch (err: any) {
       console.error(err);
-      if (err?.message?.includes('font_limit_reached')) {
-        addNotification('error', dir === 'rtl' ? 'وصلت للحد الأقصى 50 خط' : 'Maximum font limit reached (50 fonts)');
+      const errMsg = typeof err === 'string' ? err : (err?.message || '');
+      if (errMsg === 'font_limit_reached' || errMsg.includes('font_limit_reached')) {
+        addNotification('error', 'عذراً، لقد وصلت للحد الأقصى المسموح به لحسابك وهو 50 خطاً. لا يمكنك إضافة المزيد من الخطوط في الوقت الحالي.');
       } else {
         addNotification('error', dir === 'rtl' ? 'حدث خطأ أثناء حفظ الخط' : 'Error saving font');
       }
