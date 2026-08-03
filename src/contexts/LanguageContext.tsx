@@ -796,7 +796,17 @@ const translations: Record<Language, Record<string, string>> = {
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
 export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
-  const [language, setLanguage] = useState<Language>('ar');
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('language') as Language;
+      if (saved) {
+        return saved;
+      }
+      const browserLang = navigator.language || (navigator.languages && navigator.languages[0]) || '';
+      return browserLang.toLowerCase().startsWith('ar') ? 'ar' : 'en';
+    }
+    return 'ar';
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem('language') as Language;
@@ -805,9 +815,11 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
       document.documentElement.dir = saved === 'ar' ? 'rtl' : 'ltr';
       document.documentElement.lang = saved;
     } else {
-      // Default to Arabic
-      document.documentElement.dir = 'rtl';
-      document.documentElement.lang = 'ar';
+      const browserLang = navigator.language || (navigator.languages && navigator.languages[0]) || '';
+      const defaultLang: Language = browserLang.toLowerCase().startsWith('ar') ? 'ar' : 'en';
+      setLanguage(defaultLang);
+      document.documentElement.dir = defaultLang === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = defaultLang;
     }
   }, []);
 

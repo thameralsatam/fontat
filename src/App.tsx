@@ -18,6 +18,7 @@ import { TermsOfUse } from './pages/TermsOfUse';
 import { AboutUs } from './pages/AboutUs';
 import { Home } from './pages/Home';
 import { NotFound } from './pages/NotFound';
+import { Arbeitsprobe } from './pages/Arbeitsprobe';
 
 const AppRoutes = () => {
   const { user, loading } = useAuth();
@@ -102,6 +103,10 @@ const AppRoutes = () => {
         <Layout>
           <AboutUs />
         </Layout>
+      } />
+      
+      <Route path="/arbeitsprobe" element={
+        <Arbeitsprobe />
       } />
       
       <Route path="*" element={
