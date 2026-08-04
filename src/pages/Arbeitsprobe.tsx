@@ -105,6 +105,17 @@ export const Arbeitsprobe: React.FC = () => {
             print-color-adjust: exact !important;
           }
 
+          /* Sharper text and icon rendering at high DPI export */
+          * {
+            -webkit-font-smoothing: antialiased !important;
+            text-rendering: optimizeLegibility !important;
+            image-rendering: -webkit-optimize-contrast !important;
+          }
+
+          svg {
+            shape-rendering: geometricPrecision !important;
+          }
+
           /* Hide browser defaults */
           @page {
             size: A4;
@@ -200,7 +211,7 @@ export const Arbeitsprobe: React.FC = () => {
                       Fontat – Technische Projektdokumentation
                     </h1>
                     <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/50 print-text-muted font-mono">
-                      <span>Rolle: Full-Stack Developer</span>
+                      <span>Rolle: Projektplanung & Datenbankarchitektur</span>
                       <span className="hidden sm:inline">•</span>
                       <span>Typ: Cloud-Plattform</span>
                       <span className="hidden sm:inline">•</span>
@@ -210,8 +221,8 @@ export const Arbeitsprobe: React.FC = () => {
 
                   {/* Section 1: Project Overview */}
                   <section className="space-y-4 avoid-break">
-                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white">
-                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card">
+                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white leading-none">
+                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
                         <FileText className="w-4 h-4" />
                       </div>
                       <h2 className="text-lg font-bold tracking-tight font-display">1. Projektübersicht & Vision</h2>
@@ -228,8 +239,8 @@ export const Arbeitsprobe: React.FC = () => {
 
                   {/* Section 2: Technology Stack */}
                   <section className="space-y-4 avoid-break">
-                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white">
-                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card">
+                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white leading-none">
+                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
                         <Cpu className="w-4 h-4" />
                       </div>
                       <h2 className="text-lg font-bold tracking-tight font-display">2. Technologie-Stack & Architektur</h2>
@@ -277,8 +288,8 @@ export const Arbeitsprobe: React.FC = () => {
 
                   {/* Section 3: Professional Contributions */}
                   <section className="space-y-4 avoid-break">
-                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white">
-                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card">
+                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white leading-none">
+                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
                         <Layers className="w-4 h-4" />
                       </div>
                       <h2 className="text-lg font-bold tracking-tight font-display">3. Meine Kernaufgaben & Implementierungen</h2>
@@ -286,7 +297,7 @@ export const Arbeitsprobe: React.FC = () => {
                     
                     <div className="text-gray-300 text-sm leading-relaxed space-y-5 print-text-muted">
                       <p>
-                        Als Full-Stack Developer war ich für die Konzeption und Programmierung verantwortlich. Wichtige technische Highlights sind:
+                        Als Projektverantwortlicher habe ich die Architektur konzipiert, die Datenbankstruktur eigenständig aufgebaut und die Umsetzung der Anwendungslogik in Zusammenarbeit mit KI-gestützten Entwicklungswerkzeugen gesteuert. Wichtige technische Highlights sind:
                       </p>
                       
                       <div className="space-y-4">
@@ -339,8 +350,8 @@ export const Arbeitsprobe: React.FC = () => {
 
                   {/* Section 4: Database & Server Services */}
                   <section className="space-y-4 avoid-break">
-                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white">
-                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card">
+                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white leading-none">
+                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
                         <Database className="w-4 h-4" />
                       </div>
                       <h2 className="text-lg font-bold tracking-tight font-display">4. Relationales Datenbankschema & API-Sicherheit</h2>
