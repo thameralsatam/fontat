@@ -200,17 +200,17 @@ export const Arbeitsprobe: React.FC = () => {
             <tr>
               <td className="p-0 border-none">
                 
-                <div className="p-10 sm:p-14 space-y-16">
+                <div className="p-10 sm:p-14 space-y-12">
                   
                   {/* Document Title Block */}
                   <div className="border-b border-white/[0.08] pb-8 print-border">
-                    <div className="text-cyan-400 text-[13px] font-bold tracking-[0.2em] uppercase mb-3 print-text-cyan font-display">
+                    <div className="text-cyan-400 text-xs font-bold tracking-[0.2em] uppercase mb-2.5 print-text-cyan font-display">
                       ARBEITSPROBE / SOFTWARE ENTWICKLUNG
                     </div>
-                    <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight mb-5 print-text-white font-display">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight mb-4 print-text-white font-display">
                       Fontat – Technische Projektdokumentation
                     </h1>
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/50 print-text-muted font-mono">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/50 print-text-muted font-mono">
                       <span>Rolle: Projektplanung & Datenbankarchitektur</span>
                       <span className="hidden sm:inline">•</span>
                       <span>Typ: Cloud-Plattform</span>
@@ -220,14 +220,14 @@ export const Arbeitsprobe: React.FC = () => {
                   </div>
 
                   {/* Section 1: Project Overview */}
-                  <section className="space-y-5 avoid-break">
-                    <div className="flex items-center gap-3.5 text-white border-b border-white/[0.08] pb-3 print-border print-text-white">
-                      <div className="p-2 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
-                        <FileText className="w-5 h-5" />
+                  <section className="space-y-4 avoid-break">
+                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white leading-none">
+                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
+                        <FileText className="w-4 h-4" />
                       </div>
-                      <h2 className="text-xl font-bold tracking-tight font-display mt-0.5">1. Projektübersicht & Vision</h2>
+                      <h2 className="text-lg font-bold tracking-tight font-display">1. Projektübersicht & Vision</h2>
                     </div>
-                    <div className="text-gray-300 text-[15px] leading-relaxed space-y-5 print-text-muted">
+                    <div className="text-gray-300 text-sm leading-relaxed space-y-4 print-text-muted">
                       <p>
                         <strong>Fontat</strong> ist ein modernes, cloudbasiertes System zur interaktiven Verwaltung, Live-Visualisierung und zum Testen von Schriftarten. Die Plattform wurde entwickelt, um Webdesignern und Entwicklern ein nahtloses typografisches Labor direkt im Browser bereitzustellen.
                       </p>
@@ -238,155 +238,176 @@ export const Arbeitsprobe: React.FC = () => {
                   </section>
 
                   {/* Section 2: Technology Stack */}
-                  <section className="space-y-5 avoid-break">
-                    <div className="flex items-center gap-3.5 text-white border-b border-white/[0.08] pb-3 print-border print-text-white">
-                      <div className="p-2 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
-                        <Cpu className="w-5 h-5" />
+                  <section className="space-y-4 avoid-break">
+                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white leading-none">
+                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
+                        <Cpu className="w-4 h-4" />
                       </div>
-                      <h2 className="text-xl font-bold tracking-tight font-display mt-0.5">2. Technologie-Stack & Architektur</h2>
+                      <h2 className="text-lg font-bold tracking-tight font-display">2. Technologie-Stack & Architektur</h2>
                     </div>
                     
-                    <p className="text-[15px] text-gray-400 print-text-muted leading-relaxed max-w-2xl">
+                    <p className="text-xs text-gray-400 print-text-muted leading-relaxed max-w-2xl">
                       Das System setzt auf hochperformante Webtechnologien mit einer klaren Trennung von Client und serverseitigen Services.
                     </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       
-                      <div className="bg-[#18181B]/50 p-6 rounded-2xl border border-white/[0.06] print-bg-card print-border">
-                        <div className="flex items-center gap-2 mb-4">
+                      <div className="bg-[#18181B]/50 p-5 rounded-2xl border border-white/[0.06] print-bg-card print-border">
+                        <div className="flex items-center gap-2 mb-3">
                           <div className="p-1 rounded bg-cyan-500/10 text-cyan-400 print-text-cyan">
-                            <Check className="w-4 h-4" />
+                            <Check className="w-3.5 h-3.5" />
                           </div>
-                          <h3 className="text-[15px] font-bold text-white print-text-white font-display mt-0.5">Frontend-Architektur</h3>
+                          <h3 className="text-sm font-bold text-white print-text-white font-display">Frontend-Architektur</h3>
                         </div>
-                        <ul className="text-sm text-gray-400 space-y-3 list-none print-text-muted">
-                          <li className="leading-relaxed"><strong>React (v18+) & TypeScript:</strong> Typensichere Logik, schnelles Rendering und stabiles State-Management.</li>
-                          <li className="leading-relaxed"><strong>Tailwind CSS:</strong> Schnelle, responsive UI-Stile basierend auf der einheitlichen, dunklen Fontat-Markenidentität.</li>
-                          <li className="leading-relaxed"><strong>Framer Motion:</strong> Flüssige Benutzeroberfläche dank nativer Hardware-beschleunigter Mikro-Animationen.</li>
+                        <ul className="text-xs text-gray-400 space-y-2 list-none print-text-muted">
+                          <li><strong>React (v18+) & TypeScript:</strong> Typensichere Logik, schnelles Rendering und stabiles State-Management.</li>
+                          <li><strong>Tailwind CSS:</strong> Schnelle, responsive UI-Stile basierend auf der einheitlichen, dunklen Fontat-Markenidentität.</li>
+                          <li><strong>Framer Motion:</strong> Flüssige Benutzeroberfläche dank nativer Hardware-beschleunigter Mikro-Animationen.</li>
                         </ul>
                       </div>
 
-                      <div className="bg-[#18181B]/50 p-6 rounded-2xl border border-white/[0.06] print-bg-card print-border">
-                        <div className="flex items-center gap-2 mb-4">
+                      <div className="bg-[#18181B]/50 p-5 rounded-2xl border border-white/[0.06] print-bg-card print-border">
+                        <div className="flex items-center gap-2 mb-3">
                           <div className="p-1 rounded bg-blue-500/10 text-blue-400">
-                            <Check className="w-4 h-4" />
+                            <Check className="w-3.5 h-3.5" />
                           </div>
-                          <h3 className="text-[15px] font-bold text-white print-text-white font-display mt-0.5">Backend & Cloud-Infrastruktur</h3>
+                          <h3 className="text-sm font-bold text-white print-text-white font-display">Backend & Cloud-Infrastruktur</h3>
                         </div>
-                        <ul className="text-sm text-gray-400 space-y-3 list-none print-text-muted">
-                          <li className="leading-relaxed"><strong>Supabase (PostgreSQL):</strong> Relationale, cloud-gestützte Echtzeitdatenbank für reibungslose Datensynchronisation.</li>
-                          <li className="leading-relaxed"><strong>Row-Level Security (RLS):</strong> Datenintegrität und absolute Isolation der Benutzerdaten direkt im DB-Layer.</li>
-                          <li className="leading-relaxed"><strong>Cloud-Storage Buckets:</strong> Cloud-Speicher für hochgeladene Schriftdateien mit SHA-256 Validierung.</li>
+                        <ul className="text-xs text-gray-400 space-y-2 list-none print-text-muted">
+                          <li><strong>Supabase (PostgreSQL):</strong> Relationale, cloud-gestützte Echtzeitdatenbank für reibungslose Datensynchronisation.</li>
+                          <li><strong>Row-Level Security (RLS):</strong> Datenintegrität und absolute Isolation der Benutzerdaten direkt im DB-Layer.</li>
+                          <li><strong>Cloud-Storage Buckets:</strong> Cloud-Speicher für hochgeladene Schriftdateien mit SHA-256 Validierung.</li>
                         </ul>
                       </div>
 
-                    </div>
-                  </section>
-
-                  {/* Section 3: Professional Contributions */}
-                  <section className="space-y-5 avoid-break">
-                    <div className="flex items-center gap-3.5 text-white border-b border-white/[0.08] pb-3 print-border print-text-white">
-                      <div className="p-2 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
-                        <Layers className="w-5 h-5" />
-                      </div>
-                      <h2 className="text-xl font-bold tracking-tight font-display mt-0.5">3. Meine Kernaufgaben & Implementierungen</h2>
-                    </div>
-                    
-                    <div className="text-gray-300 text-[15px] leading-relaxed space-y-6 print-text-muted">
-                      <p>
-                        Als Projektverantwortlicher habe ich die Architektur konzipiert, die Datenbankstruktur eigenständig aufgebaut und die Umsetzung der Anwendungslogik in Zusammenarbeit mit KI-gestützten Entwicklungswerkzeugen gesteuert. Wichtige technische Highlights sind:
-                      </p>
-                      
-                      <div className="space-y-5">
-                        
-                        <div className="flex items-start gap-4 bg-[#18181B]/30 p-5 rounded-xl border border-white/[0.04] print-bg-card print-border">
-                          <div className="p-1.5 rounded bg-cyan-500/10 text-cyan-400 mt-0.5 shrink-0 print-text-cyan">
-                            <Check className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <strong className="text-white text-[15px] block mb-1.5 print-text-white font-display">
-                              Intelligente Duplikatsprüfung im Client (SHA-256):
-                            </strong>
-                            <p className="text-sm text-gray-400 leading-relaxed print-text-muted">
-                              Entwicklung eines clientseitigen Krypto-Hashes. Vor dem Upload berechnet die Web-App den SHA-256-Hashwert der Schriftdatei. Die RPC-Funktion <code className="bg-white/5 text-cyan-300 px-1.5 py-0.5 rounded text-[11px] font-mono print-text-cyan">prepare_font_upload</code> prüft die Existenz des Hashes. Falls existent, entfällt der Upload komplett, was Bandbreite und Cloud-Speicher schont.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-4 bg-[#18181B]/30 p-5 rounded-xl border border-white/[0.04] print-bg-card print-border">
-                          <div className="p-1.5 rounded bg-cyan-500/10 text-cyan-400 mt-0.5 shrink-0 print-text-cyan">
-                            <Check className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <strong className="text-white text-[15px] block mb-1.5 print-text-white font-display">
-                              Serverseitige Quoten & Validierung:
-                            </strong>
-                            <p className="text-sm text-gray-400 leading-relaxed print-text-muted">
-                              Sicherung des Systems durch ein hartes Limit von maximal 50 Schriften pro Benutzerkonto. Bei Überschreiten wirft das Backend die Ausnahme <code className="bg-white/5 text-cyan-300 px-1.5 py-0.5 rounded text-[11px] font-mono print-text-cyan">font_limit_reached</code>, welche das Frontend fängt und in eine freundliche UI-Meldung übersetzt.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-4 bg-[#18181B]/30 p-5 rounded-xl border border-white/[0.04] print-bg-card print-border">
-                          <div className="p-1.5 rounded bg-cyan-500/10 text-cyan-400 mt-0.5 shrink-0 print-text-cyan">
-                            <Check className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <strong className="text-white text-[15px] block mb-1.5 print-text-white font-display">
-                              Bedarfsgesteuertes Laden & Rendering (Lazy Loading):
-                            </strong>
-                            <p className="text-sm text-gray-400 leading-relaxed print-text-muted">
-                              Entwicklung eines On-Demand-Fontloaders über die <code className="bg-white/5 text-cyan-300 px-1.5 py-0.5 rounded text-[11px] font-mono print-text-cyan">FontFace-API</code>. Schriftdateien werden erst dann geladen und im Browser gerendert, wenn sie tatsächlich im Viewport des Benutzers erscheinen, was eine hervorragende Performance garantiert.
-                            </p>
-                          </div>
-                        </div>
-
-                      </div>
                     </div>
                   </section>
 
                   {/* Hard page break only on printed PDF for professional pagination spacing */}
                   <div className="page-break" />
 
-                  {/* Section 4: Database & Server Services */}
-                  <section className="space-y-5 avoid-break">
-                    <div className="flex items-center gap-3.5 text-white border-b border-white/[0.08] pb-3 print-border print-text-white">
-                      <div className="p-2 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
-                        <Database className="w-5 h-5" />
+                  {/* Section 3: Professional Contributions */}
+                  <section className="space-y-4 avoid-break">
+                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white leading-none">
+                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
+                        <Layers className="w-4 h-4" />
                       </div>
-                      <h2 className="text-xl font-bold tracking-tight font-display mt-0.5">4. Relationales Datenbankschema & API-Sicherheit</h2>
+                      <h2 className="text-lg font-bold tracking-tight font-display">3. Meine Kernaufgaben & Implementierungen</h2>
                     </div>
                     
-                    <p className="text-[15px] text-gray-400 print-text-muted leading-relaxed max-w-2xl">
+                    <div className="text-gray-300 text-sm leading-relaxed space-y-5 print-text-muted">
+                      <p>
+                        Als Projektverantwortlicher habe ich die Architektur konzipiert, die Datenbankstruktur eigenständig aufgebaut und die Umsetzung der Anwendungslogik in Zusammenarbeit mit KI-gestützten Entwicklungswerkzeugen gesteuert. Wichtige technische Highlights sind:
+                      </p>
+                      
+                      <div className="space-y-4">
+                        
+                        <div className="flex items-start gap-3 bg-[#18181B]/30 p-4 rounded-xl border border-white/[0.04] print-bg-card print-border">
+                          <div className="p-1 rounded bg-cyan-500/10 text-cyan-400 mt-0.5 shrink-0 print-text-cyan">
+                            <Check className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <strong className="text-white text-xs block mb-1 print-text-white font-display">
+                              Intelligente Duplikatsprüfung im Client (SHA-256):
+                            </strong>
+                            <p className="text-xs text-gray-400 leading-relaxed print-text-muted">
+                              Entwicklung eines clientseitigen Krypto-Hashes. Vor dem Upload berechnet die Web-App den SHA-256-Hashwert der Schriftdatei. Die RPC-Funktion <code className="bg-white/5 text-cyan-300 px-1 py-0.5 rounded text-[10px] font-mono print-text-cyan">prepare_font_upload</code> prüft die Existenz des Hashes. Falls existent, entfällt der Upload komplett, was Bandbreite und Cloud-Speicher schont.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 bg-[#18181B]/30 p-4 rounded-xl border border-white/[0.04] print-bg-card print-border">
+                          <div className="p-1 rounded bg-cyan-500/10 text-cyan-400 mt-0.5 shrink-0 print-text-cyan">
+                            <Check className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <strong className="text-white text-xs block mb-1 print-text-white font-display">
+                              Serverseitige Quoten & Validierung:
+                            </strong>
+                            <p className="text-xs text-gray-400 leading-relaxed print-text-muted">
+                              Sicherung des Systems durch ein hartes Limit von maximal 50 Schriften pro Benutzerkonto. Bei Überschreiten wirft das Backend die Ausnahme <code className="bg-white/5 text-cyan-300 px-1 py-0.5 rounded text-[10px] font-mono print-text-cyan">font_limit_reached</code>, welche das Frontend fängt und in eine freundliche UI-Meldung übersetzt.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 bg-[#18181B]/30 p-4 rounded-xl border border-white/[0.04] print-bg-card print-border">
+                          <div className="p-1 rounded bg-cyan-500/10 text-cyan-400 mt-0.5 shrink-0 print-text-cyan">
+                            <Check className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <strong className="text-white text-xs block mb-1 print-text-white font-display">
+                              Bedarfsgesteuertes Laden & Rendering (Lazy Loading):
+                            </strong>
+                            <p className="text-xs text-gray-400 leading-relaxed print-text-muted">
+                              Entwicklung eines On-Demand-Fontloaders über die <code className="bg-white/5 text-cyan-300 px-1 py-0.5 rounded text-[10px] font-mono print-text-cyan">FontFace-API</code>. Schriftdateien werden erst dann geladen und im Browser gerendert, wenn sie tatsächlich im Viewport des Benutzers erscheinen, was eine hervorragende Performance garantiert.
+                            </p>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Section 4: Database & Server Services */}
+                  <section className="space-y-4 avoid-break">
+                    <div className="flex items-center gap-3 text-white border-b border-white/[0.08] pb-2.5 print-border print-text-white leading-none">
+                      <div className="p-1.5 rounded-lg bg-white/5 text-white print-bg-card flex items-center justify-center shrink-0">
+                        <Database className="w-4 h-4" />
+                      </div>
+                      <h2 className="text-lg font-bold tracking-tight font-display">4. Relationales Datenbankschema & API-Sicherheit</h2>
+                    </div>
+                    
+                    <p className="text-xs text-gray-400 print-text-muted leading-relaxed max-w-2xl">
                       Das relationale PostgreSQL-Schema bei Supabase sorgt für maximale Konsistenz und ist strikt durch Row-Level Security (RLS) geschützt:
                     </p>
 
-                    <div className="bg-[#18181B]/30 border border-white/[0.06] rounded-2xl p-6 space-y-5 print-bg-card print-border">
-                      <div className="flex items-center gap-2.5 text-white font-mono text-[13px] font-semibold print-text-white">
-                        <Server className="w-4.5 h-4.5 text-cyan-400 print-text-cyan" />
-                        <span>Supabase Schema ER-Diagramm</span>
+                    <div className="bg-[#18181B]/30 border border-white/[0.06] rounded-2xl p-5 space-y-4 print-bg-card print-border">
+                      <div className="flex items-center gap-2 text-white font-mono text-xs font-semibold print-text-white">
+                        <Server className="w-4 h-4 text-cyan-400 print-text-cyan" />
+                        <span>Backend Architecture & Security Policies</span>
                       </div>
                       
-                      <div className="overflow-hidden rounded-xl border border-white/10">
-                        <img 
-                          src="/IMG_20260804_153425.jpg" 
-                          alt="Supabase Schema ER-Diagramm" 
-                          className="w-full h-auto rounded-xl object-contain block"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-[11px] text-gray-400 print-text-muted">
+                        <div className="p-3 bg-[#080808]/50 rounded-xl border border-white/[0.04] print-bg-dark print-border">
+                          <div className="font-bold text-white mb-1.5 print-text-white">Benutzer (Auth)</div>
+                          <div className="space-y-0.5">
+                            <div>• user_id (UUID)</div>
+                            <div>• email (Text)</div>
+                            <div>• role (User/Admin)</div>
+                          </div>
+                        </div>
+                        
+                        <div className="p-3 bg-[#080808]/50 rounded-xl border border-white/[0.04] print-bg-dark print-border">
+                          <div className="font-bold text-white mb-1.5 print-text-white">Schriften (Fonts)</div>
+                          <div className="space-y-0.5">
+                            <div>• id (UUID, PK)</div>
+                            <div>• hash (Text, Unique)</div>
+                            <div>• group_id (FK)</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-[#080808]/50 rounded-xl border border-white/[0.04] print-bg-dark print-border">
+                          <div className="font-bold text-white mb-1.5 print-text-white">Gruppen (Groups)</div>
+                          <div className="space-y-0.5">
+                            <div>• id (UUID, PK)</div>
+                            <div>• name (Text)</div>
+                            <div>• user_id (FK)</div>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="pt-4 border-t border-white/[0.04] flex items-center gap-2.5 text-xs text-gray-400 print-text-muted print-border">
-                        <Terminal className="w-4 h-4 text-cyan-400 print-text-cyan" />
+                      <div className="pt-3 border-t border-white/[0.04] flex items-center gap-2 text-[11px] text-gray-400 print-text-muted print-border">
+                        <Terminal className="w-3.5 h-3.5 text-cyan-400 print-text-cyan" />
                         <span>Integrierte PostgreSQL trigger functions garantieren referenzielle Integrität bei Lösch- & Verschiebeaktionen.</span>
                       </div>
                     </div>
                   </section>
 
                   {/* Section 5: Link */}
-                  <section className="bg-gradient-to-r from-cyan-950/20 to-blue-950/20 p-7 rounded-2xl border border-cyan-500/10 flex flex-col sm:flex-row items-center justify-between gap-5 print-bg-card print-border print:p-6 mt-4">
+                  <section className="bg-gradient-to-r from-cyan-950/20 to-blue-950/20 p-6 rounded-2xl border border-cyan-500/10 flex flex-col sm:flex-row items-center justify-between gap-4 print-bg-card print-border print:p-5">
                     <div className="text-left">
-                      <h3 className="text-white font-bold text-[15px] mb-1.5 print-text-white font-display">Live-Demonstration & Website</h3>
-                      <p className="text-[13px] text-gray-400 max-w-md print-text-muted leading-relaxed">
+                      <h3 className="text-white font-bold text-sm mb-1 print-text-white font-display">Live-Demonstration & Website</h3>
+                      <p className="text-xs text-gray-400 max-w-md print-text-muted leading-relaxed">
                         Das System ist voll einsatzbereit und weltweit erreichbar. Nutzen Sie die Zugangsdaten im Anschreiben für ein Live-Testing der Plattform.
                       </p>
                     </div>
@@ -395,10 +416,10 @@ export const Arbeitsprobe: React.FC = () => {
                       href="https://fontat.pages.dev" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-sm font-semibold px-5 py-3 rounded-full transition-all shrink-0 print-border print-text-white"
+                      className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-semibold px-4.5 py-2.5 rounded-full transition-all shrink-0 print-border print-text-white"
                     >
                       <span>fontat.pages.dev</span>
-                      <ExternalLink className="w-4 h-4 text-cyan-400 print-text-cyan" />
+                      <ExternalLink className="w-3.5 h-3.5 text-cyan-400 print-text-cyan" />
                     </a>
                   </section>
 
