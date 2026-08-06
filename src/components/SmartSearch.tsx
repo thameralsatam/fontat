@@ -279,7 +279,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                             opacity: loadedFontIds.has(result.id) ? 1 : 0.3
                           }}
                         >
-                          اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)
+                          The quick brown fox jumps over the lazy dog
                         </span>
                       </button>
                     ))}

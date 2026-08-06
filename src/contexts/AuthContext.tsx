@@ -16,19 +16,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    let isMounted = true;
+
+    // Safety timeout to ensure loading state never hangs indefinitely
+    const timer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 2500);
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!isMounted) return;
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        clearTimeout(timer);
+      })
+      .catch((err) => {
+        console.warn('Auth session check error:', err);
+        if (!isMounted) return;
+        setLoading(false);
+        clearTimeout(timer);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      clearTimeout(timer);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo(() => ({ session, user, loading }), [session, user, loading]);

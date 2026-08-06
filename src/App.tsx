@@ -20,9 +20,7 @@ import { Home } from './pages/Home';
 import { NotFound } from './pages/NotFound';
 
 const AppRoutes = () => {
-  const { user, loading } = useAuth();
-  
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading...</div>;
+  const { user } = useAuth();
 
   return (
     <Routes>

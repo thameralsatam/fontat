@@ -27,6 +27,16 @@ import { useFontAnalyzer } from '../components/font/useFontAnalyzer';
 import { useFontTagActions } from '../components/font/useFontTagActions';
 import { SortOption } from '../utils/sortUtils';
 
+const DEFAULT_PREVIEW_TEXT = 'The quick brown fox jumps over the lazy dog';
+const OLD_DEFAULT_PREVIEW = 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
+
+const sanitizePreviewText = (val: string | null) => {
+  if (!val || val === OLD_DEFAULT_PREVIEW) {
+    return DEFAULT_PREVIEW_TEXT;
+  }
+  return val;
+};
+
 export const GroupDetails = ({ 
   groupId, 
   groupData,
@@ -450,11 +460,11 @@ export const GroupDetails = ({
   }, [fontSize]);
   const [globalPreviewText, setGlobalPreviewText] = useState(() => {
     if (isPublicAllFonts) {
-      return localStorage.getItem('fontinfo_preview_public') || 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
+      return sanitizePreviewText(localStorage.getItem('fontinfo_preview_public'));
     } else if (id) {
-      return localStorage.getItem(`fontinfo_preview_group_${id}`) || localStorage.getItem('fontinfo_preview_private') || 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
+      return sanitizePreviewText(localStorage.getItem(`fontinfo_preview_group_${id}`) || localStorage.getItem('fontinfo_preview_private'));
     }
-    return 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
+    return DEFAULT_PREVIEW_TEXT;
   });
   const deferredGlobalPreviewText = useDeferredValue(globalPreviewText);
 
@@ -472,7 +482,7 @@ export const GroupDetails = ({
       ? localStorage.getItem('fontinfo_preview_public')
       : (id ? (localStorage.getItem(`fontinfo_preview_group_${id}`) || localStorage.getItem('fontinfo_preview_private')) : null);
     
-    setGlobalPreviewText(saved || 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)');
+    setGlobalPreviewText(sanitizePreviewText(saved));
     setFontPreviews({});
   }, [id, isPublicAllFonts]);
   const [fontPreviews, setFontPreviews] = useState<Record<string, string>>({});

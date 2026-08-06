@@ -22,6 +22,8 @@ interface GlobalTagFilterBannerProps {
   setSortBy: (option: SortOption) => void;
 }
 
+const DEFAULT_PREVIEW_TEXT = 'The quick brown fox jumps over the lazy dog';
+
 export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
   publicTagFilters,
   displayFontsLength,
@@ -136,13 +138,13 @@ export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
               <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.preview_text')}</span>
               <div className="flex items-center gap-1.5">
                 <AnimatePresence>
-                  {(globalPreviewText !== 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)' || fontSize !== 35) && (
+                  {(globalPreviewText !== DEFAULT_PREVIEW_TEXT || fontSize !== 35) && (
                     <motion.button 
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
                       onClick={() => { 
-                        setGlobalPreviewText('اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)'); 
+                        setGlobalPreviewText(DEFAULT_PREVIEW_TEXT); 
                         setFontSize(35);
                         setFontPreviews({}); 
                       }}
