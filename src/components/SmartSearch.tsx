@@ -279,7 +279,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                             opacity: loadedFontIds.has(result.id) ? 1 : 0.3
                           }}
                         >
-                          The quick brown fox jumps over the lazy dog
+                          {t('lab.preview_placeholder')}
                         </span>
                       </button>
                     ))}

@@ -27,12 +27,16 @@ import { useFontAnalyzer } from '../components/font/useFontAnalyzer';
 import { useFontTagActions } from '../components/font/useFontTagActions';
 import { SortOption } from '../utils/sortUtils';
 
-const DEFAULT_PREVIEW_TEXT = 'The quick brown fox jumps over the lazy dog';
-const OLD_DEFAULT_PREVIEW = 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
+const ARABIC_DEFAULT_PREVIEW = 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)';
+const ENGLISH_DEFAULT_PREVIEW = 'The quick brown fox jumps over the lazy dog';
 
-const sanitizePreviewText = (val: string | null) => {
-  if (!val || val === OLD_DEFAULT_PREVIEW) {
-    return DEFAULT_PREVIEW_TEXT;
+const getDefaultPreviewText = (lang: string) => {
+  return lang === 'ar' ? ARABIC_DEFAULT_PREVIEW : ENGLISH_DEFAULT_PREVIEW;
+};
+
+const sanitizePreviewText = (val: string | null, lang: string) => {
+  if (!val || val === ARABIC_DEFAULT_PREVIEW || val === ENGLISH_DEFAULT_PREVIEW) {
+    return getDefaultPreviewText(lang);
   }
   return val;
 };
@@ -59,7 +63,7 @@ export const GroupDetails = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { t, dir } = useLanguage();
+  const { t, dir, language } = useLanguage();
   const { user } = useAuth();
   const { addToUploadQueue, uploadQueue, addNotification, removeFromQueueByFontId } = useGlobal();
   
@@ -459,12 +463,13 @@ export const GroupDetails = ({
     localStorage.setItem('fontinfo_font_size', fontSize.toString());
   }, [fontSize]);
   const [globalPreviewText, setGlobalPreviewText] = useState(() => {
+    const initLang = typeof window !== 'undefined' && localStorage.getItem('language') === 'en' ? 'en' : 'ar';
     if (isPublicAllFonts) {
-      return sanitizePreviewText(localStorage.getItem('fontinfo_preview_public'));
+      return sanitizePreviewText(localStorage.getItem('fontinfo_preview_public'), initLang);
     } else if (id) {
-      return sanitizePreviewText(localStorage.getItem(`fontinfo_preview_group_${id}`) || localStorage.getItem('fontinfo_preview_private'));
+      return sanitizePreviewText(localStorage.getItem(`fontinfo_preview_group_${id}`) || localStorage.getItem('fontinfo_preview_private'), initLang);
     }
-    return DEFAULT_PREVIEW_TEXT;
+    return getDefaultPreviewText(initLang);
   });
   const deferredGlobalPreviewText = useDeferredValue(globalPreviewText);
 
@@ -482,9 +487,18 @@ export const GroupDetails = ({
       ? localStorage.getItem('fontinfo_preview_public')
       : (id ? (localStorage.getItem(`fontinfo_preview_group_${id}`) || localStorage.getItem('fontinfo_preview_private')) : null);
     
-    setGlobalPreviewText(sanitizePreviewText(saved));
+    setGlobalPreviewText(sanitizePreviewText(saved, language));
     setFontPreviews({});
-  }, [id, isPublicAllFonts]);
+  }, [id, isPublicAllFonts, language]);
+
+  useEffect(() => {
+    setGlobalPreviewText(prev => {
+      if (prev === ARABIC_DEFAULT_PREVIEW || prev === ENGLISH_DEFAULT_PREVIEW) {
+        return getDefaultPreviewText(language);
+      }
+      return prev;
+    });
+  }, [language]);
   const [fontPreviews, setFontPreviews] = useState<Record<string, string>>({});
   const [pulseFontId, setPulseFontId] = useState<string | null>(null);
   const [modalPulseFontId] = useState<string | null>(null);

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ArrowRight, ArrowLeft, Edit3, Trash2, X, ArrowUpDown, Check, ChevronDown, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SortOption, SortOptionList } from '../../utils/sortUtils';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface GlobalTagFilterBannerProps {
   publicTagFilters: string[];
@@ -22,8 +23,6 @@ interface GlobalTagFilterBannerProps {
   setSortBy: (option: SortOption) => void;
 }
 
-const DEFAULT_PREVIEW_TEXT = 'The quick brown fox jumps over the lazy dog';
-
 export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
   publicTagFilters,
   displayFontsLength,
@@ -42,6 +41,8 @@ export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
   sortBy,
   setSortBy
 }) => {
+  const { language } = useLanguage();
+  const defaultPreviewText = language === 'ar' ? 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)' : 'The quick brown fox jumps over the lazy dog';
   const [isSortOpen, setIsSortOpen] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -138,13 +139,13 @@ export const GlobalTagFilterBanner: React.FC<GlobalTagFilterBannerProps> = ({
               <span className="text-white/40 uppercase tracking-widest text-[9px] font-bold">{t('toolbar.preview_text')}</span>
               <div className="flex items-center gap-1.5">
                 <AnimatePresence>
-                  {(globalPreviewText !== DEFAULT_PREVIEW_TEXT || fontSize !== 35) && (
+                  {(globalPreviewText !== defaultPreviewText || fontSize !== 35) && (
                     <motion.button 
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
                       onClick={() => { 
-                        setGlobalPreviewText(DEFAULT_PREVIEW_TEXT); 
+                        setGlobalPreviewText(defaultPreviewText); 
                         setFontSize(35);
                         setFontPreviews({}); 
                       }}

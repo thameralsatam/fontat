@@ -545,7 +545,7 @@ const translations: Record<Language, Record<string, string>> = {
     'lab.glyph_count': 'عدد المحارف',
     'lab.glyphs': 'المحارف (Glyphs)',
     'lab.search_glyph': 'ابحث عن محرف (بالاسم أو الرمز)...',
-    'lab.preview_placeholder': 'The quick brown fox jumps over the lazy dog',
+    'lab.preview_placeholder': 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)',
     'lab.clear_history': 'مسح السجل',
     'lab.clear_history_confirm': 'هل أنت متأكد من مسح سجل الخطوط بالكامل؟',
     'lab.opentype': 'ميزات أوبن تايب',

@@ -183,6 +183,17 @@ export const Lab = () => {
   const [axes, setAxes] = useState<any[]>([]);
   const [axisValues, setAxisValues] = useState<Record<string, number>>({});
   const [previewText, setPreviewText] = useState(t('lab.preview_placeholder'));
+  const prevLangRef = useRef(language);
+  useEffect(() => {
+    if (prevLangRef.current !== language) {
+      const oldDefault = prevLangRef.current === 'ar' ? 'اللهـم صـلِّ وسـلم عـلى نبينـا محـمد (2026 - ١٤٤٧)' : 'The quick brown fox jumps over the lazy dog';
+      const newDefault = t('lab.preview_placeholder');
+      if (previewText === oldDefault || !previewText) {
+        setPreviewText(newDefault);
+      }
+      prevLangRef.current = language;
+    }
+  }, [language, previewText, t]);
   const [fontSize, setFontSize] = useState<number | ''>(80);
   const [lineHeight, setLineHeight] = useState<number | ''>('');
   const [letterSpacing, setLetterSpacing] = useState<number>(0);
