@@ -795,37 +795,59 @@ const translations: Record<Language, Record<string, string>> = {
 
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
-export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
-  const [language, setLanguage] = useState<Language>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('language') as Language;
-      if (saved) {
-        return saved;
-      }
-      const browserLang = navigator.language || (navigator.languages && navigator.languages[0]) || '';
-      return browserLang.toLowerCase().startsWith('ar') ? 'ar' : 'en';
+const SUPPORTED_LANGUAGES: Language[] = ['ar', 'en'];
+const DEFAULT_FALLBACK_LANGUAGE: Language = 'en';
+
+const getInitialLanguage = (): Language => {
+  if (typeof window === 'undefined') {
+    return DEFAULT_FALLBACK_LANGUAGE;
+  }
+
+  try {
+    const saved = localStorage.getItem('language') as Language;
+    if (saved && SUPPORTED_LANGUAGES.includes(saved)) {
+      return saved;
     }
-    return 'ar';
-  });
+
+    const browserLangs = [
+      navigator.language,
+      ...(navigator.languages || [])
+    ].filter(Boolean);
+
+    for (const lang of browserLangs) {
+      const lower = lang.toLowerCase();
+      if (lower.startsWith('ar')) {
+        return 'ar';
+      }
+      if (lower.startsWith('en')) {
+        return 'en';
+      }
+    }
+  } catch {
+    // In case localStorage or navigator is restricted
+  }
+
+  // If the browser language is anything other than the supported languages, fallback to English
+  return DEFAULT_FALLBACK_LANGUAGE;
+};
+
+export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
+  const [language, setLanguage] = useState<Language>(getInitialLanguage);
 
   useEffect(() => {
-    const saved = localStorage.getItem('language') as Language;
-    if (saved) {
-      setLanguage(saved);
-      document.documentElement.dir = saved === 'ar' ? 'rtl' : 'ltr';
-      document.documentElement.lang = saved;
-    } else {
-      const browserLang = navigator.language || (navigator.languages && navigator.languages[0]) || '';
-      const defaultLang: Language = browserLang.toLowerCase().startsWith('ar') ? 'ar' : 'en';
-      setLanguage(defaultLang);
-      document.documentElement.dir = defaultLang === 'ar' ? 'rtl' : 'ltr';
-      document.documentElement.lang = defaultLang;
-    }
+    const initial = getInitialLanguage();
+    setLanguage(initial);
+    document.documentElement.dir = initial === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = initial;
   }, []);
 
   const handleSetLanguage = (lang: Language) => {
     setLanguage(lang);
-    localStorage.setItem('language', lang);
+    try {
+      localStorage.setItem('language', lang);
+    } catch {
+      // ignore storage error
+    }
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
   };
