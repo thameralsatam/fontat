@@ -1,6 +1,0 @@
-{
-  "name": "فونتات",
-  "description": "A comprehensive Arabic font management and laboratory system.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
