@@ -1,39 +1,35 @@
-# Font Manager
+# Fontat · فونتات
 
-A robust, scalable font management system built with React, Supabase, and Tailwind CSS.
+An Arabic-first web platform for exploring, testing, and managing fonts: a searchable font library, a personal workspace for saved fonts, and tools for inspecting font features (OpenType features, variable font axes).
+
+**Live:** https://fontat.pages.dev
 
 ## Features
 
-- **Smart Uploads**: Deduplicates files using SHA-256 hashing. If a file already exists, it links to it instead of re-uploading.
-- **Group Management**: Organize fonts into groups.
-- **Localization**: Full Arabic and English support (RTL/LTR).
-- **Clean UI**: Modern, responsive interface using Tailwind CSS.
+- Font library with search, filtering, and live preview
+- Personal account to save and organize fonts
+- Upload your own font files (deduplicated by SHA-256 hash)
+- Lab tools for variable font analysis and conversion
+- Full Arabic/English UI with RTL/LTR support
+
+## Tech Stack
+
+- **Frontend:** React 19 + Vite + TypeScript + Tailwind CSS
+- **Data backend:** Supabase (PostgreSQL, Auth, Storage)
+- **Font processing:** a small FastAPI service deployed separately (see below)
 
 ## Setup
 
-1. **Database**: Run the contents of `database.sql` in your Supabase SQL Editor.
-2. **Storage**: Create a public storage bucket named `fonts`.
-3. **Environment Variables**:
-   - `VITE_SUPABASE_URL`: Your Supabase URL.
-   - `VITE_SUPABASE_ANON_KEY`: Your Supabase Anon Key.
+1. **Supabase:** create a project, enable Auth, create the tables used by `src/services/`, and create a public storage bucket named `fonts`.
+2. **Environment variables** (see `.env.example`):
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. **Font processing API:** the Lab page (analysis / variable-font conversion) calls a separately deployed FastAPI + fonttools service. The endpoints are configured in `src/components/font/useFontAnalyzer.ts` and `src/pages/Lab.tsx`.
 
-## Architecture
+## How uploads work
 
-- **Frontend**: React + Vite + Tailwind CSS.
-- **Backend**: Supabase (PostgreSQL + Storage + Auth).
-- **State**: React Context for Auth and Language.
-- **Routing**: React Router DOM.
-
-## Key Logic
-
-- **Upload**: 
-  1. Calculate file hash.
-  2. Check `fonts` table for hash.
-  3. If found -> Link to group.
-  4. If not found -> Upload to Storage -> Insert to `fonts` -> Link to group.
-- **Delete**:
-  - Deleting a font from a group only removes the link (`group_fonts` table).
-  - The actual font record and file remain for other groups to use.
+- Uploading checks the `fonts` table by file hash: an already-stored file is linked instead of re-uploaded.
+- Deleting a font from a group only removes the link (`group_fonts`); the font record and file stay available to other groups.
 
 ## Development
 
