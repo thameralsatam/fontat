@@ -10,13 +10,17 @@ An Arabic-first web platform for exploring, testing, and managing fonts: a searc
 - Personal account to save and organize fonts
 - Upload your own font files (deduplicated by SHA-256 hash)
 - Lab tools for variable font analysis and conversion
+- Personal notes and tags on saved fonts
+- Export a font preview as a video (MP4 via WebCodecs, or WebM)
+- Download individual glyphs as SVG
 - Full Arabic/English UI with RTL/LTR support
 
 ## Tech Stack
 
 - **Frontend:** React 19 + Vite + TypeScript + Tailwind CSS
 - **Data backend:** Supabase (PostgreSQL, Auth, Storage)
-- **Font processing:** a small FastAPI service deployed separately (see below)
+- **Font processing:** a small FastAPI service deployed separately (see below). It runs on a free hosting tier, so the first request after idle time can take a while.
+- **Fonts in the browser:** opentype.js (npm package)
 
 ## Setup
 
