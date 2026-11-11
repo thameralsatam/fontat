@@ -70,7 +70,10 @@ body {
   font-variant-ligatures: common-ligatures discretionary-ligatures historical-ligatures;
   text-rendering: optimizeLegibility;
   font-feature-settings: "swsh" 1, "cswh" 1, "salt" 1, "ss01" 1, "ss02" 1, "ss03" 1, "ss04" 1, "ss05" 1, "ss06" 1;
-  background: radial-gradient(circle at top center, rgba(0, 180, 180, 0.18) 0%, rgba(0, 0, 0, 0) 35%), #050505;
+  /* Flat colour identical to the splash screen. A teal radial glow used to live here; it was only visible
+     while the JS bundle loaded (the app layer covers the body afterwards), then vanished when the splash
+     mounted - the "green flash" on first load. */
+  background: var(--bg-color);
   min-height: 100vh;
   color: var(--text-color);
   margin: 0;
