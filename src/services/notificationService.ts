@@ -47,11 +47,6 @@ export const uploadNotificationImage = async (file: File): Promise<string> => {
   return data.publicUrl;
 };
 
-// Delete notification (Handled client-side via localStorage in NotificationContext)
-export const deleteNotification = async (_id: string): Promise<void> => {
-  // Notification deletion is handled locally via localStorage
-};
-
 // Get User Preferences (Local Storage Only)
 export const getUserNotificationPreferences = async (_userId: string): Promise<NotificationPreferences> => {
   const defaultPrefs: NotificationPreferences = { all_notifications: true, updates: true, alerts: true, info: true, promotion: true };

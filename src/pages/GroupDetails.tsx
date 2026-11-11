@@ -503,9 +503,6 @@ export const GroupDetails = ({
   const [pulseFontId, setPulseFontId] = useState<string | null>(null);
   const [modalPulseFontId] = useState<string | null>(null);
   const [processedHighlightedId, setProcessedHighlightedId] = useState<number | null>(null);
-  const [, setShowFuturisticHint] = useState(() => {
-    return !localStorage.getItem('fontinfo_hint_dismissed');
-  });
   const toolbarTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const fontGridRef = useRef<HTMLDivElement>(null);
@@ -1246,7 +1243,6 @@ export const GroupDetails = ({
               item={item}
               index={i}
               pulseFontId={pulseFontId}
-              setShowFuturisticHint={setShowFuturisticHint}
               navigate={navigate}
               isPublicAllFonts={isPublicAllFonts}
               groupId={id}

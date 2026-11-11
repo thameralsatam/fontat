@@ -24,7 +24,7 @@ An Arabic-first web platform for exploring, testing, and managing fonts: a searc
 
 ## Setup
 
-1. **Supabase:** create a project, enable Auth, create the tables used by `src/services/`, and create a public storage bucket named `fonts`.
+1. **Supabase:** create a project, enable Auth, create the tables `fonts`, `font_assets`, `font_weights`, `groups` and `notifications` plus the database functions (RPC) called from `src/services/`, and create a public storage bucket named `fonts`. (The SQL schema is not yet versioned in this repository.)
 2. **Environment variables** (see `.env.example`):
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
@@ -33,7 +33,7 @@ An Arabic-first web platform for exploring, testing, and managing fonts: a searc
 ## How uploads work
 
 - Uploading checks the `fonts` table by file hash: an already-stored file is linked instead of re-uploaded.
-- Deleting a font from a group only removes the link (`group_fonts`); the font record and file stay available to other groups.
+- Files are stored once per unique SHA-256 hash (`font_assets`); each user's font entry (`fonts`) points to a shared asset. Deleting a font removes its entry, not the shared file.
 
 ## Development
 

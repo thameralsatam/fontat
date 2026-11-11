@@ -28,7 +28,7 @@ const DB_NAME = 'FontLabDB';
 const STORE_NAME = 'history';
 const MAX_ITEMS = 10;
 
-export async function initDB() {
+async function initDB() {
   return openDB<FontLabDB>(DB_NAME, 1, {
     upgrade(db) {
       const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });

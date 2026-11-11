@@ -8,7 +8,6 @@ export interface FontCardProps {
   item: Font & { sessionLocalUrl?: string };
   index: number;
   pulseFontId: string | null;
-  setShowFuturisticHint: (v: boolean) => void;
   navigate: (path: string) => void;
   isPublicAllFonts: boolean;
   groupId?: string;
@@ -33,7 +32,6 @@ export const FontCard: React.FC<FontCardProps> = ({
   item,
   index,
   pulseFontId,
-  setShowFuturisticHint,
   navigate,
   isPublicAllFonts,
   groupId,
@@ -88,8 +86,6 @@ export const FontCard: React.FC<FontCardProps> = ({
           : 'ring-0 ring-transparent shadow-none'
       }`}
       onClick={() => {
-        localStorage.setItem('fontinfo_hint_dismissed', 'true');
-        setShowFuturisticHint(false);
         navigate(
           isPublicAllFonts
             ? `/fonts/${item.name}`

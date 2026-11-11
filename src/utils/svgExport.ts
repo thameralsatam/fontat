@@ -11,7 +11,7 @@ export interface GlyphExportData {
 /**
  * Extracts real SVG vector path data from font binary using opentype.js
  */
-export async function getVectorPathFromFont(
+async function getVectorPathFromFont(
   fontSource: Blob | ArrayBuffer | string,
   char?: string,
   unicode?: string
