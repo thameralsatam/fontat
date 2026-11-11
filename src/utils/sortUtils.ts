@@ -31,10 +31,3 @@ export class SortOptionList {
   ];
 }
 
-/**
- * Strips common font extensions and trims spaces
- */
-export function cleanFontName(name: string): string {
-  if (!name) return '';
-  return name.replace(/\.(ttf|otf|woff2|woff)$/i, '').trim();
-}

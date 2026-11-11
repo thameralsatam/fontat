@@ -10,15 +10,6 @@ export type Group = {
   font_count?: number;
 };
 
-export type FontAsset = {
-  id: string;
-  hash: string;
-  storage_path: string;
-  download_url: string;
-  size: number;
-  created_at: string;
-};
-
 export type Font = {
   id: string;
   name: string;
@@ -49,14 +40,7 @@ export type FontWeight = {
 
 export type Language = 'ar' | 'en';
 
-export interface RPCFontResult {
-  result_font_id?: string;
-  status?: string;
-  message?: string;
-  upload_required?: boolean;
-}
-
-export type NotificationType = 'update' | 'alert' | 'info' | 'promotion';
+type NotificationType = 'update' | 'alert' | 'info' | 'promotion';
 
 export type NotificationSlide = {
   id: string;
