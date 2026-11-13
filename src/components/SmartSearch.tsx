@@ -219,7 +219,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
               {isHashtagSearch ? (
                 <div className="flex flex-col overflow-y-auto w-full divide-y divide-white/[0.04] p-2">
                   <div className="text-[10px] text-white/30 px-4 py-2 uppercase font-medium tracking-wider mb-1 font-sans">
-                    {t('search.filter_by_tags')} ({tagsList.length})
+                    {t('search.filter_matching_tags')} ({tagsList.length})
                   </div>
                   {tagsList.map((tag, idx) => (
                     <button
@@ -232,7 +232,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
                         <span className="text-white text-sm font-light group-hover:text-cyan-400 transition-colors">{tag}</span>
                       </div>
                       <span className="text-xs text-white/30 group-hover:text-white/50 transition-colors font-light">
-                        {t('search.filter_public')}
+                        {t('search.filter_public_fonts')}
                       </span>
                     </button>
                   ))}

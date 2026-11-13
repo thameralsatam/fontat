@@ -125,7 +125,7 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
   const addToUploadQueue = useCallback((files: File[], groupId: string | null, parentFontId?: string) => {
     let filesToProcess = files;
     if (files.length > 10) {
-      addNotification('error', t('common.error') || 'Error');
+      addNotification('error', t('common.error'));
       filesToProcess = files.slice(0, 10);
     }
 
@@ -220,7 +220,7 @@ export const GlobalProvider = ({ children }: { children: React.ReactNode }) => {
                 } else if (errMsg.includes('already in the group')) {
                   addNotification('error', t('font.duplicate_title') || 'Duplicate font', error.message);
                 } else {
-                  addNotification('error', error.message || t('common.error') || 'Error');
+                  addNotification('error', error.message || t('common.error'));
                 }
               }
             }
