@@ -841,7 +841,7 @@ export const Lab = () => {
               <div className="mb-4 space-y-3">
                 <h3 className="text-sm font-bold">{t('lab.glyphs')}</h3>
                 <div className="relative w-full md:w-64">
-                  <div className={`absolute inset-y-0 ${t('dir') === 'rtl' ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
+                  <div className={`absolute inset-y-0 ${dir === 'rtl' ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
                     <Search size={14} className="text-white opacity-40" />
                   </div>
                   <input
@@ -849,7 +849,7 @@ export const Lab = () => {
                     placeholder={t('lab.search_glyph')}
                     value={glyphSearch}
                     onChange={(e) => setGlyphSearch(e.target.value)}
-                    className={`w-full bg-black/40 border border-white/10 rounded-lg py-2 ${t('dir') === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'} text-xs text-white placeholder-white/40 focus:outline-none focus:border-cyan-400/50 transition-colors`}
+                    className={`w-full bg-black/40 border border-white/10 rounded-lg py-2 ${dir === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'} text-xs text-white placeholder-white/40 focus:outline-none focus:border-cyan-400/50 transition-colors`}
                   />
                 </div>
               </div>
@@ -1004,7 +1004,7 @@ export const Lab = () => {
                     }}
                     className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/5"
                   >
-                    <ArrowRight className={`w-4 h-4 ${t('dir') === 'rtl' ? 'rotate-180' : ''}`} />
+                    <ArrowRight className={`w-4 h-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
                     <span>{t('lab.insert_sandbox')}</span>
                   </button>
                 )}
@@ -1361,7 +1361,7 @@ export const Lab = () => {
                                                   <span
                                                     className={`absolute top-[2px] h-4 w-4 rounded-full shadow ring-0 transition-all duration-200 ease-in-out ${isBasic ? 'bg-white/70' : 'bg-white'}`}
                                                     style={{
-                                                      [t('dir') === 'rtl' ? 'right' : 'left']: isCurrentlyOn ? '18px' : '2px'
+                                                      [dir === 'rtl' ? 'right' : 'left']: isCurrentlyOn ? '18px' : '2px'
                                                     }}
                                                   />
                                                 </div>

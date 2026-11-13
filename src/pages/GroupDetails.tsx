@@ -1081,7 +1081,7 @@ export const GroupDetails = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     if (!user) {
-      addNotification('error', t('auth.login_required') || 'يرجى تسجيل الدخول أولاً');
+      addNotification('error', t('auth.login_required'));
       return;
     }
 
@@ -1102,7 +1102,7 @@ export const GroupDetails = ({
     if (weightInputRef.current) weightInputRef.current.value = '';
 
     if (!user) {
-      addNotification('error', t('auth.login_required') || 'يرجى تسجيل الدخول أولاً');
+      addNotification('error', t('auth.login_required'));
       return;
     }
 
