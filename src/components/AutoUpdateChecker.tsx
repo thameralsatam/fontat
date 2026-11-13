@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useGlobal } from '../contexts/GlobalContext';
 
 /**
  * Extract asset URLs (/assets/*.js, /assets/*.css) from currently loaded document
@@ -18,12 +19,17 @@ function getLoadedAssetUrls(): string[] {
 
 /**
  * AutoUpdateChecker component:
- * - Checks for new build deployments on Cloudflare Pages every 5 minutes and on every route change.
- * - Compares the asset script/style hashes from fetched `/index.html` with current document assets.
- * - Automatically reloads the app when a new version is detected or when a dynamic chunk import fails.
+ * - Checks for new deployments every 5 minutes and when the tab becomes visible again.
+ * - Compares the asset hashes from a fresh `/index.html` with the ones currently loaded.
+ * - Reloads only when it is safe: never while files are uploading and never while the user is in the Lab
+ *   (unsaved edits / video export). A pending update is applied on the next navigation or when idle.
+ * - A failed chunk import triggers at most one reload per minute (prevents reload loops).
  */
 export function AutoUpdateChecker() {
   const location = useLocation();
+  const { uploadQueue } = useGlobal();
+  const busyRef = useRef(false);
+  const updatePendingRef = useRef(false);
   const initialAssetsRef = useRef<string[] | null>(null);
   const isCheckingRef = useRef<boolean>(false);
   const hasReloadedRef = useRef<boolean>(false);
@@ -32,6 +38,16 @@ export function AutoUpdateChecker() {
   useEffect(() => {
     initialAssetsRef.current = getLoadedAssetUrls();
   }, []);
+
+  busyRef.current =
+    location.pathname === '/lab' ||
+    uploadQueue.some((task) => task.status === 'pending' || task.status === 'uploading');
+
+  const applyUpdateIfSafe = () => {
+    if (!updatePendingRef.current || busyRef.current || hasReloadedRef.current) return;
+    hasReloadedRef.current = true;
+    window.location.reload();
+  };
 
   const checkForUpdate = async () => {
     if (isCheckingRef.current || hasReloadedRef.current) return;
@@ -77,9 +93,8 @@ export function AutoUpdateChecker() {
           newAssets.some((asset, i) => asset !== currentAssets[i]);
 
         if (isDifferent) {
-          console.log('[AutoUpdate] New version detected on Cloudflare Pages. Updating app...');
-          hasReloadedRef.current = true;
-          window.location.reload();
+          updatePendingRef.current = true;
+          applyUpdateIfSafe();
         }
       }
     } catch (error) {
@@ -89,16 +104,25 @@ export function AutoUpdateChecker() {
     }
   };
 
-  // 1. Check on Route Navigation
+  // 1. On navigation: apply a pending update if it is safe now (no network request here)
   useEffect(() => {
-    checkForUpdate();
-  }, [location.pathname]);
+    applyUpdateIfSafe();
+  }, [location.pathname, uploadQueue]);
+
+  // 1b. Check when the tab becomes visible again
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkForUpdate();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   // 2. Check every 5 minutes (300,000 ms)
   useEffect(() => {
     const FIVE_MINUTES = 5 * 60 * 1000;
     const intervalId = setInterval(() => {
-      checkForUpdate();
+      checkForUpdate().then(applyUpdateIfSafe);
     }, FIVE_MINUTES);
 
     return () => clearInterval(intervalId);
@@ -117,6 +141,18 @@ export function AutoUpdateChecker() {
         message.includes('Importing a module script failed') ||
         message.includes('Loading chunk')
       ) {
+        let last = 0;
+        try {
+          last = Number(sessionStorage.getItem('fontat_chunk_reload') || 0);
+        } catch {
+          /* storage unavailable */
+        }
+        if (Date.now() - last < 60_000) return; // already reloaded recently: do not loop
+        try {
+          sessionStorage.setItem('fontat_chunk_reload', String(Date.now()));
+        } catch {
+          /* storage unavailable */
+        }
         console.warn('[AutoUpdate] Chunk import error detected. Reloading to get new version...');
         window.location.reload();
       }
