@@ -146,28 +146,42 @@ export const deleteFontPermanently = async (fontId: string) => {
   return data;
 };
 
+// UI-only fields that must never be written to the database.
+const TRANSIENT_METADATA_KEYS = ['taskId', 'status', 'completedAt', 'isUploading'];
+
+// Reads the font's current metadata from the database (the source of truth) so that
+// partial updates (tags / note) never wipe other keys such as `note` or `is_weight`.
+const loadStoredMetadata = async (fontId: string): Promise<Record<string, any>> => {
+  const { data, error } = await supabase
+    .from('fonts')
+    .select('metadata')
+    .eq('id', fontId)
+    .single();
+  if (error) throw error;
+  const metadata: Record<string, any> = { ...((data?.metadata as Record<string, any>) || {}) };
+  TRANSIENT_METADATA_KEYS.forEach((key) => delete metadata[key]);
+  return metadata;
+};
+
 export const updateFontTags = async (fontId: string, tags: string[]) => {
+  const metadata = await loadStoredMetadata(fontId);
   const { data, error } = await supabase.rpc('manage_font_smart', {
     p_action: 'update',
     p_font_id: fontId,
-    p_metadata: { tags }
+    p_metadata: { ...metadata, tags }
   });
 
   if (error) throw error;
   return data;
 };
 
-export const updateFontNote = async (
-  fontId: string,
-  note: string,
-  existingMetadata: Record<string, any> = {}
-) => {
+export const updateFontNote = async (fontId: string, note: string) => {
   const trimmed = note.trim();
   if (trimmed.length > 100) {
     throw new Error('الملاحظة يجب ألا تتجاوز 100 حرف');
   }
 
-  const updatedMetadata = { ...existingMetadata };
+  const updatedMetadata = await loadStoredMetadata(fontId);
   if (trimmed) {
     updatedMetadata.note = trimmed;
   } else {

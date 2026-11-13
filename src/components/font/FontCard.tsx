@@ -88,7 +88,7 @@ export const FontCard: React.FC<FontCardProps> = ({
       onClick={() => {
         navigate(
           isPublicAllFonts
-            ? `/fonts/${item.name}`
+            ? `/fonts/${encodeURIComponent(item.name)}`
             : `/my-fonts/${item.id}${groupId ? `?group=${groupId}` : ''}`
         );
         setSelectedFontDetail(item);

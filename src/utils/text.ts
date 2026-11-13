@@ -9,3 +9,8 @@ export const formatFontName = (name: string): string => {
   const base = name.replace(/\.(ttf|otf|woff2|woff)$/i, '');
   return truncateMiddle(base, 10, 8);
 };
+
+// Escapes a value so it can be placed safely inside a double-quoted CSS string
+// (e.g. font-family names or url("...") built from user-supplied data).
+export const cssString = (value: string): string =>
+  String(value ?? '').replace(/[\\"]/g, '\\$&').replace(/[\r\n\f]/g, ' ');

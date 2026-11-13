@@ -22,7 +22,7 @@ import { DetailedFontView } from '../components/font/DetailedFontView';
 import { GlobalTagFilterBanner } from '../components/font/GlobalTagFilterBanner';
 import { FontsPagination } from '../components/font/FontsPagination';
 import { GlobalTagSelectionModal } from '../components/font/GlobalTagSelectionModal';
-import { formatFontName } from '../utils/text';
+import { formatFontName, cssString } from '../utils/text';
 import { useFontAnalyzer } from '../components/font/useFontAnalyzer';
 import { useFontTagActions } from '../components/font/useFontTagActions';
 import { SortOption } from '../utils/sortUtils';
@@ -325,7 +325,7 @@ export const GroupDetails = ({
 
     try {
       setLoading(true);
-      await updateFontNote(fontId, trimmed, targetFont.metadata);
+      await updateFontNote(fontId, trimmed);
       addNotification(
         'success',
         trimmed
@@ -1001,8 +1001,8 @@ export const GroupDetails = ({
 
             style.textContent = `
               @font-face {
-                font-family: "${font.name}";
-                src: url("${fontUrl}") ${format};
+                font-family: "${cssString(font.name)}";
+                src: url("${cssString(fontUrl)}") ${format};
                 font-display: swap;
               }
             `;

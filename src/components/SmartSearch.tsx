@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
-import { formatFontName } from '../utils/text';
+import { formatFontName, cssString } from '../utils/text';
 
 export interface SearchResult {
   id: string;
@@ -115,7 +115,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({ mode, onSelect }) => {
 
         try {
           const fontName = `search-preview-${result.id}`;
-          const font = new FontFace(fontName, `url(${result.download_url})`);
+          const font = new FontFace(fontName, `url("${cssString(result.download_url)}")`);
           await font.load();
           if (cancelled) break;
           document.fonts.add(font);
