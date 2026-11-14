@@ -1,16 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Upload, Beaker, Download, Video, Settings, Type, Search, Clock, ArrowRight, X, Copy, Sliders, ChevronDown, Palette, Layers, Info, SlidersHorizontal, AlignLeft, AlignCenter, AlignRight, RotateCcw } from 'lucide-react';
+import { Upload, Beaker, Download, Video, Settings, Type, Search, Clock, ArrowRight, X, Sliders, ChevronDown, Palette, Layers, Info, SlidersHorizontal, AlignLeft, AlignCenter, AlignRight, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HexColorPicker } from "react-colorful";
 // @ts-ignore
 import { useLanguage } from '../contexts/LanguageContext';
 import { useGlobal } from '../contexts/GlobalContext';
+import GlyphGrid from '../components/glyphs/GlyphGrid';
+import GlyphZoomModal, { ZoomGlyph } from '../components/glyphs/GlyphZoomModal';
 import { saveFontHistory, getFontHistoryList, getFontHistoryItem, FontHistoryItem, clearFontHistory } from '../lib/db';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { formatFontName } from '../utils/text';
-import { downloadGlyphAsSvg } from '../utils/svgExport';
-import * as opentype from 'opentype.js';
+import { analyzeFont } from '../utils/fontAnalysis';
 import { VideoExportModal } from '../components/font/VideoExportModal';
 
 const getFeatureDescription = (tag: string, parsedFont: any, t: (key: string) => string): string => {
@@ -178,6 +179,11 @@ const PopoverColorPicker = ({ color, onChange }: { color: string, onChange: (c: 
 export const Lab = () => {
   const { t, language, dir } = useLanguage();
   const { addNotification } = useGlobal();
+
+  // wake the (free-tier) conversion server while the user prepares the font
+  useEffect(() => {
+    fetch('https://font-api-0dqe.onrender.com/', { mode: 'no-cors' }).catch(() => {});
+  }, []);
   const [font, setFont] = useState<any>(null);
   const [originalFontBlob, setOriginalFontBlob] = useState<Blob | null>(null);
   const [axes, setAxes] = useState<any[]>([]);
@@ -235,7 +241,7 @@ export const Lab = () => {
   const [history, setHistory] = useState<Omit<FontHistoryItem, 'blob'>[]>([]);
   const [currentFontId, setCurrentFontId] = useState<string | null>(null);
   const [isClearHistoryModalOpen, setIsClearHistoryModalOpen] = useState(false);
-  const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<{char?: string, name?: string, svgPath?: string, svgViewBox?: string} | null>(null);
+  const [selectedGlyphZoom, setSelectedGlyphZoom] = useState<ZoomGlyph | null>(null);
   const [parsedGlyphs, setParsedGlyphs] = useState<any[]>([]);
   const [renderedGlyphCount, setRenderedGlyphCount] = useState(100);
   const [isFullscreenPreview, setIsFullscreenPreview] = useState(false);
@@ -395,120 +401,35 @@ export const Lab = () => {
     fontStyleTagRef.current = style;
 
     try {
-      const formData = new FormData();
-      formData.append("font", fileOrBlob, fontName || "font.ttf");
-
-      const response = await fetch("https://font-api-0dqe.onrender.com/analyze", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Failed to analyze font via server');
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error || 'Server analysis failed');
-
-      const serverNames = data.metadata.names || {};
-      const postScriptNameVal = serverNames.postscript_name || serverNames.full_name || fontName || 'font';
-      const fullNameVal = serverNames.full_name || serverNames.family_name || fontName || 'font';
-      const familyNameVal = serverNames.family_name || fontName || 'font';
-      const subfamilyNameVal = serverNames.subfamily_name || 'Regular';
-
+      const analysis = analyzeFont(arrayBuffer);
+      const n = analysis.names;
+      const pick = (k: string, d: string) => ({ en: n[k]?.en || d });
       const safeNames: Record<string, any> = {
-        fontFamily: { en: familyNameVal },
-        fontSubfamily: { en: subfamilyNameVal },
-        fullName: { en: fullNameVal },
-        postScriptName: { en: postScriptNameVal },
-        version: { en: serverNames.version || '1.0' },
-        designer: { en: serverNames.designer || '' },
-        copyright: { en: serverNames.copyright || '' }
+        fontFamily: pick('fontFamily', fontName || 'font'),
+        fontSubfamily: pick('fontSubfamily', 'Regular'),
+        fullName: pick('fullName', n.fontFamily?.en || fontName || 'font'),
+        postScriptName: pick('postScriptName', n.fullName?.en || fontName || 'font'),
+        version: pick('version', '1.0'),
+        designer: pick('designer', ''),
+        copyright: pick('copyright', ''),
       };
+      setFont({ names: safeNames, numGlyphs: analysis.numGlyphs });
 
-      const charCount = data.metadata.char_count || 0;
-
-      setFont({
-          names: safeNames,
-          numGlyphs: charCount
-      });
-      
-      // Extract axes
-      const serverAxes = data.metadata.axes || [];
-      const axesData = serverAxes.map((axis: any) => ({
-        tag: axis.tag,
-        minValue: axis.min,
-        defaultValue: axis.default,
-        maxValue: axis.max,
-        name: axis.name || axis.tag
-      }));
+      const axesData = analysis.axes;
       setAxes(axesData);
-      
       const initialValues: Record<string, number> = {};
-      axesData.forEach((axis: any) => {
-        initialValues[axis.tag] = savedAxes && savedAxes[axis.tag] !== undefined 
-          ? savedAxes[axis.tag] 
-          : axis.defaultValue;
+      axesData.forEach((axis) => {
+        initialValues[axis.tag] = savedAxes && savedAxes[axis.tag] !== undefined ? savedAxes[axis.tag] : axis.defaultValue;
       });
       setAxisValues(initialValues);
 
-      // Extract features
-      const serverFeatures = data.metadata.features || [];
       const features: Record<string, boolean | undefined> = {};
-      
-      serverFeatures.forEach((tag: string) => {
-        features[tag] = savedFeatures && savedFeatures[tag] !== undefined 
-          ? savedFeatures[tag] 
-          : undefined;
+      analysis.features.forEach((tag) => {
+        features[tag] = savedFeatures && savedFeatures[tag] !== undefined ? savedFeatures[tag] : undefined;
       });
-      
       setOpenTypeFeatures(features);
-      
-      // Generate characters list
-      let otFont: opentype.Font | null = null;
-      try {
-        otFont = opentype.parse(arrayBuffer.slice(0));
-      } catch (e) {
-        console.warn('Opentype parse in Lab failed', e);
-      }
 
-      const characters = data.metadata.characters || [];
-      const unitsPerEm = otFont?.unitsPerEm || 1000;
-      const ascender = otFont?.ascender || 800;
-
-      const glyphsList = characters.map((code: number, idx: number) => {
-        const char = String.fromCodePoint(code);
-        let svgPath: string | undefined;
-        let svgViewBox: string | undefined;
-
-        if (otFont) {
-          try {
-            const g = otFont.charToGlyph(char);
-            if (g && g.path) {
-              const p = g.getPath(0, ascender, unitsPerEm);
-              const pData = p.toPathData(2);
-              if (pData && pData.trim()) {
-                svgPath = pData;
-                const bbox = g.getBoundingBox();
-                const padX = (bbox.x2 - bbox.x1) * 0.08;
-                const padY = (bbox.y2 - bbox.y1) * 0.08;
-                const xMin = bbox.x1 - padX;
-                const yMin = (ascender - bbox.y2) - padY;
-                const w = (bbox.x2 - bbox.x1) + padX * 2 || 1000;
-                const h = (bbox.y2 - bbox.y1) + padY * 2 || 1000;
-                svgViewBox = `${xMin.toFixed(1)} ${yMin.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`;
-              }
-            }
-          } catch {}
-        }
-
-        return {
-          char,
-          index: idx,
-          unicode: code.toString(16).toUpperCase().padStart(4, '0'),
-          name: `Glyph ${code}`,
-          svgPath,
-          svgViewBox
-        };
-      });
-      setParsedGlyphs(glyphsList);
+      setParsedGlyphs(analysis.glyphs);
       setRenderedGlyphCount(100);
 
       if (!fontId) {
@@ -531,6 +452,7 @@ export const Lab = () => {
       }
     } catch (err) {
       console.error('Error parsing font:', err);
+      addNotification('error', t('lab.error_parsing'));
     }
   };
 
@@ -649,10 +571,14 @@ export const Lab = () => {
     formData.append("font", fontBlob); // ملف الخط الأصلي
     formData.append("settings", JSON.stringify(settings));
 
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 90000);
+    addNotification('info', t('lab.convert_notice'));
     try {
         const response = await fetch(API_URL, {
             method: "POST",
             body: formData,
+            signal: controller.signal,
         });
 
         if (response.ok) {
@@ -669,12 +595,13 @@ export const Lab = () => {
         } else {
             const errorText = await response.text();
             console.error(t('lab.error_conversion'), errorText);
-            alert(`${t('lab.error_server')}: ${errorText}`);
+            addNotification('error', t('lab.error_server'), errorText.slice(0, 200));
         }
     } catch (error) {
         console.error("خطأ في الاتصال بالسيرفر:", error);
-        alert(t('lab.error_connection'));
+        addNotification('error', t('lab.error_connection'));
     } finally {
+        window.clearTimeout(timeoutId);
         setIsDownloading(false);
     }
   }
@@ -853,9 +780,13 @@ export const Lab = () => {
                   />
                 </div>
               </div>
-              <div 
-                id="glV" 
-                ref={glyphsContainerRef} 
+              <GlyphGrid
+                id="glV"
+                ref={glyphsContainerRef}
+                glyphs={filteredGlyphs}
+                visibleCount={renderedGlyphCount}
+                fontFamily={`LabFont-${currentFontId}`}
+                onSelect={setSelectedGlyphZoom}
                 onScroll={(e) => {
                   const target = e.currentTarget;
                   if (target.scrollHeight - target.scrollTop <= target.clientHeight + 600) {
@@ -868,168 +799,20 @@ export const Lab = () => {
                     }
                   }
                 }}
-                className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4 max-h-[350px] overflow-y-auto p-4 bg-black/40 rounded-2xl border border-white/5 custom-scrollbar"
-              >
-                {filteredGlyphs.slice(0, renderedGlyphCount).map((glyph, idx) => (
-                  <div
-                    key={`lab-glyph-${glyph.unicode || idx}-${glyph.index}-${idx}`}
-                    onClick={() => {
-                      setSelectedGlyphZoom({ char: glyph.char, name: glyph.name, svgPath: glyph.svgPath, svgViewBox: glyph.svgViewBox });
-                    }}
-                    className="gl-cell flex flex-col items-center justify-between p-2 cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors h-full"
-                    title={(glyph.unicode ? `U+${glyph.unicode}` : '') + (glyph.name ? ` (${glyph.name})` : '')}
-                  >
-                    <div className="w-full h-auto flex flex-col items-center justify-center flex-1 min-h-[60px] max-h-[80px]">
-                      {glyph.svgPath ? (
-                        <svg viewBox={glyph.svgViewBox} className="w-full h-full fill-[#cbd5e1]">
-                          <path d={glyph.svgPath} />
-                        </svg>
-                      ) : (
-                        <span className="text-center overflow-visible whitespace-nowrap leading-none text-[#cbd5e1]" style={{ fontFamily: `'LabFont-${currentFontId}', sans-serif`, fontSize: '40px' }}>
-                          {glyph.char}
-                        </span>
-                      )}
-                    </div>
-                    <div className="w-full flex flex-col items-center text-center mt-2 space-y-[2px] overflow-hidden">
-                      <span className="text-[9px] text-white opacity-60 font-mono leading-tight truncate px-1">
-                        {glyph.unicode ? `U+${glyph.unicode}` : 'No Unicode'}
-                      </span>
-                      <span className="text-[9px] text-white opacity-40 leading-tight">
-                        Index: {glyph.index}
-                      </span>
-                      <span className="text-[9px] text-white opacity-80 truncate w-full px-1 leading-tight">
-                        {glyph.name || 'Unnamed'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              />
             </div>
           </div>
         )}
       </div>
 
-      {/* Giant Zoom Overlay lens for Lab glyphs */}
-      <AnimatePresence>
-        {selectedGlyphZoom && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedGlyphZoom(null)}
-              className="absolute inset-0 bg-[#020202]/90 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ scale: 0.9, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 15 }}
-              className="relative bg-[#0d0d0d] border border-cyan-400/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col justify-center items-center gap-6 z-10 text-center"
-            >
-              <div className="absolute top-5 right-5">
-                <button 
-                  onClick={() => setSelectedGlyphZoom(null)}
-                  className="p-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-full transition-all cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="text-[10px] uppercase font-bold tracking-widest text-[#cbd5e1]/30 font-sans">
-                {t('lab.macro_geometry')}
-              </div>
-
-              {/* Character display styling with loaded dynamic font if present */}
-              {selectedGlyphZoom.svgPath ? (
-                <div 
-                  className="min-h-[140px] flex justify-center items-center py-6 w-full max-w-[200px] mx-auto"
-                  title={t('lab.drag_or_copy')}
-                >
-                  <svg viewBox={selectedGlyphZoom.svgViewBox} className="w-full h-auto fill-current text-white max-h-[180px]">
-                    <path d={selectedGlyphZoom.svgPath} />
-                  </svg>
-                </div>
-              ) : font ? (
-                <div 
-                  className="text-[110px] select-all leading-none py-10 text-white select-text font-serif min-h-[140px] flex items-center justify-center"
-                  style={{
-                    fontFamily: `'LabFont-${currentFontId}', sans-serif`,
-                  }}
-                  title={t('lab.drag_or_copy')}
-                >
-                  {selectedGlyphZoom.char}
-                </div>
-              ) : (
-                <div 
-                  className="text-[110px] select-all leading-none py-10 text-white select-text font-serif font-extrabold min-h-[140px] flex items-center justify-center"
-                  title={t('lab.drag_or_copy')}
-                >
-                  {selectedGlyphZoom.char}
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="w-full flex flex-col gap-2.5 pb-2 mt-4 font-sans">
-                {selectedGlyphZoom.name && (
-                   <div className="text-white/40 text-[10px] font-mono text-center pb-2">
-                     {selectedGlyphZoom.name}
-                   </div>
-                )}
-                
-                {/* 1. Copy character string */}
-                {selectedGlyphZoom.char && (
-                  <button
-                    onClick={() => {
-                      if (selectedGlyphZoom.char) {
-                        navigator.clipboard.writeText(selectedGlyphZoom.char);
-                        addNotification('success', t('lab.char_copied'));
-                      }
-                    }}
-                    className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
-                  >
-                    <Copy className="w-4 h-4" />
-                    <span>{t('lab.copy_char_text')}</span>
-                  </button>
-                )}
-
-                {/* 2. Insert into typing preview text editor */}
-                {selectedGlyphZoom.char && (
-                  <button
-                    onClick={() => {
-                      if (selectedGlyphZoom.char) {
-                        setPreviewText(prev => prev + selectedGlyphZoom.char);
-                        addNotification('success', t('lab.char_added'));
-                        setSelectedGlyphZoom(null);
-                      }
-                    }}
-                    className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/5"
-                  >
-                    <ArrowRight className={`w-4 h-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                    <span>{t('lab.insert_sandbox')}</span>
-                  </button>
-                )}
-
-                {/* 3. Export as SVG */}
-                {(selectedGlyphZoom.char || selectedGlyphZoom.svgPath) && (
-                  <button
-                    onClick={async () => {
-                      const fontName = font?.names?.fullName?.en || font?.names?.postScriptName?.en || 'font';
-                      const success = await downloadGlyphAsSvg(selectedGlyphZoom, fontName, originalFontBlob);
-                      if (success) {
-                        addNotification('success', t('lab.svg_exported'));
-                      }
-                    }}
-                    className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/10"
-                  >
-                    <Download className="w-4 h-4 text-cyan-400" />
-                    <span>{t('lab.export_svg')}</span>
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <GlyphZoomModal
+        glyph={selectedGlyphZoom}
+        onClose={() => setSelectedGlyphZoom(null)}
+        onInsert={(char) => setPreviewText(prev => prev + char)}
+        fontName={font?.names?.fullName?.en || font?.names?.postScriptName?.en || 'font'}
+        fontSource={originalFontBlob}
+        fontFamily={`LabFont-${currentFontId}`}
+      />
 
       <ConfirmationModal
         isOpen={isClearHistoryModalOpen}

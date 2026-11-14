@@ -1,3 +1,4 @@
+import GlyphGrid from '../glyphs/GlyphGrid';
 import React from 'react';
 import { Font } from '../../types';
 import { formatFontName } from '../../utils/text';
@@ -198,29 +199,13 @@ export const FontPreviewSandbox: React.FC<FontPreviewSandboxProps> = ({
                 {dir === 'rtl' ? 'لم يتم العثور على محارف تطابق البحث' : 'No matching glyphs found'}
               </div>
             ) : (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(45px,1fr))] gap-1.5 sm:gap-2 pb-8 p-1">
-                {filteredGlyphs.slice(0, renderedGlyphCount).map((glyph, idx) => (
-                  <button
-                    key={`sandbox-glyph-${glyph.unicode || idx}-${glyph.index}-${idx}`}
-                    onClick={() => setSelectedGlyphZoom({ char: glyph.char, name: glyph.name, svgPath: glyph.svgPath, svgViewBox: glyph.svgViewBox })}
-                    className="h-[40px] md:h-[45px] p-2 rounded-xl bg-white/[0.02] border border-white/5 text-white/90 hover:border-white hover:text-white hover:bg-white/5 hover:scale-[1.12] flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 shadow-lg shadow-black/30"
-                    style={{
-                      gridColumn: `span ${Math.min(glyph.colSpan || 1, 6)}`
-                    }}
-                    title={(glyph.unicode ? `U+${glyph.unicode}` : '') + (glyph.name ? ` (${glyph.name})` : '')}
-                  >
-                    {glyph.svgPath ? (
-                      <svg viewBox={glyph.svgViewBox} className="w-full h-full fill-current">
-                        <path d={glyph.svgPath} />
-                      </svg>
-                    ) : (
-                      <span className="text-center overflow-visible whitespace-nowrap leading-none" style={{ fontFamily: `"${selectedFontDetail.name}", sans-serif`, fontSize: '18px' }}>
-                        {glyph.char}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+              <GlyphGrid
+                variant="compact"
+                glyphs={filteredGlyphs}
+                visibleCount={renderedGlyphCount}
+                fontFamily={selectedFontDetail.name}
+                onSelect={setSelectedGlyphZoom}
+              />
             )}
           </div>
 

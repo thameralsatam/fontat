@@ -1,11 +1,11 @@
+import GlyphZoomModal from '../glyphs/GlyphZoomModal';
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ArrowLeft, Download, ExternalLink, Beaker, Copy, Layout, BookOpen, Edit3, Sliders, Sparkles, ChevronDown, Plus, X, Dices, FileText } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Download, ExternalLink, Beaker, Copy, Layout, BookOpen, Edit3, Sliders, Sparkles, ChevronDown, Plus, Dices, FileText } from 'lucide-react';
 import { FontPreviewSandbox } from './FontPreviewSandbox';
 import { Font } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { downloadGlyphAsSvg } from '../../utils/svgExport';
 
 interface DetailedFontViewProps {
   selectedFontDetail: Font | null;
@@ -110,7 +110,6 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
   filteredGlyphs,
   renderedGlyphCount,
   selectedGlyphZoom,
-  addNotification,
   truncateTwoDots,
   formatFontName
 }) => {
@@ -471,113 +470,16 @@ export const DetailedFontView: React.FC<DetailedFontViewProps> = ({
 
         </main>
 
-        {/* Giant ZOOM LENS Portal overlay for calligraphic glyph zoom */}
-        <AnimatePresence>
-          {selectedGlyphZoom && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setSelectedGlyphZoom(null)}
-                className="absolute inset-0 bg-[#020202]/90 backdrop-blur-md"
-              />
-              <motion.div 
-                initial={{ scale: 0.9, y: 15 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 15 }}
-                className="relative bg-[#0d0d0d] border border-cyan-400/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col justify-center items-center gap-6 z-10 text-center"
-              >
-                <div className="absolute top-5 right-5">
-                  <button 
-                    onClick={() => setSelectedGlyphZoom(null)}
-                    className="p-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-full transition-all cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="text-[10px] uppercase font-bold tracking-widest text-[#cbd5e1]/30">
-                  {t('lab.macro_geometry')}
-                </div>
-
-                {/* Character Lens display */}
-                <div 
-                  className="text-[110px] select-all leading-none py-10 text-white cursor-help select-text font-serif"
-                  style={{
-                    fontFamily: `"${selectedFontDetail.name}", sans-serif`
-                  }}
-                  title={t('lab.drag_or_copy')}
-                >
-                  {selectedGlyphZoom?.svgPath ? (
-                    <svg viewBox={selectedGlyphZoom.svgViewBox} className="w-[120px] h-[120px] fill-current">
-                      <path d={selectedGlyphZoom.svgPath} />
-                    </svg>
-                  ) : (
-                    selectedGlyphZoom?.char
-                  )}
-                </div>
-
-                {/* Metadata detail & Copy / Insert / Export Actions */}
-                <div className="w-full flex flex-col gap-2.5 pb-2 mt-4 font-sans">
-                  {selectedGlyphZoom?.name && (
-                    <div className="text-white/40 text-xs font-mono">{selectedGlyphZoom.name}</div>
-                  )}
-                  
-                  {/* 1. Copy character string */}
-                  {selectedGlyphZoom?.char && (
-                    <button
-                      onClick={() => {
-                        if (selectedGlyphZoom?.char) {
-                          navigator.clipboard.writeText(selectedGlyphZoom.char);
-                          addNotification('success', t('lab.char_copied'));
-                        }
-                      }}
-                      className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs shadow-lg shadow-cyan-400/10"
-                    >
-                      <Copy className="w-4 h-4" />
-                      <span>{t('lab.copy_char_text')}</span>
-                    </button>
-                  )}
-
-                  {/* 2. Add to preview */}
-                  {selectedGlyphZoom?.char && (
-                    <button
-                      onClick={() => {
-                        if (selectedGlyphZoom?.char && selectedFontDetail) {
-                          const currentText = getPreviewText(selectedFontDetail.id);
-                          handlePreviewChange(selectedFontDetail.id, currentText + selectedGlyphZoom.char);
-                          addNotification('success', t('lab.char_added'));
-                          setSelectedGlyphZoom(null);
-                        }
-                      }}
-                      className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/5"
-                    >
-                      <Plus className="w-4 h-4 text-cyan-400" />
-                      <span>{t('lab.add_to_preview')}</span>
-                    </button>
-                  )}
-
-                  {/* 3. Export as SVG */}
-                  {(selectedGlyphZoom?.char || selectedGlyphZoom?.svgPath) && (
-                    <button
-                      onClick={async () => {
-                        const success = await downloadGlyphAsSvg(selectedGlyphZoom, selectedFontDetail?.name || 'font', selectedFontDetail?.download_url);
-                        if (success) {
-                          addNotification('success', t('lab.svg_exported'));
-                        }
-                      }}
-                      className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 text-xs border border-white/10"
-                    >
-                      <Download className="w-4 h-4 text-cyan-400" />
-                      <span>{t('lab.export_svg')}</span>
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        <GlyphZoomModal
+          glyph={selectedGlyphZoom}
+          onClose={() => setSelectedGlyphZoom(null)}
+          onInsert={(char) => {
+            if (selectedFontDetail) handlePreviewChange(selectedFontDetail.id, getPreviewText(selectedFontDetail.id) + char);
+          }}
+          fontName={selectedFontDetail?.name || 'font'}
+          fontSource={selectedFontDetail?.download_url}
+          fontFamily={selectedFontDetail?.name}
+        />
 
         {/* Hyperdrive Digital Portal Portal Animation Overlay */}
         <AnimatePresence>
