@@ -185,7 +185,8 @@ export const updateFontNote = async (fontId: string, note: string) => {
   if (trimmed) {
     updatedMetadata.note = trimmed;
   } else {
-    delete updatedMetadata.note;
+    // explicit null = "remove the note" (the server only touches keys that are present)
+    updatedMetadata.note = null;
   }
 
   const { data, error } = await supabase.rpc('manage_font_smart', {
