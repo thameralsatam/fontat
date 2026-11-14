@@ -5,7 +5,7 @@ import { Group, FontWeight, Font } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts, getWeightRelationshipsForFonts, updateFontNote } from '../services/fontService';
+import { deleteFontPermanently, getGroupFonts, getFontWeights, getPublicFonts, getPublicFontByCode, getWeightRelationshipsForFonts, updateFontNote } from '../services/fontService';
 import { getGroups } from '../services/groupService';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFontHistory } from '../lib/db';
@@ -22,7 +22,7 @@ import { DetailedFontView } from '../components/font/DetailedFontView';
 import { GlobalTagFilterBanner } from '../components/font/GlobalTagFilterBanner';
 import { FontsPagination } from '../components/font/FontsPagination';
 import { GlobalTagSelectionModal } from '../components/font/GlobalTagSelectionModal';
-import { formatFontName, cssString } from '../utils/text';
+import { formatFontName, cssString, fontCodeFromParam } from '../utils/text';
 import { useFontAnalyzer } from '../components/font/useFontAnalyzer';
 import { useFontTagActions } from '../components/font/useFontTagActions';
 import { SortOption } from '../utils/sortUtils';
@@ -58,6 +58,7 @@ export const GroupDetails = ({
   onClearTagFilter?: () => void,
   onTagClick?: (tag: string) => void
 }) => {
+  const lookedUpCodeRef = useRef<string | null>(null);
   const { id: paramId, fontParam } = useParams<{ id: string, fontParam: string }>();
   const id = groupId || paramId;
   const navigate = useNavigate();
@@ -936,13 +937,23 @@ export const GroupDetails = ({
     if (loading) return; 
     
     if (fontParam && !/^\d+$/.test(fontParam) && !selectedFontDetail) {
+      const code = isPublicAllFonts ? fontCodeFromParam(fontParam) : null;
       const targetFont = isPublicAllFonts 
-        ? displayFonts.find(f => f.name === fontParam)
+        ? (code ? displayFonts.find(f => f.id.startsWith(code)) : displayFonts.find(f => f.name === fontParam))
         : displayFonts.find(f => f.id === fontParam);
         
       if (targetFont) {
         setSelectedFontDetail(targetFont);
         setActiveParentFontId(targetFont.id);
+      } else if (code && lookedUpCodeRef.current !== code) {
+        // shared link to a font that is not on the current page: fetch it directly
+        lookedUpCodeRef.current = code;
+        getPublicFontByCode(code).then(found => {
+          if (found) {
+            setSelectedFontDetail(found);
+            setActiveParentFontId(found.id);
+          }
+        }).catch(err => console.error('Font lookup failed', err));
       }
     } else if ((!fontParam || /^\d+$/.test(fontParam)) && selectedFontDetail) {
       setSelectedFontDetail(null);

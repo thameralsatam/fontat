@@ -14,3 +14,23 @@ export const formatFontName = (name: string): string => {
 // (e.g. font-family names or url("...") built from user-supplied data).
 export const cssString = (value: string): string =>
   String(value ?? '').replace(/[\\"]/g, '\\$&').replace(/[\r\n\f]/g, ' ');
+
+// Public font URL: readable name + short code (first 8 hex chars of the id), e.g. "cairo-regular-3f9a8c21".
+export const fontSlug = (font: { id: string; name: string }): string => {
+  const base = formatFontNameForSlug(font.name);
+  return `${base ? base + '-' : ''}${font.id.slice(0, 8)}`;
+};
+
+const formatFontNameForSlug = (name: string): string =>
+  String(name ?? '')
+    .replace(/\.(ttf|otf|woff2|woff)$/i, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+
+/** Returns the 8-char code at the end of a public font URL param, or null for old-style (name-only) links. */
+export const fontCodeFromParam = (param: string): string | null => {
+  const m = /(?:^|-)([0-9a-f]{8})$/.exec(param);
+  return m ? m[1] : null;
+};
