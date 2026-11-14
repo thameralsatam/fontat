@@ -31,7 +31,7 @@ export default defineConfig({
         // إضافة رقم الإصدار إلى مسارات الخطوط (والصور) داخل ملفات CSS
         if (id.endsWith('.css')) {
           return code.replace(
-            /url\(['"]?(\/fonts\/[^'"?)]+\.[a-zA-Z0-9]+)[\?v=[0-9.]+]*['"]?\)/g,
+            /url\(\s*['"]?(\/fonts\/[^'"?)]+\.[a-zA-Z0-9]+)(?:\?[^'")]*)?['"]?\s*\)/g,
             `url('$1?v=${APP_VERSION}')`
           );
         }
