@@ -1,6 +1,6 @@
 -- =====================================================================
--- Fontat – security hardening (PROPOSED – review before applying)
--- Status: NOT applied to the live project.
+-- Fontat – security hardening (APPLIED to live project 2026-11-14)
+-- Status: applied as migration "security_hardening" (grants block executed last; result identical).
 --
 -- What it fixes (numbers refer to docs "fontat-audit-2026-11-11"):
 --   #12/#14  manage_font_smart replaced the whole metadata → now MERGES, whitelists keys (tags, note) and validates them
@@ -15,7 +15,7 @@
 --   +        realtime: stop publishing fonts / font_assets / font_weights (only `groups` is used by the app)
 --
 -- Client compatibility: the current client keeps working (it already sends complete tags/note values).
--- Part C (admin access to other users' private data) is in a separate file and needs your decision.
+-- Section 11 also removes the admin's access to other users' private fonts/groups (approved).
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -102,7 +102,7 @@ begin
   if p_group_id is not null then
     v_owner := (select user_id from public.groups where id = p_group_id);
     if v_owner is null then return jsonb_build_object('success', false, 'message', 'group_not_found'); end if;
-    if v_owner <> auth.uid() and not public.is_admin() then return jsonb_build_object('success', false, 'message', 'forbidden'); end if;
+    if v_owner <> auth.uid() then return jsonb_build_object('success', false, 'message', 'forbidden'); end if;
     if not public.is_admin() and (select count(*) from public.fonts where user_id = v_owner) >= 50 then
       return jsonb_build_object('success', false, 'message', 'font_limit_reached');
     end if;
@@ -136,7 +136,7 @@ begin
   if p_group_id is not null then
     v_owner := (select user_id from public.groups where id = p_group_id);
     if v_owner is null then return jsonb_build_object('success', false, 'message', 'group_not_found'); end if;
-    if v_owner <> auth.uid() and not public.is_admin() then return jsonb_build_object('success', false, 'message', 'forbidden'); end if;
+    if v_owner <> auth.uid() then return jsonb_build_object('success', false, 'message', 'forbidden'); end if;
     if not public.is_admin() and (select count(*) from public.fonts where user_id = v_owner) >= 50 then
       return jsonb_build_object('success', false, 'message', 'font_limit_reached');
     end if;
@@ -180,7 +180,7 @@ begin
   if v_parent_group_id is null then
     if not public.is_admin() then return jsonb_build_object('success', false, 'message', 'forbidden_public_weight'); end if;
   else
-    if v_parent_owner <> auth.uid() and not public.is_admin() then return jsonb_build_object('success', false, 'message', 'forbidden'); end if;
+    if v_parent_owner <> auth.uid() then return jsonb_build_object('success', false, 'message', 'forbidden'); end if;
     if not public.is_admin() and (select count(*) from public.fonts where user_id = v_parent_owner) >= 50 then
       return jsonb_build_object('success', false, 'message', 'font_limit_reached');
     end if;
@@ -223,13 +223,14 @@ end $$;
 -- ---------------------------------------------------------------------
 create or replace function public.manage_font_smart(p_action text, p_font_id uuid, p_name text default null, p_metadata jsonb default null)
 returns jsonb language plpgsql security definer set search_path to 'public' as $$
-declare v_owner uuid; v_meta jsonb; v_clean jsonb; v_name text;
+declare v_owner uuid; v_group uuid; v_meta jsonb; v_clean jsonb; v_name text;
 begin
   if auth.uid() is null then return jsonb_build_object('success', false, 'message', 'unauthorized'); end if;
 
-  select user_id, coalesce(metadata, '{}'::jsonb) into v_owner, v_meta from public.fonts where id = p_font_id;
+  select user_id, group_id, coalesce(metadata, '{}'::jsonb) into v_owner, v_group, v_meta from public.fonts where id = p_font_id;
   if v_owner is null then return jsonb_build_object('success', false, 'message', 'font_not_found'); end if;
-  if not (v_owner = auth.uid() or public.is_admin()) then raise exception 'forbidden'; end if;
+  -- owners manage their own fonts; the admin only manages PUBLIC fonts (never users' private ones)
+  if not (v_owner = auth.uid() or (public.is_admin() and v_group is null)) then raise exception 'forbidden'; end if;
 
   if p_action = 'delete' then
     delete from public.fonts where id = p_font_id;
@@ -388,9 +389,86 @@ create index if not exists font_weights_child_idx      on public.font_weights (c
 create index if not exists groups_user_id_idx          on public.groups (user_id);
 create index if not exists notifications_user_id_idx   on public.notifications (user_id);
 
+
+-- ---------------------------------------------------------------------
+-- 11. Privacy: the admin cannot read or change other users' PRIVATE fonts / groups (approved by Thamer 2026-11-14).
+--     The admin keeps full control of public fonts. Files are still in a public bucket (private bucket planned later).
+-- ---------------------------------------------------------------------
+drop policy if exists read_fonts on public.fonts;
+create policy read_fonts on public.fonts for select to public using (group_id is null or user_id = auth.uid());
+
+drop policy if exists read_groups on public.groups;
+create policy read_groups on public.groups for select to public using (user_id = auth.uid());
+
+drop policy if exists read_weights on public.font_weights;
+create policy read_weights on public.font_weights for select to public using (user_id = auth.uid());
+
+drop policy if exists read_assets on public.font_assets;
+create policy read_assets on public.font_assets for select to public using (
+  exists (select 1 from public.fonts f where f.asset_id = font_assets.id
+          and (f.group_id is null or f.user_id = auth.uid())));
+
+drop policy if exists fonts_select_linked_to_fonts_table on storage.objects;
+create policy fonts_select_linked_to_fonts_table on storage.objects for select to public using (
+  bucket_id = 'fonts' and exists (
+    select 1 from public.fonts f join public.font_assets fa on fa.id = f.asset_id
+    where fa.storage_path = objects.name and (f.group_id is null or f.user_id = auth.uid())));
+
+-- get_my_fonts: own fonts only (the admin sees public fonts through get_public_fonts)
+create or replace function public.get_my_fonts(p_group_id uuid default null, p_sort text default 'oldest', p_limit integer default 15, p_offset integer default 0)
+returns table(font_id uuid, group_id uuid, asset_id uuid, name text, metadata jsonb, download_url text, size bigint, created_at timestamptz, font_hash text, total_count bigint)
+language plpgsql stable security definer set search_path to 'public' as $$
+begin
+  return query
+  select f.id, f.group_id, f.asset_id, f.name, f.metadata, a.download_url, a.size, f.created_at, a.hash,
+         count(*) over() as total_count
+  from public.fonts f
+  join public.font_assets a on a.id = f.asset_id
+  where f.user_id = auth.uid()
+    and (p_group_id is null or f.group_id = p_group_id)
+    and not exists (select 1 from public.font_weights fw where fw.child_font_id = f.id)
+  order by
+    case when p_sort = 'oldest'   then f.created_at end asc,
+    case when p_sort = 'newest'   then f.created_at end desc,
+    case when p_sort = 'name_asc' then f.name end asc,
+    f.id
+  limit p_limit offset p_offset;
+end $$;
+
+create or replace function public.get_my_weights(p_font_id uuid)
+returns table(font_id uuid, name text, download_url text, font_hash text, size bigint, metadata jsonb)
+language plpgsql security definer set search_path to 'public' as $$
+declare v_group_id uuid; v_exists boolean;
+begin
+  select exists(select 1 from public.fonts where id = p_font_id) into v_exists;
+  if not v_exists then return; end if;
+  select group_id into v_group_id from public.fonts where id = p_font_id;
+  return query
+  select f.id, f.name, a.download_url, a.hash, a.size, f.metadata
+  from public.font_weights fw
+  join public.fonts f on f.id = fw.child_font_id
+  join public.font_assets a on a.id = f.asset_id
+  where fw.parent_font_id = p_font_id and (v_group_id is null or fw.user_id = auth.uid());
+end $$;
+
+create or replace function public.get_parent_font_ids(p_font_ids uuid[])
+returns table(parent_font_id uuid) language sql stable security definer set search_path to 'public' as $$
+  select distinct fw.parent_font_id
+  from public.font_weights fw
+  join public.fonts f on f.id = fw.parent_font_id
+  where fw.parent_font_id = any(p_font_ids) and (f.group_id is null or fw.user_id = auth.uid());
+$$;
+
+-- The blanket storage policy Storage_Admin_Master (admin, ALL on storage.objects) is kept for storage maintenance.
+-- Grants for the two re-created functions are restored here because section 8 ran before them in this file's order:
+grant execute on function public.get_my_fonts(uuid, text, integer, integer) to authenticated;
+grant execute on function public.get_my_weights(uuid)        to anon, authenticated;
+grant execute on function public.get_parent_font_ids(uuid[]) to anon, authenticated;
+
 -- ---------------------------------------------------------------------
 -- Checks to run after applying (as anon / authenticated / admin):
 --   anon:  select * from get_public_fonts();          -- works
+--   admin: get_my_fonts() returns only the admin's own fonts; admin can edit public fonts but not a user's private font
 --   anon:  select * from get_my_fonts();               -- permission denied
 --   anon:  select on_storage_object_deleted();         -- permission denied
 --   user:  tags edit keeps note and is_weight; deleting a note removes it; 21 tags → invalid_tags
