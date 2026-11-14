@@ -24,89 +24,35 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/" element={
-        <Layout>
-          <Home />
-        </Layout>
-      } />
+      <Route element={<Layout />}>
+      <Route path="/" element={<Home />} />
       
-      <Route path="/fonts" element={
-        <Layout>
-          <FontsPage mode="public" />
-        </Layout>
-      } />
+      <Route path="/fonts" element={<FontsPage mode="public" />} />
       
-      <Route path="/fonts/:fontParam" element={
-        <Layout>
-          <FontsPage mode="public" />
-        </Layout>
-      } />
+      <Route path="/fonts/:fontParam" element={<FontsPage mode="public" />} />
       
-      <Route path="/my-fonts" element={
-        <Layout>
-          <FontsPage mode="private" />
-        </Layout>
-      } />
+      <Route path="/my-fonts" element={<FontsPage mode="private" />} />
 
-      <Route path="/my-fonts/:fontParam" element={
-        <Layout>
-          <FontsPage mode="private" />
-        </Layout>
-      } />
+      <Route path="/my-fonts/:fontParam" element={<FontsPage mode="private" />} />
       
-      <Route path="/login" element={
-        <Layout>
-          {!user ? <Login /> : <Navigate to="/account" />}
-        </Layout>
-      } />
+      <Route path="/login" element={!user ? <Login /> : <Navigate to="/account" />} />
       
-      <Route path="/account" element={
-        <Layout>
-          <Account />
-        </Layout>
-      } />
+      <Route path="/account" element={<Account />} />
       
-      <Route path="/lab" element={
-        <Layout>
-          <Lab />
-        </Layout>
-      } />
+      <Route path="/lab" element={<Lab />} />
       
-      <Route path="/group/:id" element={
-        <Layout>
-          <GroupDetails />
-        </Layout>
-      } />
+      <Route path="/group/:id" element={<GroupDetails />} />
       
-      <Route path="/group/:id/:fontParam" element={
-        <Layout>
-          <GroupDetails />
-        </Layout>
-      } />
+      <Route path="/group/:id/:fontParam" element={<GroupDetails />} />
       
-      <Route path="/privacy" element={
-        <Layout>
-          <PrivacyPolicy />
-        </Layout>
-      } />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
       
-      <Route path="/terms" element={
-        <Layout>
-          <TermsOfUse />
-        </Layout>
-      } />
+      <Route path="/terms" element={<TermsOfUse />} />
       
-      <Route path="/about" element={
-        <Layout>
-          <AboutUs />
-        </Layout>
-      } />
+      <Route path="/about" element={<AboutUs />} />
       
-      <Route path="*" element={
-        <Layout>
-          <NotFound />
-        </Layout>
-      } />
+      <Route path="*" element={<NotFound />} />
+      </Route>
     </Routes>
   );
 };
