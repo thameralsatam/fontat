@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Upload, AlertTriangle, Info, Check, X, LogIn, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -68,7 +68,7 @@ const NotificationItem = ({ notification, onRemove }: { notification: any, onRem
   );
 };
 
-export const Layout = ({ children }: { children: React.ReactNode }) => {
+export const Layout = () => {
   const { dir, t, language, setLanguage } = useLanguage();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -155,9 +155,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     }
   ];
   
+  // scroll to top on real page changes only (opening a font / paging changes the URL but not the page)
+  const pageKey = location.pathname.split('/')[1] + (location.pathname.startsWith('/group/') ? location.pathname.split('/')[2] : '');
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [location.pathname]);
+  }, [pageKey]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -284,7 +286,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <main 
         className="flex-1 pt-28 pb-24 w-full"
       >
-        {children}
+        <Outlet />
       </main>
 
       {/* Footer */}
