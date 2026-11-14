@@ -3,6 +3,7 @@ import { X, Play, Download, Loader2, AlertCircle, Sparkles, Film, Sliders, Chevr
 import * as htmlToImage from 'html-to-image';
 import * as Mp4Muxer from 'mp4-muxer';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { cssString } from '../../utils/text';
 
 interface Axis {
   tag: string;
@@ -54,7 +55,7 @@ export function VideoExportModal({
   const [fontBase64, setFontBase64] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!fontBlob) {
+    if (!isOpen || !fontBlob || (typeof FontFace !== 'undefined' && 'variationSettings' in FontFace.prototype)) {
       setFontBase64(null);
       return;
     }
@@ -63,12 +64,12 @@ export function VideoExportModal({
       setFontBase64(e.target?.result as string);
     };
     reader.readAsDataURL(fontBlob);
-  }, [fontBlob]);
+  }, [fontBlob, isOpen]);
 
   // Clean font embed CSS without format constraint, allowing TTF, OTF, WOFF, WOFF2
   const fontEmbedCSS = fontBase64 ? `
     @font-face {
-      font-family: '${fontFamily}';
+      font-family: '${cssString(fontFamily).replace(/'/g, "\\'")}';
       src: url('${fontBase64}');
       font-display: swap;
     }
@@ -381,10 +382,117 @@ export function VideoExportModal({
   // Scale fonts perfectly to prevent wrap mismatches between live preview and render canvas
   const previewFontSize = fontSize * (previewWidth / 800);
 
-  // Main Export Router (WebCodecs -> fallbacks to MediaRecorder)
-  const handleExport = async () => {
-    if (!containerRef.current) return;
+  // ---------------------------------------------------------------------
+  // Frame source: draws every frame straight onto a canvas (fast, deterministic).
+  // Falls back to DOM snapshots only where FontFace variation descriptors are unavailable.
+  // ---------------------------------------------------------------------
+  const canvasSupported = typeof FontFace !== 'undefined' && 'variationSettings' in FontFace.prototype;
 
+  const tFactorFor = (i: number, totalFrames: number) => {
+    const progress = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+    return animMode === 'pingpong' ? 0.5 - 0.5 * Math.cos(progress * 2 * Math.PI) : progress;
+  };
+
+  const wrapLines = (ctx: CanvasRenderingContext2D, source: string, maxWidth: number) => {
+    const lines: string[] = [];
+    for (const paragraph of source.split('\n')) {
+      if (paragraph.trim() === '') { lines.push(''); continue; }
+      let line = '';
+      for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+        const candidate = line ? `${line} ${word}` : word;
+        if (ctx.measureText(candidate).width <= maxWidth || !line) {
+          line = candidate;
+          // break words that are wider than the box
+          while (ctx.measureText(line).width > maxWidth && line.length > 1) {
+            let cut = line.length - 1;
+            while (cut > 1 && ctx.measureText(line.slice(0, cut)).width > maxWidth) cut--;
+            lines.push(line.slice(0, cut));
+            line = line.slice(cut);
+          }
+        } else {
+          lines.push(line);
+          line = word;
+        }
+      }
+      lines.push(line);
+    }
+    return lines;
+  };
+
+  const createFrameSource = async (width: number, height: number): Promise<(tFactor: number) => Promise<HTMLCanvasElement>> => {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    if (canvasSupported && fontBlob) {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Could not initialize 2D canvas context');
+      const fontData = await fontBlob.arrayBuffer();
+      const scale = width / 800;
+      const size = fontSize * scale;
+      const lh = (parseFloat(String(lineHeight)) || 1.4) * size;
+      const pad = 16 * scale;
+      const boxWidth = width * 0.9 - pad * 2;
+      const isRtl = /[֐-ࣿיִ-﷿ﹰ-﻿]/.test(text);
+      const features = getFeaturesString();
+      let previous: FontFace | null = null;
+
+      return async (tFactor: number) => {
+        const face = new FontFace('FontatVideoFrame', fontData.slice(0), {
+          variationSettings: getFVS(tFactor) || 'normal',
+          featureSettings: features,
+        } as FontFaceDescriptors);
+        await face.load();
+        document.fonts.add(face);
+        if (previous) document.fonts.delete(previous);
+        previous = face;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, width, height);
+        ctx.font = `${size}px "FontatVideoFrame"`;
+        ctx.fillStyle = textColor;
+        ctx.direction = isRtl ? 'rtl' : 'ltr';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = textAlign;
+        if ('letterSpacing' in ctx) (ctx as any).letterSpacing = letterSpacing ? `${letterSpacing * scale}px` : '0px';
+
+        const lines = wrapLines(ctx, text, boxWidth);
+        const top = (height - lines.length * lh) / 2;
+        const left = (width - boxWidth) / 2;
+        const x = textAlign === 'left' ? left : textAlign === 'right' ? left + boxWidth : width / 2;
+        lines.forEach((line, i) => ctx.fillText(line, x, top + i * lh + lh / 2));
+        return canvas;
+      };
+    }
+
+    // Fallback: snapshot the hidden DOM element for every frame
+    const element = containerRef.current!;
+    const family = fontEmbedCSS || undefined;
+    await htmlToImage.toCanvas(element, { width, height, fontEmbedCSS: family, cacheBust: true });
+    return async (tFactor: number) => {
+      const fvs = getFVS(tFactor);
+      element.style.setProperty('font-variation-settings', fvs);
+      textRef.current?.style.setProperty('font-variation-settings', fvs);
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise(resolve => setTimeout(resolve, 20));
+      return htmlToImage.toCanvas(element, {
+        width, height, backgroundColor: bgColor,
+        style: { transform: 'none', margin: '0' },
+        fontEmbedCSS: family, cacheBust: true,
+      });
+    };
+  };
+
+  const finishExport = (blob: Blob, mime: string) => {
+    setVideoUrl(URL.createObjectURL(blob));
+    setVideoMimeType(mime);
+    setIsFinished(true);
+    setIsExporting(false);
+  };
+
+  // Main export router (WebCodecs MP4 -> MediaRecorder WebM)
+  const handleExport = async () => {
     isCancelledRef.current = false;
     setIsExporting(true);
     setProgress(0);
@@ -396,255 +504,131 @@ export function VideoExportModal({
     }
 
     const { width, height, bitrate } = getExportDimensions();
-    const totalFrames = duration * fps;
+    const totalFrames = Math.round(duration * fps);
+    const renderFrame = await createFrameSource(width, height).catch((err: any) => {
+      setError(err?.message || t('error'));
+      setIsExporting(false);
+      return null;
+    });
+    if (!renderFrame) return;
 
-    // Check if WebCodecs is available and we are in a Secure Context
-    const isWebCodecsSupported = typeof VideoEncoder !== 'undefined' && window.isSecureContext;
-
-    if (isWebCodecsSupported) {
-      try {
-        console.log("Using WebCodecs (MP4) video generator...");
-        await exportWithWebCodecs(width, height, bitrate, totalFrames);
-      } catch (err: any) {
-        console.warn("WebCodecs export failed. Falling back to MediaRecorder...", err);
+    const webCodecsOk = typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined' && window.isSecureContext;
+    try {
+      if (webCodecsOk) {
         try {
-          await exportWithMediaRecorder(width, height, totalFrames);
-        } catch (fbErr: any) {
-          console.error("All export engines failed:", fbErr);
-          setError(fbErr.message || t('error'));
-          setIsExporting(false);
+          await exportWithWebCodecs(renderFrame, width, height, bitrate, totalFrames);
+          return;
+        } catch (err) {
+          if (isCancelledRef.current) return;
+          console.warn('WebCodecs export failed, falling back to MediaRecorder', err);
         }
       }
-    } else {
-      try {
-        console.log("WebCodecs unsupported/unsecure. Falling back to MediaRecorder (WebM)...");
-        await exportWithMediaRecorder(width, height, totalFrames);
-      } catch (err: any) {
-        console.error("MediaRecorder export failed:", err);
-        setError(err.message || t('error'));
-        setIsExporting(false);
-      }
+      await exportWithMediaRecorder(renderFrame, width, height, totalFrames);
+    } catch (err: any) {
+      console.error('Video export failed:', err);
+      setError(err?.message || t('error'));
+      setIsExporting(false);
     }
   };
 
-  // ENGINE 1: WebCodecs + MP4 Muxer (Super high fidelity, exact timings)
-  const exportWithWebCodecs = async (width: number, height: number, bitrate: number, totalFrames: number) => {
+  type FrameRenderer = (tFactor: number) => Promise<HTMLCanvasElement>;
+
+  // ENGINE 1: WebCodecs + MP4 muxer (exact timing)
+  const exportWithWebCodecs = async (renderFrame: FrameRenderer, width: number, height: number, bitrate: number, totalFrames: number) => {
     const muxer = new Mp4Muxer.Muxer({
       target: new Mp4Muxer.ArrayBufferTarget(),
-      video: {
-        codec: 'avc',
-        width,
-        height,
-      },
+      video: { codec: 'avc', width, height },
       fastStart: 'in-memory',
     });
 
+    let encoderError: Error | null = null;
     const videoEncoder = new VideoEncoder({
       output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => {
-        throw new Error(e.message);
-      },
+      error: (e) => { encoderError = new Error(e.message); },
     });
 
-    // Select appropriate AVC codec level based on frame area (2K/4K require Level 5.1+)
-    let codec = 'avc1.4d002a'; // Main profile Level 4.2 (up to 1080p)
-    if (width * height > 2_200_000) {
-      codec = 'avc1.4d0033'; // Main profile Level 5.1 (up to 2048x2048 / 2560x1440)
-    }
-
+    let codec = width * height > 2_200_000 ? 'avc1.4d0033' : 'avc1.4d002a';
     if (typeof VideoEncoder.isConfigSupported === 'function') {
-      const testConfig = { codec, width, height, bitrate, framerate: fps };
+      const base = { codec, width, height, bitrate, framerate: fps };
       try {
-        const support = await VideoEncoder.isConfigSupported(testConfig);
-        if (!support.supported) {
-          const altCodecs = ['avc1.640033', 'avc1.4d0034', 'avc1.420033', 'avc1.4d002a'];
-          for (const alt of altCodecs) {
-            const altSupport = await VideoEncoder.isConfigSupported({ ...testConfig, codec: alt });
-            if (altSupport.supported) {
-              codec = alt;
-              break;
-            }
+        if (!(await VideoEncoder.isConfigSupported(base)).supported) {
+          for (const alt of ['avc1.640033', 'avc1.4d0034', 'avc1.420033', 'avc1.4d002a']) {
+            if ((await VideoEncoder.isConfigSupported({ ...base, codec: alt })).supported) { codec = alt; break; }
           }
         }
       } catch (e) {
-        console.warn("VideoEncoder.isConfigSupported check failed, using codec:", codec, e);
+        console.warn('isConfigSupported failed, using', codec, e);
       }
     }
+    videoEncoder.configure({ codec, width, height, bitrate, framerate: fps, bitrateMode: 'variable' });
 
-    videoEncoder.configure({
-      codec,
-      width,
-      height,
-      bitrate,
-      framerate: fps,
-      bitrateMode: 'variable',
-    });
+    const frameDuration = 1_000_000 / fps;
+    try {
+      for (let i = 0; i < totalFrames; i++) {
+        if (isCancelledRef.current) { setIsExporting(false); setProgress(0); return; }
+        if (encoderError) throw encoderError;
 
-    const element = containerRef.current!;
-    
-    // Warm up font cache
-    await htmlToImage.toCanvas(element, { width, height, fontEmbedCSS: fontEmbedCSS || undefined, cacheBust: true });
+        // backpressure: do not queue more than a few frames
+        while (videoEncoder.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 5));
 
-    for (let i = 0; i < totalFrames; i++) {
-      if (isCancelledRef.current) {
-        try { videoEncoder.close(); } catch(e) {}
-        setIsExporting(false);
-        setProgress(0);
-        return;
+        const canvas = await renderFrame(tFactorFor(i, totalFrames));
+        const frame = new VideoFrame(canvas, { timestamp: i * frameDuration, duration: frameDuration });
+        videoEncoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
+        frame.close();
+        setProgress((i + 1) / totalFrames);
       }
-
-      const progress = totalFrames > 1 ? i / (totalFrames - 1) : 0;
-      const tFactor = animMode === 'pingpong'
-        ? 0.5 - 0.5 * Math.cos(progress * 2 * Math.PI)
-        : progress;
-      const fvsString = getFVS(tFactor);
-      
-      // Update element and child font settings dynamically using robust setProperty
-      element.style.setProperty('font-variation-settings', fvsString);
-      if (textRef.current) {
-        textRef.current.style.setProperty('font-variation-settings', fvsString);
-      }
-
-      // Force layout calculation/reflow to guarantee style recalculations before paint
-      element.offsetHeight;
-      if (textRef.current) textRef.current.offsetHeight;
-
-      // Wait a rendering tick to let browser engine execute repaint
-      await new Promise(resolve => requestAnimationFrame(resolve));
-      await new Promise(resolve => setTimeout(resolve, 20));
-
-      const canvas = await htmlToImage.toCanvas(element, {
-        width,
-        height,
-        backgroundColor: bgColor,
-        style: { transform: 'none', margin: '0' },
-        fontEmbedCSS: fontEmbedCSS || undefined,
-        cacheBust: true // Force fresh snapshot rendering bypass cache
-      });
-
-      const frameDuration = 1_000_000 / fps; // in microseconds
-      const timestamp = i * frameDuration;
-      const frame = new VideoFrame(canvas, { timestamp, duration: frameDuration });
-
-      videoEncoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
-      frame.close();
-
-      setProgress((i + 1) / totalFrames);
+      await videoEncoder.flush();
+      if (encoderError) throw encoderError;
+      muxer.finalize();
+      finishExport(new Blob([muxer.target.buffer], { type: 'video/mp4' }), 'video/mp4');
+    } finally {
+      try { if (videoEncoder.state !== 'closed') videoEncoder.close(); } catch { /* already closed */ }
     }
-
-    await videoEncoder.flush();
-    muxer.finalize();
-
-    const { buffer } = muxer.target;
-    const blob = new Blob([buffer], { type: 'video/mp4' });
-    const url = URL.createObjectURL(blob);
-    
-    setVideoUrl(url);
-    setVideoMimeType('video/mp4');
-    setIsFinished(true);
-    setIsExporting(false);
   };
 
-  // ENGINE 2: MediaRecorder with Canvas Stream Fallback (Universally supported, works anywhere)
-  const exportWithMediaRecorder = async (width: number, height: number, totalFrames: number) => {
+  // ENGINE 2: MediaRecorder fallback. Frames are paced in real time so the clip length matches the chosen duration.
+  const exportWithMediaRecorder = async (renderFrame: FrameRenderer, width: number, height: number, totalFrames: number) => {
     const captureCanvas = document.createElement('canvas');
     captureCanvas.width = width;
     captureCanvas.height = height;
     const ctx = captureCanvas.getContext('2d');
-    if (!ctx) throw new Error("Could not initialize 2D canvas context");
+    if (!ctx) throw new Error('Could not initialize 2D canvas context');
 
     const stream = captureCanvas.captureStream(fps);
-    
-    // Select best supported MIME Type for video capture
-    const mimeTypesToTry = [
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm',
-      'video/mp4'
-    ];
-    let selectedMime = 'video/webm';
-    for (const mime of mimeTypesToTry) {
-      if (MediaRecorder.isTypeSupported(mime)) {
-        selectedMime = mime;
-        break;
-      }
-    }
+    const selectedMime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+      .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
 
     const chunks: BlobPart[] = [];
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: selectedMime });
-
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        chunks.push(e.data);
-      }
-    };
-
-    const recordPromise = new Promise<Blob>((resolve, reject) => {
-      mediaRecorder.onstop = () => {
-        resolve(new Blob(chunks, { type: selectedMime }));
-      };
-      mediaRecorder.onerror = (e) => reject(e);
+    const recorder = new MediaRecorder(stream, { mimeType: selectedMime, videoBitsPerSecond: 8_000_000 });
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    const done = new Promise<Blob>((resolve, reject) => {
+      recorder.onstop = () => resolve(new Blob(chunks, { type: selectedMime }));
+      recorder.onerror = (e: any) => reject(e?.error || new Error('Recording failed'));
     });
 
-    mediaRecorder.start();
-
-    const element = containerRef.current!;
-    const frameDelay = Math.max(16, 1000 / fps);
-
-    for (let i = 0; i < totalFrames; i++) {
-      if (isCancelledRef.current) {
-        try { mediaRecorder.stop(); } catch(e) {}
-        setIsExporting(false);
-        setProgress(0);
-        return;
+    const stopTracks = () => stream.getTracks().forEach(tr => tr.stop());
+    recorder.start();
+    const frameMs = 1000 / fps;
+    const startedAt = performance.now();
+    try {
+      for (let i = 0; i < totalFrames; i++) {
+        if (isCancelledRef.current) {
+          try { recorder.stop(); } catch { /* not recording */ }
+          setIsExporting(false);
+          setProgress(0);
+          return;
+        }
+        const source = await renderFrame(tFactorFor(i, totalFrames));
+        ctx.drawImage(source, 0, 0);
+        const wait = startedAt + (i + 1) * frameMs - performance.now();
+        if (wait > 0) await new Promise(r => setTimeout(r, wait));
+        setProgress((i + 1) / totalFrames);
       }
-
-      const progress = totalFrames > 1 ? i / (totalFrames - 1) : 0;
-      const tFactor = animMode === 'pingpong'
-        ? 0.5 - 0.5 * Math.cos(progress * 2 * Math.PI)
-        : progress;
-      const fvsString = getFVS(tFactor);
-      
-      // Update font settings dynamically with robust property setter
-      element.style.setProperty('font-variation-settings', fvsString);
-      if (textRef.current) {
-        textRef.current.style.setProperty('font-variation-settings', fvsString);
-      }
-
-      // Force synchronous reflow layout cycle
-      element.offsetHeight;
-      if (textRef.current) textRef.current.offsetHeight;
-
-      // Allow browser engine layout tick 
-      await new Promise(resolve => requestAnimationFrame(resolve));
-      await new Promise(resolve => setTimeout(resolve, 20));
-
-      const tempCanvas = await htmlToImage.toCanvas(element, {
-        width,
-        height,
-        backgroundColor: bgColor,
-        style: { transform: 'none', margin: '0' },
-        fontEmbedCSS: fontEmbedCSS || undefined,
-        cacheBust: true
-      });
-
-      // Render onto recorder canvas
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(tempCanvas, 0, 0);
-
-      // Give MediaRecorder a moment to capture the frame properly
-      await new Promise(resolve => setTimeout(resolve, frameDelay));
-      setProgress((i + 1) / totalFrames);
+      recorder.stop();
+      finishExport(await done, selectedMime);
+    } finally {
+      stopTracks();
     }
-
-    mediaRecorder.stop();
-    const finalBlob = await recordPromise;
-    const url = URL.createObjectURL(finalBlob);
-
-    setVideoUrl(url);
-    setVideoMimeType(selectedMime);
-    setIsFinished(true);
-    setIsExporting(false);
   };
 
   const handleDownload = () => {
