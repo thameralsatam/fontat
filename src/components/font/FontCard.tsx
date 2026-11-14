@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Download, Trash2, Check, Plus, Layers, FileText } from 'lucide-react';
 import { Font } from '../../types';
-import { formatFontName } from '../../utils/text';
+import { formatFontName, fontSlug } from '../../utils/text';
 
 export interface FontCardProps {
   item: Font & { sessionLocalUrl?: string };
@@ -88,7 +88,7 @@ export const FontCard: React.FC<FontCardProps> = ({
       onClick={() => {
         navigate(
           isPublicAllFonts
-            ? `/fonts/${encodeURIComponent(item.name)}`
+            ? `/fonts/${encodeURIComponent(fontSlug(item))}`
             : `/my-fonts/${item.id}${groupId ? `?group=${groupId}` : ''}`
         );
         setSelectedFontDetail(item);

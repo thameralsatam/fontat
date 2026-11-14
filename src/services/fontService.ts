@@ -425,3 +425,20 @@ export const getWeightRelationshipsForFonts = async (fontIds: string[]): Promise
 
 
 
+
+export const getPublicFontByCode = async (code: string): Promise<Font | null> => {
+  const { data, error } = await supabase.rpc('get_public_font_by_code', { p_code: code });
+  if (error) throw error;
+  const item = data?.[0];
+  if (!item) return null;
+  const fontTags = extractTags(item.metadata, item.tags);
+  return {
+    id: item.font_id,
+    name: item.font_name,
+    download_url: item.download_url,
+    size: item.size,
+    created_at: item.created_at,
+    metadata: item.metadata ? { ...item.metadata, tags: fontTags } : { tags: fontTags },
+    tags: fontTags,
+  } as Font;
+};
